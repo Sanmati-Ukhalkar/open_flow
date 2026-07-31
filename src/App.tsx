@@ -4,8 +4,11 @@ import {
   useEdgesState,
   addEdge,
   Node,
+  Edge,
   Connection,
-  ReactFlowProvider
+  OnSelectionChangeParams,
+  ReactFlowProvider,
+  useReactFlow
 } from 'reactflow';
 import Sidebar from './canvas/Sidebar';
 import Canvas from './canvas/Canvas';
@@ -15,8 +18,9 @@ import RunLogPanel, { WorkflowRunLog } from './canvas/RunLogPanel';
 import AuthScreen from './canvas/AuthScreen';
 import Dashboard from './canvas/Dashboard';
 import CredentialsManager from './canvas/CredentialsManager';
+import ShortcutsOverlay from './canvas/ShortcutsOverlay';
 import { topoSort } from './engine/topoSort';
-import { Play, AlertTriangle, Save, FolderOpen, ShieldCheck, Key } from 'lucide-react';
+import { Play, AlertTriangle, Save, FolderOpen, ShieldCheck, Key, Undo2, Redo2, Keyboard } from 'lucide-react';
 import DeployModal from './canvas/DeployModal';
 
 function AppContent() {
@@ -33,6 +37,8 @@ function AppContent() {
   const [nodes, setNodes, onNodesChange] = useNodesState<any>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  // Multi-select tracking: all currently selected node IDs
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
 
   // Execution States
   const [executionOutputs, setExecutionOutputs] = useState<Record<string, any>>({});
@@ -46,11 +52,77 @@ function AppContent() {
   const [deployModalOpen, setDeployModalOpen] = useState(false);
   const [deploying, setDeploying] = useState(false);
 
+  // UI overlay state
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Undo/Redo history — stored as snapshots per workflow
+  type HistorySnapshot = { nodes: Node[]; edges: Edge[] };
+  const historyRef = useRef<HistorySnapshot[]>([]);
+  const historyCursorRef = useRef<number>(-1);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  // Clipboard for copy/paste
+  const clipboardRef = useRef<Node[]>([]);
+
+  const { fitView } = useReactFlow();
+
   const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
   const pollingIntervalRef = useRef<any>(null);
 
   // Track node status changes locally to generate chronological timeline logs
   const prevStatusesRef = useRef<Record<string, string>>({});
+
+  // -------------------------------------------
+  // History (Undo/Redo) helpers
+  // -------------------------------------------
+
+  const pushHistory = useCallback((newNodes: Node[], newEdges: Edge[]) => {
+    const cursor = historyCursorRef.current;
+    // Trim future states if we're mid-history
+    const truncated = historyRef.current.slice(0, cursor + 1);
+    truncated.push({ nodes: newNodes, edges: newEdges });
+    historyRef.current = truncated;
+    historyCursorRef.current = truncated.length - 1;
+    setCanUndo(historyCursorRef.current > 0);
+    setCanRedo(false);
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (historyCursorRef.current <= 0) return;
+    historyCursorRef.current -= 1;
+    const snap = historyRef.current[historyCursorRef.current];
+    setNodes(snap.nodes);
+    setEdges(snap.edges);
+    setCanUndo(historyCursorRef.current > 0);
+    setCanRedo(true);
+  }, [setNodes, setEdges]);
+
+  const handleRedo = useCallback(() => {
+    if (historyCursorRef.current >= historyRef.current.length - 1) return;
+    historyCursorRef.current += 1;
+    const snap = historyRef.current[historyCursorRef.current];
+    setNodes(snap.nodes);
+    setEdges(snap.edges);
+    setCanUndo(true);
+    setCanRedo(historyCursorRef.current < historyRef.current.length - 1);
+  }, [setNodes, setEdges]);
+
+  const clearHistory = useCallback(() => {
+    historyRef.current = [];
+    historyCursorRef.current = -1;
+    setCanUndo(false);
+    setCanRedo(false);
+  }, []);
+
+  // Debounced config history push — groups typing into single undo step
+  const configDebounceRef = useRef<any>(null);
+  const scheduleConfigHistory = useCallback((newNodes: Node[], edgs: Edge[]) => {
+    clearTimeout(configDebounceRef.current);
+    configDebounceRef.current = setTimeout(() => {
+      pushHistory(newNodes, edgs);
+    }, 300);
+  }, [pushHistory]);
 
   // Route to auth if token is invalid or missing
   useEffect(() => {
@@ -78,21 +150,40 @@ function AppContent() {
     setView('auth');
   };
 
-  // Connection Handler
+  // Connection Handler — pushes history after connecting
   const onConnect = useCallback(
-    (params: Connection) =>
-      setEdges(eds =>
-        addEdge(
+    (params: Connection) => {
+      setEdges(eds => {
+        const newEdges = addEdge(
           {
             ...params,
             style: { stroke: '#27272a', strokeWidth: 2 },
             animated: false
           },
           eds
-        )
-      ),
-    [setEdges]
+        );
+        // Need current nodes for snapshot — get from state via functional update trick
+        setNodes(nds => {
+          pushHistory(nds, newEdges);
+          return nds;
+        });
+        return newEdges;
+      });
+    },
+    [setEdges, setNodes, pushHistory]
   );
+
+  // Track multi-selection changes from Canvas
+  const handleSelectionChange = useCallback((params: OnSelectionChangeParams) => {
+    const ids = params.nodes.map(n => n.id);
+    setSelectedNodeIds(ids);
+    // When exactly one node is selected, set it as the config panel target
+    if (ids.length === 1) {
+      setSelectedNodeId(ids[0]);
+    } else if (ids.length === 0) {
+      // Don't clear selectedNodeId here — paneClick handles full deselect
+    }
+  }, []);
 
   const handleSelectNode = (node: Node | null) => {
     setSelectedNodeId(node ? node.id : null);
@@ -109,8 +200,8 @@ function AppContent() {
   };
 
   const handleChangeConfig = (nodeId: string, updatedConfig: any) => {
-    setNodes(nds =>
-      nds.map(node => {
+    setNodes(nds => {
+      const newNodes = nds.map(node => {
         if (node.id === nodeId) {
           const { isOutputNode, ...configWithoutOutputField } = updatedConfig;
           return {
@@ -123,53 +214,134 @@ function AppContent() {
           };
         }
         return node;
-      })
-    );
+      });
+      // Debounce config edits into a single undo step per pause in typing
+      setEdges(eds => {
+        scheduleConfigHistory(newNodes, eds);
+        return eds;
+      });
+      return newNodes;
+    });
   };
 
-  // Safe delete node and its connected edges
+  // Safe delete node and its connected edges — pushes history
   const handleDeleteNode = (nodeId: string) => {
-    setNodes(nds => nds.filter(n => n.id !== nodeId));
-    setEdges(eds => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
+    setNodes(nds => {
+      const newNodes = nds.filter(n => n.id !== nodeId);
+      setEdges(eds => {
+        const newEdges = eds.filter(e => e.source !== nodeId && e.target !== nodeId);
+        pushHistory(newNodes, newEdges);
+        return newEdges;
+      });
+      return newNodes;
+    });
     if (selectedNodeId === nodeId) {
       setSelectedNodeId(null);
     }
+    setSelectedNodeIds(ids => ids.filter(id => id !== nodeId));
   };
 
-  // Drop Node handler
+  // Bulk delete all currently selected nodes and their edges
+  const handleDeleteSelected = useCallback(() => {
+    const idsToDelete = new Set(selectedNodeIds);
+    if (idsToDelete.size === 0) return;
+    setNodes(nds => {
+      const newNodes = nds.filter(n => !idsToDelete.has(n.id));
+      setEdges(eds => {
+        const newEdges = eds.filter(e => !idsToDelete.has(e.source) && !idsToDelete.has(e.target));
+        pushHistory(newNodes, newEdges);
+        return newEdges;
+      });
+      return newNodes;
+    });
+    setSelectedNodeId(null);
+    setSelectedNodeIds([]);
+  }, [selectedNodeIds, setNodes, setEdges, pushHistory]);
+
+  // Copy selected nodes to clipboard
+  const handleCopy = useCallback(() => {
+    const toCopy = nodes.filter(n => selectedNodeIds.includes(n.id));
+    if (toCopy.length > 0) clipboardRef.current = toCopy;
+  }, [nodes, selectedNodeIds]);
+
+  // Paste clipboard nodes with offset
+  const handlePaste = useCallback(() => {
+    const clipboard = clipboardRef.current;
+    if (!clipboard || clipboard.length === 0) return;
+    const OFFSET = 30;
+    const newNodes = clipboard.map(n => ({
+      ...n,
+      id: `${n.type}-${Math.random().toString(36).substr(2, 4)}`,
+      position: { x: n.position.x + OFFSET, y: n.position.y + OFFSET },
+      selected: false,
+      data: { ...n.data, status: 'idle' }
+    }));
+    setNodes(nds => {
+      const combined = [...nds, ...newNodes];
+      setEdges(eds => { pushHistory(combined, eds); return eds; });
+      return combined;
+    });
+  }, [setNodes, setEdges, pushHistory]);
+
+  // Duplicate selected nodes in place with slight offset
+  const handleDuplicate = useCallback(() => {
+    const OFFSET = 30;
+    const toDuplicate = nodes.filter(n => selectedNodeIds.includes(n.id));
+    if (toDuplicate.length === 0) return;
+    const newNodes = toDuplicate.map(n => ({
+      ...n,
+      id: `${n.type}-${Math.random().toString(36).substr(2, 4)}`,
+      position: { x: n.position.x + OFFSET, y: n.position.y + OFFSET },
+      selected: false,
+      data: { ...n.data, status: 'idle' }
+    }));
+    setNodes(nds => {
+      const combined = [...nds, ...newNodes];
+      setEdges(eds => { pushHistory(combined, eds); return eds; });
+      return combined;
+    });
+  }, [nodes, selectedNodeIds, setNodes, setEdges, pushHistory]);
+
+  // Select all nodes
+  const handleSelectAll = useCallback(() => {
+    setNodes(nds => nds.map(n => ({ ...n, selected: true })));
+    setSelectedNodeIds(nodes.map(n => n.id));
+  }, [nodes, setNodes]);
+
+  // Nudge selected node(s) by px via arrow keys
+  const handleNudge = useCallback((dx: number, dy: number) => {
+    if (selectedNodeIds.length === 0) return;
+    setNodes(nds => {
+      const moved = nds.map(n =>
+        selectedNodeIds.includes(n.id)
+          ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } }
+          : n
+      );
+      setEdges(eds => { pushHistory(moved, eds); return eds; });
+      return moved;
+    });
+  }, [selectedNodeIds, setNodes, setEdges, pushHistory]);
+
+  // Drop Node handler — pushes history after adding
   const handleDropNode = (type: string, position: { x: number; y: number }) => {
     const id = `${type.replace('-node', '')}-${Math.random().toString(36).substr(2, 4)}`;
     
     let defaultConfig: any = {};
     switch (type) {
       case 'llm-prompt':
-        defaultConfig = {
-          promptText: 'Write a catchy tagline for Open Flow.',
-          model: 'llama-3.1-8b-instant',
-        };
+        defaultConfig = { promptText: 'Write a catchy tagline for Open Flow.', model: 'llama-3.1-8b-instant' };
         break;
       case 'mcp-tool':
-        defaultConfig = {
-          toolName: 'text_analyzer',
-          inputParamName: 'text',
-        };
+        defaultConfig = { toolName: 'text_analyzer', inputParamName: 'text' };
         break;
       case 'http-webhook':
-        defaultConfig = {
-          url: '',
-          bodyTemplate: '{\n  "text": "{{input}}"\n}',
-        };
+        defaultConfig = { url: '', bodyTemplate: '{\n  "text": "{{input}}"\n}' };
         break;
       case 'sqlite-storage':
-        defaultConfig = {
-          tableName: 'workflow_data',
-          columnName: 'payload',
-        };
+        defaultConfig = { tableName: 'workflow_data', columnName: 'payload' };
         break;
       case 'text-transform':
-        defaultConfig = {
-          template: 'Combined output: {{llm-prompt-1}}',
-        };
+        defaultConfig = { template: 'Combined output: {{llm-prompt-1}}' };
         break;
       default:
         break;
@@ -179,14 +351,136 @@ function AppContent() {
       id,
       type,
       position,
-      data: {
-        status: 'idle',
-        config: defaultConfig,
-      },
+      data: { status: 'idle', config: defaultConfig },
     };
 
-    setNodes(nds => nds.concat(newNode));
+    setNodes(nds => {
+      const updated = nds.concat(newNode);
+      setEdges(eds => { pushHistory(updated, eds); return eds; });
+      return updated;
+    });
   };
+
+  // -------------------------------------------
+  // Keyboard shortcuts global handler
+  // -------------------------------------------
+  useEffect(() => {
+    const isTyping = () => {
+      const el = document.activeElement;
+      if (!el) return false;
+      const tag = el.tagName.toLowerCase();
+      return tag === 'input' || tag === 'textarea' || (el as HTMLElement).isContentEditable;
+    };
+
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+
+      // ? — shortcuts overlay (no guard, always available)
+      if (e.key === '?' && !mod && !isTyping()) {
+        setShowShortcuts(s => !s);
+        return;
+      }
+
+      // Esc — deselect / close overlay
+      if (e.key === 'Escape') {
+        setShowShortcuts(false);
+        if (!isTyping()) {
+          setSelectedNodeId(null);
+          setSelectedNodeIds([]);
+          setNodes(nds => nds.map(n => ({ ...n, selected: false })));
+        }
+        return;
+      }
+
+      // All remaining shortcuts skip when typing
+      if (isTyping()) return;
+
+      // Ctrl/Cmd + Z — Undo
+      if (mod && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+
+      // Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y — Redo
+      if ((mod && e.shiftKey && e.key === 'z') || (mod && e.key === 'y')) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      // Ctrl/Cmd + S — Save
+      if (mod && e.key === 's') {
+        e.preventDefault();
+        handleSaveWorkflow();
+        return;
+      }
+
+      // Ctrl/Cmd + Enter — Run
+      if (mod && e.key === 'Enter') {
+        e.preventDefault();
+        handleRunWorkflow();
+        return;
+      }
+
+      // Ctrl/Cmd + A — Select All
+      if (mod && e.key === 'a') {
+        e.preventDefault();
+        handleSelectAll();
+        return;
+      }
+
+      // Ctrl/Cmd + C — Copy
+      if (mod && e.key === 'c') {
+        handleCopy();
+        return;
+      }
+
+      // Ctrl/Cmd + V — Paste
+      if (mod && e.key === 'v') {
+        handlePaste();
+        return;
+      }
+
+      // Ctrl/Cmd + D — Duplicate
+      if (mod && e.key === 'd') {
+        e.preventDefault();
+        handleDuplicate();
+        return;
+      }
+
+      // Ctrl/Cmd + 0 — Fit View
+      if (mod && e.key === '0') {
+        e.preventDefault();
+        fitView({ padding: 0.1 });
+        return;
+      }
+
+      // Delete / Backspace — delete selected
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        handleDeleteSelected();
+        return;
+      }
+
+      // Arrow key nudge
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        const step = e.shiftKey ? 10 : 1;
+        e.preventDefault();
+        if (e.key === 'ArrowUp') handleNudge(0, -step);
+        else if (e.key === 'ArrowDown') handleNudge(0, step);
+        else if (e.key === 'ArrowLeft') handleNudge(-step, 0);
+        else if (e.key === 'ArrowRight') handleNudge(step, 0);
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [
+    handleUndo, handleRedo, handleDeleteSelected, handleCopy, handlePaste,
+    handleDuplicate, handleSelectAll, handleNudge, fitView,
+    // these are referenced in closures — stable refs via useCallback
+  ]);
 
   // Save workflow API call
   const handleSaveWorkflow = async () => {
@@ -263,7 +557,7 @@ function AppContent() {
     }
   };
 
-  // Load selected workflow state
+  // Load selected workflow state — clears undo history per spec
   const handleSelectWorkflow = async (workflowId: string) => {
     try {
       const res = await fetch(`/api/workflows/${workflowId}`, {
@@ -277,6 +571,7 @@ function AppContent() {
         setWorkflowName(wf.name);
         setNodes(wf.graph.nodes || []);
         setEdges(wf.graph.edges || []);
+        clearHistory();
         
         // Reset execution states
         setExecutionOutputs({});
@@ -284,6 +579,8 @@ function AppContent() {
         setRunLogs([]);
         setWorkflowStatus('idle');
         prevStatusesRef.current = {};
+        setSelectedNodeId(null);
+        setSelectedNodeIds([]);
         
         setView('canvas');
       } else {
@@ -294,17 +591,20 @@ function AppContent() {
     }
   };
 
-  // Instantiates new empty canvas workflow
+  // Instantiates new empty canvas workflow — clears history
   const handleCreateNewWorkflow = () => {
     setCurrentWorkflowId(null);
     setWorkflowName('Untitled Workflow');
     setNodes([]);
     setEdges([]);
+    clearHistory();
     setExecutionOutputs({});
     setExecutionErrors({});
     setRunLogs([]);
     setWorkflowStatus('idle');
     prevStatusesRef.current = {};
+    setSelectedNodeId(null);
+    setSelectedNodeIds([]);
     setView('canvas');
   };
 
@@ -546,6 +846,9 @@ function AppContent() {
 
   return (
     <div className="flex flex-col h-screen bg-[#09090b]">
+      {/* Shortcuts Overlay */}
+      {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
+
       {/* Top Header */}
       <header className="h-12 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md px-6 flex items-center justify-between z-10 flex-shrink-0">
         <div className="flex items-center gap-4">
@@ -567,6 +870,26 @@ function AppContent() {
             placeholder="Workflow Name"
             className="bg-transparent border-0 border-b border-transparent hover:border-zinc-800 focus:border-purple-500 focus:ring-0 text-zinc-100 font-bold text-xs px-1.5 py-0.5 max-w-[200px]"
           />
+
+          {/* Undo / Redo buttons */}
+          <div className="flex items-center gap-1 border-l border-zinc-850 pl-3">
+            <button
+              onClick={handleUndo}
+              disabled={!canUndo}
+              title="Undo (Ctrl+Z)"
+              className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={handleRedo}
+              disabled={!canRedo}
+              title="Redo (Ctrl+Shift+Z)"
+              className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <Redo2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Global Action Bar */}
@@ -638,6 +961,15 @@ function AppContent() {
             <Play className="w-3.5 h-3.5" />
             Run Workflow
           </button>
+
+          {/* Shortcuts help button */}
+          <button
+            onClick={() => setShowShortcuts(true)}
+            title="Keyboard shortcuts (?)"
+            className="p-1.5 rounded-lg border border-zinc-850 bg-zinc-900/40 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 transition-all"
+          >
+            <Keyboard className="w-3.5 h-3.5" />
+          </button>
         </div>
 
         <div className="text-[9px] text-zinc-550 font-mono uppercase tracking-wider flex items-center gap-1">
@@ -663,6 +995,7 @@ function AppContent() {
               onConnect={onConnect}
               onSelectNode={handleSelectNode}
               onDropNode={handleDropNode}
+              onSelectionChange={handleSelectionChange}
             />
           </div>
 
@@ -682,12 +1015,14 @@ function AppContent() {
           />
         </div>
 
-        {/* Right Configuration Panel */}
+        {/* Right Configuration Panel — shows multi-select summary when >1 node selected */}
         <ConfigPanel
-          selectedNode={selectedNode}
+          selectedNode={selectedNodeIds.length > 1 ? null : selectedNode}
+          selectedCount={selectedNodeIds.length}
           onChangeConfig={handleChangeConfig}
           onRunNode={handleRunWorkflow}
           onDeleteNode={handleDeleteNode}
+          onDeleteSelected={handleDeleteSelected}
           workflowId={currentWorkflowId}
         />
       </div>

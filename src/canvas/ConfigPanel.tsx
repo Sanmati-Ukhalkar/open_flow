@@ -4,17 +4,21 @@ import { Play, Settings, Wrench, Globe, Database, Combine, Trash2, Bot, Calendar
 
 interface ConfigPanelProps {
   selectedNode: Node<any> | null;
+  selectedCount?: number;
   onChangeConfig: (nodeId: string, updatedConfig: any) => void;
   onRunNode: (nodeId: string) => void;
   onDeleteNode: (nodeId: string) => void;
+  onDeleteSelected?: () => void;
   workflowId?: string | null;
 }
 
 export const ConfigPanel = ({
   selectedNode,
+  selectedCount = 0,
   onChangeConfig,
   onRunNode,
   onDeleteNode,
+  onDeleteSelected,
   workflowId
 }: ConfigPanelProps) => {
   const [availableTools, setAvailableTools] = useState<{ name: string; description: string }[]>([]);
@@ -47,7 +51,33 @@ export const ConfigPanel = ({
     }
   }, [selectedNode?.id]);
 
+  // Multi-select summary panel
   if (!selectedNode) {
+    if (selectedCount > 1) {
+      return (
+        <div className="w-80 border-l border-zinc-800 bg-zinc-950/70 p-6 flex flex-col justify-center items-center text-center flex-shrink-0 space-y-4">
+          <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-2xl">
+            <Settings className="w-7 h-7 text-purple-400" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-zinc-200">{selectedCount} nodes selected</p>
+            <p className="text-[10px] text-zinc-550 mt-1">Bulk actions apply to all selected nodes.</p>
+          </div>
+          {onDeleteSelected && (
+            <button
+              onClick={onDeleteSelected}
+              className="flex items-center gap-1.5 py-1.5 px-4 rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs font-semibold transition-all"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete {selectedCount} nodes
+            </button>
+          )}
+          <p className="text-[9px] text-zinc-650 leading-relaxed">
+            Tip: Hold <kbd className="px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-400 font-mono">Ctrl</kbd> and click to add/remove nodes from selection.
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="w-80 border-l border-zinc-800 bg-zinc-950/70 p-6 flex flex-col justify-center items-center text-center text-zinc-500 flex-shrink-0">
         <Settings className="w-8 h-8 mb-2 text-zinc-650" />

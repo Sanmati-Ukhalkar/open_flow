@@ -7,6 +7,7 @@ import ReactFlow, {
   OnNodesChange,
   OnEdgesChange,
   OnConnect,
+  OnSelectionChangeParams,
   BackgroundVariant,
   useReactFlow
 } from 'reactflow';
@@ -33,6 +34,7 @@ interface CanvasProps {
   onConnect: OnConnect;
   onSelectNode: (node: Node | null) => void;
   onDropNode: (type: string, position: { x: number; y: number }) => void;
+  onSelectionChange?: (params: OnSelectionChangeParams) => void;
 }
 
 export const Canvas = ({
@@ -42,7 +44,8 @@ export const Canvas = ({
   onEdgesChange,
   onConnect,
   onSelectNode,
-  onDropNode
+  onDropNode,
+  onSelectionChange,
 }: CanvasProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { project } = useReactFlow();
@@ -92,6 +95,12 @@ export const Canvas = ({
         onConnect={onConnect}
         onNodeClick={(_event, node) => onSelectNode(node)}
         onPaneClick={() => onSelectNode(null)}
+        onSelectionChange={onSelectionChange}
+        // Multi-select: Shift+drag for marquee, Ctrl/Cmd+click to add to selection
+        selectionKeyCode="Shift"
+        multiSelectionKeyCode="Control"
+        // We handle Delete ourselves to guard against firing inside text inputs
+        deleteKeyCode={null}
         fitView
         className="w-full h-full"
       >
