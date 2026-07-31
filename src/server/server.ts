@@ -29,6 +29,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'secret-for-dev';
 
 import jwt from 'jsonwebtoken';
 import { WebSocketServer } from 'ws';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 const { setupWSConnection, setPersistence } = require('y-websocket/bin/utils');
 import * as url from 'url';
 import * as Y from 'yjs';

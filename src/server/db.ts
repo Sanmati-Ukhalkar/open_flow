@@ -38,6 +38,10 @@ db.serialize(() => {
     CREATE TABLE IF NOT EXISTS workflows (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      description TEXT,
+      category TEXT,
+      required_credentials TEXT,
+      is_template BOOLEAN DEFAULT 0,
       graph_json TEXT NOT NULL,
       owner_id TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -204,6 +208,10 @@ db.serialize(() => {
   });
 
   const v13ColumnsToAdd = [
+    { table: 'workflows', name: 'description', definition: 'TEXT' },
+    { table: 'workflows', name: 'category', definition: 'TEXT' },
+    { table: 'workflows', name: 'required_credentials', definition: 'TEXT' },
+    { table: 'workflows', name: 'is_template', definition: 'BOOLEAN DEFAULT 0' },
     { table: 'run_node_results', name: 'cost_cents', definition: 'REAL DEFAULT 0' },
     { table: 'run_node_results', name: 'duration_ms', definition: 'INTEGER DEFAULT 0' },
     { table: 'run_node_results', name: 'metadata_json', definition: 'TEXT' },
