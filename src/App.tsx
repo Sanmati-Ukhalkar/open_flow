@@ -1,7 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import {
-  useNodesState,
-  useEdgesState,
   addEdge,
   Node,
   Edge,
@@ -22,20 +20,44 @@ import ShortcutsOverlay from './canvas/ShortcutsOverlay';
 import { topoSort } from './engine/topoSort';
 import { Play, AlertTriangle, Save, FolderOpen, ShieldCheck, Key, Undo2, Redo2, Keyboard } from 'lucide-react';
 import DeployModal from './canvas/DeployModal';
+import OrgSettingsModal from './canvas/OrgSettingsModal';
+import { useYjsSync } from './canvas/hooks/useYjsSync';
+
+// Global Fetch Patch to inject auth & org headers seamlessly
+const originalFetch = window.fetch;
+window.fetch = async (input, init) => {
+  if (typeof input === 'string' && input.startsWith('/api/')) {
+    const token = localStorage.getItem('openflow_jwt');
+    const orgId = localStorage.getItem('openflow_org_id');
+    const newInit = { ...init };
+    newInit.headers = { ...newInit.headers };
+    if (token && !(newInit.headers as any)['Authorization']) {
+      (newInit.headers as any)['Authorization'] = `Bearer ${token}`;
+    }
+    if (orgId && !(newInit.headers as any)['x-org-id']) {
+      (newInit.headers as any)['x-org-id'] = orgId;
+    }
+    return originalFetch(input, newInit);
+  }
+  return originalFetch(input, init);
+};
 
 function AppContent() {
   // Session States
   const [token, setToken] = useState<string>(localStorage.getItem('openflow_jwt') || '');
   const [user, setUser] = useState<any>(JSON.parse(localStorage.getItem('openflow_user') || 'null'));
+  const [activeOrg, setActiveOrg] = useState<any>(JSON.parse(localStorage.getItem('openflow_active_org') || 'null'));
+  const [orgs, setOrgs] = useState<any[]>([]);
   const [view, setView] = useState<'auth' | 'dashboard' | 'credentials' | 'canvas'>('auth');
+  const [showOrgSettings, setShowOrgSettings] = useState(false);
 
   // Active Workflow States
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string | null>(null);
   const [workflowName, setWorkflowName] = useState('My Workspace Graph');
 
-  // React Flow canvas states
-  const [nodes, setNodes, onNodesChange] = useNodesState<any>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  // React Flow canvas states (Synced with Yjs)
+  const { nodes, setNodes, onNodesChange, edges, setEdges, onEdgesChange, undo, redo, awarenessUsers, setEditingNode, clientId, setCursor } = useYjsSync(currentWorkflowId, token, activeOrg?.id, user);
+
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   // Multi-select tracking: all currently selected node IDs
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
@@ -55,19 +77,16 @@ function AppContent() {
   // UI overlay state
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  // Undo/Redo history — stored as snapshots per workflow
-  type HistorySnapshot = { nodes: Node[]; edges: Edge[] };
-  const historyRef = useRef<HistorySnapshot[]>([]);
-  const historyCursorRef = useRef<number>(-1);
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
+  // Undo/Redo history — delegated to Yjs UndoManager
+  const canUndo = true;
+  const canRedo = true;
 
   // Clipboard for copy/paste
   const clipboardRef = useRef<Node[]>([]);
 
   const { fitView } = useReactFlow();
 
-  const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
+  const selectedNode = (nodes as any).find((n: any) => n.id === selectedNodeId) || null;
   const pollingIntervalRef = useRef<any>(null);
 
   // Track node status changes locally to generate chronological timeline logs
@@ -77,42 +96,19 @@ function AppContent() {
   // History (Undo/Redo) helpers
   // -------------------------------------------
 
-  const pushHistory = useCallback((newNodes: Node[], newEdges: Edge[]) => {
-    const cursor = historyCursorRef.current;
-    // Trim future states if we're mid-history
-    const truncated = historyRef.current.slice(0, cursor + 1);
-    truncated.push({ nodes: newNodes, edges: newEdges });
-    historyRef.current = truncated;
-    historyCursorRef.current = truncated.length - 1;
-    setCanUndo(historyCursorRef.current > 0);
-    setCanRedo(false);
-  }, []);
+  // Kept as no-op to avoid breaking existing dependency arrays
+  const pushHistory = useCallback((_newNodes: Node[], _newEdges: Edge[]) => {}, []);
 
   const handleUndo = useCallback(() => {
-    if (historyCursorRef.current <= 0) return;
-    historyCursorRef.current -= 1;
-    const snap = historyRef.current[historyCursorRef.current];
-    setNodes(snap.nodes);
-    setEdges(snap.edges);
-    setCanUndo(historyCursorRef.current > 0);
-    setCanRedo(true);
-  }, [setNodes, setEdges]);
+    undo();
+  }, [undo]);
 
   const handleRedo = useCallback(() => {
-    if (historyCursorRef.current >= historyRef.current.length - 1) return;
-    historyCursorRef.current += 1;
-    const snap = historyRef.current[historyCursorRef.current];
-    setNodes(snap.nodes);
-    setEdges(snap.edges);
-    setCanUndo(true);
-    setCanRedo(historyCursorRef.current < historyRef.current.length - 1);
-  }, [setNodes, setEdges]);
+    redo();
+  }, [redo]);
 
   const clearHistory = useCallback(() => {
-    historyRef.current = [];
-    historyCursorRef.current = -1;
-    setCanUndo(false);
-    setCanRedo(false);
+    // Handled by Yjs upon workflow switch
   }, []);
 
   // Debounced config history push — groups typing into single undo step
@@ -124,11 +120,35 @@ function AppContent() {
     }, 300);
   }, [pushHistory]);
 
+  const fetchOrgs = async () => {
+    try {
+      const res = await fetch('/api/orgs');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.orgs) {
+          setOrgs(data.orgs);
+          if (data.orgs.length > 0) {
+            // Find previously active org or default to first
+            const savedOrgId = localStorage.getItem('openflow_active_org_id');
+            const savedOrg = data.orgs.find((o: any) => o.id === savedOrgId);
+            const active = savedOrg || data.orgs[0];
+            setActiveOrg(active);
+            localStorage.setItem('openflow_active_org_id', active.id);
+            localStorage.setItem('openflow_active_org', JSON.stringify(active));
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch orgs', e);
+    }
+  };
+
   // Route to auth if token is invalid or missing
   useEffect(() => {
     if (!token) {
       setView('auth');
     } else {
+      fetchOrgs();
       setView('dashboard');
     }
   }, [token]);
@@ -139,14 +159,18 @@ function AppContent() {
     localStorage.setItem('openflow_user', JSON.stringify(authenticatedUser));
     setToken(newToken);
     setUser(authenticatedUser);
-    setView('dashboard');
+    // fetchOrgs is triggered by token effect
   };
 
   const handleLogout = () => {
     localStorage.removeItem('openflow_jwt');
     localStorage.removeItem('openflow_user');
+    localStorage.removeItem('openflow_active_org');
+    localStorage.removeItem('openflow_active_org_id');
     setToken('');
     setUser(null);
+    setOrgs([]);
+    setActiveOrg(null);
     setView('auth');
   };
 
@@ -209,7 +233,7 @@ function AppContent() {
             data: {
               ...node.data,
               config: configWithoutOutputField,
-              isOutputNode: isOutputNode !== undefined ? !!isOutputNode : node.data.isOutputNode
+              isOutputNode: isOutputNode !== undefined ? !!isOutputNode : (node.data as any).isOutputNode
             },
           };
         }
@@ -824,14 +848,31 @@ function AppContent() {
 
   if (view === 'dashboard') {
     return (
-      <Dashboard
-        token={token}
-        user={user}
-        onSelectWorkflow={handleSelectWorkflow}
-        onCreateWorkflow={handleCreateNewWorkflow}
-        onOpenCredentials={() => setView('credentials')}
-        onLogout={handleLogout}
-      />
+      <>
+        <Dashboard
+          token={token}
+          user={user}
+          activeOrg={activeOrg}
+          orgs={orgs}
+          setActiveOrg={(org: any) => {
+            setActiveOrg(org);
+            localStorage.setItem('openflow_active_org_id', org.id);
+            localStorage.setItem('openflow_active_org', JSON.stringify(org));
+          }}
+          onOpenOrgSettings={() => setShowOrgSettings(true)}
+          onSelectWorkflow={handleSelectWorkflow}
+          onCreateWorkflow={handleCreateNewWorkflow}
+          onOpenCredentials={() => setView('credentials')}
+          onLogout={handleLogout}
+        />
+        {showOrgSettings && activeOrg && (
+          <OrgSettingsModal
+            token={token}
+            activeOrg={activeOrg}
+            onClose={() => setShowOrgSettings(false)}
+          />
+        )}
+      </>
     );
   }
 
@@ -996,6 +1037,9 @@ function AppContent() {
               onSelectNode={handleSelectNode}
               onDropNode={handleDropNode}
               onSelectionChange={handleSelectionChange}
+              awarenessUsers={awarenessUsers}
+              clientId={clientId}
+              setCursor={setCursor}
             />
           </div>
 
@@ -1024,6 +1068,9 @@ function AppContent() {
           onDeleteNode={handleDeleteNode}
           onDeleteSelected={handleDeleteSelected}
           workflowId={currentWorkflowId}
+          awarenessUsers={awarenessUsers}
+          clientId={clientId}
+          setEditingNode={setEditingNode}
         />
       </div>
 

@@ -10,6 +10,9 @@ interface ConfigPanelProps {
   onDeleteNode: (nodeId: string) => void;
   onDeleteSelected?: () => void;
   workflowId?: string | null;
+  awarenessUsers?: Map<number, any>;
+  clientId?: number;
+  setEditingNode?: (nodeId: string | null) => void;
 }
 
 export const ConfigPanel = ({
@@ -19,7 +22,10 @@ export const ConfigPanel = ({
   onRunNode,
   onDeleteNode,
   onDeleteSelected,
-  workflowId
+  workflowId,
+  awarenessUsers,
+  clientId,
+  setEditingNode
 }: ConfigPanelProps) => {
   const [availableTools, setAvailableTools] = useState<{ name: string; description: string }[]>([]);
   const [loadingTools, setLoadingTools] = useState(false);
@@ -50,6 +56,20 @@ export const ConfigPanel = ({
         .finally(() => setLoadingTools(false));
     }
   }, [selectedNode?.id]);
+
+  useEffect(() => {
+    if (setEditingNode) {
+      setEditingNode(selectedNode?.id || null);
+    }
+  }, [selectedNode?.id, setEditingNode]);
+
+  // Determine if this panel is locked by another user
+  const lockedBy = awarenessUsers ? Array.from(awarenessUsers.entries()).find(
+    ([id, state]) => id !== clientId && state.user?.editingNodeId === selectedNode?.id
+  ) : null;
+
+  const isLocked = !!lockedBy;
+  const lockedUser = lockedBy ? lockedBy[1].user?.email : null;
 
   // Multi-select summary panel
   if (!selectedNode) {
@@ -375,7 +395,19 @@ export const ConfigPanel = ({
   const HeaderIcon = header.icon;
 
   return (
-    <div className="w-80 border-l border-zinc-800 bg-zinc-950/50 backdrop-blur-md p-6 flex flex-col justify-between h-full overflow-y-auto flex-shrink-0">
+    <div className="w-80 border-l border-zinc-800 bg-zinc-950/50 backdrop-blur-md p-6 flex flex-col justify-between h-full overflow-y-auto flex-shrink-0 relative">
+      {isLocked && (
+        <div className="absolute inset-0 bg-zinc-950/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mb-4">
+            <ShieldAlert className="w-6 h-6" />
+          </div>
+          <h3 className="text-sm font-bold text-zinc-200 mb-1">Node Locked</h3>
+          <p className="text-xs text-zinc-400">
+            Currently being edited by<br/>
+            <strong className="text-zinc-200">{lockedUser}</strong>
+          </p>
+        </div>
+      )}
       <div className="space-y-6">
         <div className="flex items-start justify-between">
           <div>

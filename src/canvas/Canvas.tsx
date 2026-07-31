@@ -9,7 +9,8 @@ import ReactFlow, {
   OnConnect,
   OnSelectionChangeParams,
   BackgroundVariant,
-  useReactFlow
+  useReactFlow,
+  useViewport
 } from 'reactflow';
 import LLMPromptNode from './LLMPromptNode';
 import MCPToolNode from './MCPToolNode';
@@ -35,6 +36,9 @@ interface CanvasProps {
   onSelectNode: (node: Node | null) => void;
   onDropNode: (type: string, position: { x: number; y: number }) => void;
   onSelectionChange?: (params: OnSelectionChangeParams) => void;
+  awarenessUsers?: Map<number, any>;
+  clientId?: number;
+  setCursor?: (cursor: { x: number, y: number } | null) => void;
 }
 
 export const Canvas = ({
@@ -46,8 +50,29 @@ export const Canvas = ({
   onSelectNode,
   onDropNode,
   onSelectionChange,
+  awarenessUsers,
+  clientId,
+  setCursor
 }: CanvasProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const reactFlowInstance = useReactFlow();
+  const { x, y, zoom } = useViewport();
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!setCursor || !reactFlowWrapper.current || !reactFlowInstance) return;
+    
+    // Calculate position relative to the wrapper bounds
+    const bounds = reactFlowWrapper.current.getBoundingClientRect();
+    const position = reactFlowInstance.project({
+      x: e.clientX - bounds.left,
+      y: e.clientY - bounds.top,
+    });
+    setCursor(position);
+  }, [setCursor, reactFlowInstance]);
+
+  const handlePointerLeave = useCallback(() => {
+    if (setCursor) setCursor(null);
+  }, [setCursor]);
   const { project } = useReactFlow();
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -76,7 +101,7 @@ export const Canvas = ({
         onDropNode(type, position);
       }
     },
-    [project, onDropNode]
+    [reactFlowInstance, onDropNode]
   );
 
   return (
@@ -85,7 +110,28 @@ export const Canvas = ({
       className="w-full h-full relative"
       onDragOver={onDragOver}
       onDrop={onDrop}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
     >
+      {awarenessUsers && Array.from(awarenessUsers.entries()).map(([id, state]) => {
+        if (id === clientId || !state.user?.cursor) return null;
+        
+        const screenX = state.user.cursor.x * zoom + x;
+        const screenY = state.user.cursor.y * zoom + y;
+
+        return (
+          <div
+            key={id}
+            className="absolute pointer-events-none z-10"
+            style={{ left: screenX, top: screenY }}
+          >
+            <div className="w-3 h-3 bg-blue-500 rounded-full transform -translate-x-1.5 -translate-y-1.5" />
+            <div className="text-xs text-white bg-blue-600 px-1 rounded ml-2 whitespace-nowrap">
+              {state.user.name || 'User'}
+            </div>
+          </div>
+        );
+      })}
       <ReactFlow
         nodes={nodes}
         edges={edges}

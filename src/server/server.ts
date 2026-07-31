@@ -24,6 +24,13 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
+const JWT_SECRET = process.env.JWT_SECRET || 'secret-for-dev';
+
+import jwt from 'jsonwebtoken';
+import { WebSocketServer } from 'ws';
+const { setupWSConnection, setPersistence } = require('y-websocket/bin/utils');
+import * as url from 'url';
+import * as Y from 'yjs';
 
 // -------------------------------------------------------------
 // AUTH ROUTES
@@ -50,6 +57,7 @@ app.post('/api/auth/register', (req, res) => {
       }
 
       const token = generateSessionToken(userId, email);
+      acceptInvites(email, userId);
       return res.json({ success: true, token, user: { id: userId, email } });
     }
   );
@@ -75,18 +83,107 @@ app.post('/api/auth/login', (req, res) => {
       }
 
       const token = generateSessionToken(user.id, user.email);
+      acceptInvites(user.email, user.id);
       return res.json({ success: true, token, user: { id: user.id, email: user.email } });
     }
   );
 });
 
 // -------------------------------------------------------------
+// ORGS MIDDLEWARE & ROUTES
+// -------------------------------------------------------------
+
+import { Response, NextFunction } from 'express';
+
+function requireOrgAccess(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  const orgId = req.headers['x-org-id'] as string;
+  const userId = req.user!.id;
+
+  if (!orgId) {
+    return res.status(400).json({ success: false, error: { message: 'x-org-id header is required.' } });
+  }
+
+  db.get('SELECT role FROM organization_members WHERE org_id = ? AND user_id = ?', [orgId, userId], (err, row: any) => {
+    if (err) return res.status(500).json({ success: false, error: { message: err.message } });
+    if (!row) return res.status(403).json({ success: false, error: { message: 'You do not have access to this organization.' } });
+
+    req.org = { id: orgId, role: row.role };
+    next();
+  });
+}
+
+app.get('/api/orgs', authenticateToken, (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  db.all(
+    `SELECT o.id, o.name, m.role 
+     FROM organizations o 
+     JOIN organization_members m ON o.id = m.org_id 
+     WHERE m.user_id = ?`,
+    [userId],
+    (err, rows) => {
+      if (err) return res.status(500).json({ success: false, error: { message: err.message } });
+      return res.json({ success: true, orgs: rows });
+    }
+  );
+});
+
+app.post('/api/orgs/:id/invite', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  const { email, role } = req.body;
+  const orgId = req.org!.id;
+  
+  if (req.org!.role !== 'owner') {
+    return res.status(403).json({ success: false, error: { message: 'Only owners can invite members.' } });
+  }
+
+  const inviteId = `inv-${Math.random().toString(36).substr(2, 9)}`;
+  db.run(
+    'INSERT INTO invitations (id, org_id, email, role) VALUES (?, ?, ?, ?)',
+    [inviteId, orgId, email, role],
+    (err) => {
+      if (err) return res.status(500).json({ success: false, error: { message: err.message } });
+      return res.json({ success: true });
+    }
+  );
+});
+
+app.get('/api/orgs/:id/members', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  const orgId = req.org!.id;
+  db.all(
+    `SELECT u.email, m.role, m.user_id 
+     FROM organization_members m 
+     JOIN users u ON m.user_id = u.id 
+     WHERE m.org_id = ?`,
+    [orgId],
+    (err, members) => {
+      if (err) return res.status(500).json({ success: false, error: { message: err.message } });
+      
+      db.all('SELECT email, role FROM invitations WHERE org_id = ?', [orgId], (err2, invites) => {
+        if (err2) return res.status(500).json({ success: false, error: { message: err2.message } });
+        return res.json({ success: true, members, invites });
+      });
+    }
+  );
+});
+
+// Accept invitations on login/register if they exist
+function acceptInvites(email: string, userId: string) {
+  db.all('SELECT * FROM invitations WHERE email = ?', [email], (err, invites: any[]) => {
+    if (err || !invites) return;
+    invites.forEach(inv => {
+      db.run('INSERT OR IGNORE INTO organization_members (org_id, user_id, role) VALUES (?, ?, ?)', [inv.org_id, userId, inv.role], () => {
+        db.run('DELETE FROM invitations WHERE id = ?', [inv.id]);
+      });
+    });
+  });
+}
+
+// -------------------------------------------------------------
 // CREDENTIALS ROUTES
 // -------------------------------------------------------------
 
-app.get('/api/credentials', authenticateToken, (req: AuthenticatedRequest, res) => {
-  const userId = req.user!.id;
-  db.all('SELECT provider FROM credentials WHERE user_id = ?', [userId], (err, rows) => {
+app.get('/api/credentials', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  const orgId = req.org!.id;
+  db.all('SELECT provider FROM credentials WHERE org_id = ?', [orgId], (err, rows) => {
     if (err) {
       return res.status(500).json({ success: false, error: { message: err.message } });
     }
@@ -94,8 +191,13 @@ app.get('/api/credentials', authenticateToken, (req: AuthenticatedRequest, res) 
   });
 });
 
-app.post('/api/credentials', authenticateToken, (req: AuthenticatedRequest, res) => {
+app.post('/api/credentials', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  if (req.org!.role === 'viewer') {
+    return res.status(403).json({ success: false, error: { message: 'Viewers cannot modify credentials.' } });
+  }
+
   const userId = req.user!.id;
+  const orgId = req.org!.id;
   const { provider, apiKey } = req.body;
 
   if (!provider || !apiKey) {
@@ -106,10 +208,10 @@ app.post('/api/credentials', authenticateToken, (req: AuthenticatedRequest, res)
   const encryptedKey = encrypt(apiKey);
 
   db.run(
-    `INSERT INTO credentials (id, user_id, provider, encrypted_key)
-     VALUES (?, ?, ?, ?)
-     ON CONFLICT(user_id, provider) DO UPDATE SET encrypted_key = excluded.encrypted_key`,
-    [id, userId, provider, encryptedKey],
+    `INSERT INTO credentials (id, user_id, org_id, provider, encrypted_key)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(org_id, provider) DO UPDATE SET encrypted_key = excluded.encrypted_key`,
+    [id, userId, orgId, provider, encryptedKey],
     function (err) {
       if (err) {
         return res.status(500).json({ success: false, error: { message: err.message } });
@@ -119,13 +221,17 @@ app.post('/api/credentials', authenticateToken, (req: AuthenticatedRequest, res)
   );
 });
 
-app.delete('/api/credentials/:provider', authenticateToken, (req: AuthenticatedRequest, res) => {
-  const userId = req.user!.id;
+app.delete('/api/credentials/:provider', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  if (req.org!.role === 'viewer') {
+    return res.status(403).json({ success: false, error: { message: 'Viewers cannot delete credentials.' } });
+  }
+
+  const orgId = req.org!.id;
   const { provider } = req.params;
 
   db.run(
-    'DELETE FROM credentials WHERE user_id = ? AND provider = ?',
-    [userId, provider],
+    'DELETE FROM credentials WHERE org_id = ? AND provider = ?',
+    [orgId, provider],
     function (err) {
       if (err) {
         return res.status(500).json({ success: false, error: { message: err.message } });
@@ -139,9 +245,9 @@ app.delete('/api/credentials/:provider', authenticateToken, (req: AuthenticatedR
 // WORKFLOWS ROUTES
 // -------------------------------------------------------------
 
-app.get('/api/workflows', authenticateToken, (req: AuthenticatedRequest, res) => {
-  const userId = req.user!.id;
-  db.all('SELECT * FROM workflows WHERE owner_id = ? ORDER BY updated_at DESC', [userId], (err, rows) => {
+app.get('/api/workflows', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  const orgId = req.org!.id;
+  db.all('SELECT * FROM workflows WHERE org_id = ? AND is_template = 0 ORDER BY updated_at DESC', [orgId], (err, rows) => {
     if (err) {
       return res.status(500).json({ success: false, error: { message: err.message } });
     }
@@ -185,8 +291,13 @@ function syncWorkflowTriggers(workflowId: string, graph: any) {
   });
 }
 
-app.post('/api/workflows', authenticateToken, (req: AuthenticatedRequest, res) => {
+app.post('/api/workflows', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  if (req.org!.role === 'viewer') {
+    return res.status(403).json({ success: false, error: { message: 'Viewers cannot create workflows.' } });
+  }
+
   const userId = req.user!.id;
+  const orgId = req.org!.id;
   const { name, graph } = req.body;
 
   if (!name || !graph) {
@@ -197,8 +308,8 @@ app.post('/api/workflows', authenticateToken, (req: AuthenticatedRequest, res) =
   const graphJson = JSON.stringify(graph);
 
   db.run(
-    'INSERT INTO workflows (id, name, graph_json, owner_id) VALUES (?, ?, ?, ?)',
-    [id, name, graphJson, userId],
+    'INSERT INTO workflows (id, name, graph_json, owner_id, org_id) VALUES (?, ?, ?, ?, ?)',
+    [id, name, graphJson, userId, orgId],
     function (err) {
       if (err) {
         return res.status(500).json({ success: false, error: { message: err.message } });
@@ -209,11 +320,11 @@ app.post('/api/workflows', authenticateToken, (req: AuthenticatedRequest, res) =
   );
 });
 
-app.get('/api/workflows/:id', authenticateToken, (req: AuthenticatedRequest, res) => {
-  const userId = req.user!.id;
+app.get('/api/workflows/:id', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  const orgId = req.org!.id;
   const { id } = req.params;
 
-  db.get('SELECT * FROM workflows WHERE id = ? AND owner_id = ?', [id, userId], (err, row: any) => {
+  db.get('SELECT * FROM workflows WHERE id = ? AND org_id = ?', [id, orgId], (err, row: any) => {
     if (err) {
       return res.status(500).json({ success: false, error: { message: err.message } });
     }
@@ -224,8 +335,12 @@ app.get('/api/workflows/:id', authenticateToken, (req: AuthenticatedRequest, res
   });
 });
 
-app.put('/api/workflows/:id', authenticateToken, (req: AuthenticatedRequest, res) => {
-  const userId = req.user!.id;
+app.put('/api/workflows/:id', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  if (req.org!.role === 'viewer') {
+    return res.status(403).json({ success: false, error: { message: 'Viewers cannot modify workflows.' } });
+  }
+
+  const orgId = req.org!.id;
   const { id } = req.params;
   const { name, graph } = req.body;
 
@@ -236,8 +351,8 @@ app.put('/api/workflows/:id', authenticateToken, (req: AuthenticatedRequest, res
   const graphJson = JSON.stringify(graph);
 
   db.run(
-    'UPDATE workflows SET name = ?, graph_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND owner_id = ?',
-    [name, graphJson, id, userId],
+    'UPDATE workflows SET name = ?, graph_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND org_id = ?',
+    [name, graphJson, id, orgId],
     function (err) {
       if (err) {
         return res.status(500).json({ success: false, error: { message: err.message } });
@@ -251,11 +366,15 @@ app.put('/api/workflows/:id', authenticateToken, (req: AuthenticatedRequest, res
   );
 });
 
-app.delete('/api/workflows/:id', authenticateToken, (req: AuthenticatedRequest, res) => {
-  const userId = req.user!.id;
+app.delete('/api/workflows/:id', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  if (req.org!.role === 'viewer') {
+    return res.status(403).json({ success: false, error: { message: 'Viewers cannot delete workflows.' } });
+  }
+
+  const orgId = req.org!.id;
   const { id } = req.params;
 
-  db.run('DELETE FROM workflows WHERE id = ? AND owner_id = ?', [id, userId], function (err) {
+  db.run('DELETE FROM workflows WHERE id = ? AND org_id = ?', [id, orgId], function (err) {
     if (err) {
       return res.status(500).json({ success: false, error: { message: err.message } });
     }
@@ -283,8 +402,13 @@ app.get('/api/templates', authenticateToken, (_req: AuthenticatedRequest, res) =
   );
 });
 
-app.post('/api/templates/:id/clone', authenticateToken, (req: AuthenticatedRequest, res) => {
+app.post('/api/templates/:id/clone', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  if (req.org!.role === 'viewer') {
+    return res.status(403).json({ success: false, error: { message: 'Viewers cannot clone templates.' } });
+  }
+
   const userId = req.user!.id;
+  const orgId = req.org!.id;
   const templateId = req.params.id;
 
   db.get('SELECT * FROM workflows WHERE id = ? AND is_template = 1', [templateId], (err, template: any) => {
@@ -295,8 +419,8 @@ app.post('/api/templates/:id/clone', authenticateToken, (req: AuthenticatedReque
     const clonedName = `${template.name} (Clone)`;
 
     db.run(
-      'INSERT INTO workflows (id, name, graph_json, owner_id, is_template) VALUES (?, ?, ?, ?, 0)',
-      [newWorkflowId, clonedName, template.graph_json, userId],
+      'INSERT INTO workflows (id, name, graph_json, owner_id, org_id, is_template) VALUES (?, ?, ?, ?, ?, 0)',
+      [newWorkflowId, clonedName, template.graph_json, userId, orgId],
       function (insertErr) {
         if (insertErr) return res.status(500).json({ success: false, error: { message: insertErr.message } });
         
@@ -321,11 +445,16 @@ app.post('/api/templates/:id/clone', authenticateToken, (req: AuthenticatedReque
 // -------------------------------------------------------------
 
 // Start server-side run execution in the background
-app.post('/api/workflows/:id/run', authenticateToken, (req: AuthenticatedRequest, res) => {
+app.post('/api/workflows/:id/run', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  if (req.org!.role === 'viewer') {
+    return res.status(403).json({ success: false, error: { message: 'Viewers cannot run workflows.' } });
+  }
+
   const userId = req.user!.id;
+  const orgId = req.org!.id;
   const { id } = req.params;
 
-  db.get('SELECT * FROM workflows WHERE id = ? AND owner_id = ?', [id, userId], (err, row) => {
+  db.get('SELECT * FROM workflows WHERE id = ? AND org_id = ?', [id, orgId], (err, row) => {
     if (err) {
       return res.status(500).json({ success: false, error: { message: err.message } });
     }
@@ -352,8 +481,13 @@ app.post('/api/workflows/:id/run', authenticateToken, (req: AuthenticatedRequest
 });
 
 // Retry single node in a run
-app.post('/api/runs/:runId/retry', authenticateToken, (req: AuthenticatedRequest, res) => {
+app.post('/api/runs/:runId/retry', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  if (req.org!.role === 'viewer') {
+    return res.status(403).json({ success: false, error: { message: 'Viewers cannot retry workflows.' } });
+  }
+
   const userId = req.user!.id;
+  const orgId = req.org!.id;
   const { runId } = req.params;
   const { nodeId } = req.body;
 
@@ -362,13 +496,13 @@ app.post('/api/runs/:runId/retry', authenticateToken, (req: AuthenticatedRequest
   }
 
   db.get(
-    'SELECT runs.*, workflows.owner_id FROM runs JOIN workflows ON runs.workflow_id = workflows.id WHERE runs.id = ?',
+    'SELECT runs.*, workflows.org_id FROM runs JOIN workflows ON runs.workflow_id = workflows.id WHERE runs.id = ?',
     [runId],
     (err, run: any) => {
       if (err) {
         return res.status(500).json({ success: false, error: { message: err.message } });
       }
-      if (!run || run.owner_id !== userId) {
+      if (!run || run.org_id !== orgId) {
         return res.status(404).json({ success: false, error: { message: 'Run not found.' } });
       }
 
@@ -392,18 +526,18 @@ app.post('/api/runs/:runId/retry', authenticateToken, (req: AuthenticatedRequest
 });
 
 // Poll status of all execution results for a run
-app.get('/api/runs/:runId', authenticateToken, (req: AuthenticatedRequest, res) => {
-  const userId = req.user!.id;
+app.get('/api/runs/:runId', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  const orgId = req.org!.id;
   const { runId } = req.params;
 
   db.get(
-    'SELECT runs.*, workflows.owner_id FROM runs JOIN workflows ON runs.workflow_id = workflows.id WHERE runs.id = ?',
+    'SELECT runs.*, workflows.org_id FROM runs JOIN workflows ON runs.workflow_id = workflows.id WHERE runs.id = ?',
     [runId],
     (err, run: any) => {
       if (err) {
         return res.status(500).json({ success: false, error: { message: err.message } });
       }
-      if (!run || run.owner_id !== userId) {
+      if (!run || run.org_id !== orgId) {
         return res.status(404).json({ success: false, error: { message: 'Run not found.' } });
       }
 
@@ -442,11 +576,11 @@ app.get('/api/runs/:runId', authenticateToken, (req: AuthenticatedRequest, res) 
 });
 
 // Get all execution run logs for a workflow
-app.get('/api/workflows/:id/runs', authenticateToken, (req: AuthenticatedRequest, res) => {
-  const userId = req.user!.id;
+app.get('/api/workflows/:id/runs', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  const orgId = req.org!.id;
   const { id } = req.params;
 
-  db.get('SELECT * FROM workflows WHERE id = ? AND owner_id = ?', [id, userId], (err, workflow: any) => {
+  db.get('SELECT * FROM workflows WHERE id = ? AND org_id = ?', [id, orgId], (err, workflow: any) => {
     if (err) {
       return res.status(500).json({ success: false, error: { message: err.message } });
     }
@@ -600,14 +734,14 @@ app.post('/api/deployments/:id/execute', async (req, res) => {
 });
 
 // GET user's active deployments
-app.get('/api/deployments', authenticateToken, (req: AuthenticatedRequest, res) => {
-  const userId = req.user!.id;
+app.get('/api/deployments', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  const orgId = req.org!.id;
   db.all(
     `SELECT deployments.*, workflows.name as workflow_name
      FROM deployments
      JOIN workflows ON deployments.workflow_id = workflows.id
-     WHERE workflows.owner_id = ?`,
-    [userId],
+     WHERE workflows.org_id = ?`,
+    [orgId],
     (err, rows) => {
       if (err) return res.status(500).json({ success: false, error: { message: err.message } });
       return res.json({ success: true, deployments: rows });
@@ -616,15 +750,19 @@ app.get('/api/deployments', authenticateToken, (req: AuthenticatedRequest, res) 
 });
 
 // Deploy or redeploy a workflow
-app.post('/api/deployments', authenticateToken, (req: AuthenticatedRequest, res) => {
-  const userId = req.user!.id;
+app.post('/api/deployments', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  if (req.org!.role === 'viewer') {
+    return res.status(403).json({ success: false, error: { message: 'Viewers cannot create deployments.' } });
+  }
+
+  const orgId = req.org!.id;
   const { workflowId } = req.body;
 
   if (!workflowId) {
     return res.status(400).json({ success: false, error: { message: 'Workflow ID is required.' } });
   }
 
-  db.get('SELECT * FROM workflows WHERE id = ? AND owner_id = ?', [workflowId, userId], (err, workflow: any) => {
+  db.get('SELECT * FROM workflows WHERE id = ? AND org_id = ?', [workflowId, orgId], (err, workflow: any) => {
     if (err || !workflow) {
       return res.status(404).json({ success: false, error: { message: 'Workflow not found.' } });
     }
@@ -674,8 +812,12 @@ app.post('/api/deployments', authenticateToken, (req: AuthenticatedRequest, res)
 });
 
 // Toggle deployment between active and paused
-app.post('/api/deployments/:id/toggle', authenticateToken, (req: AuthenticatedRequest, res) => {
-  const userId = req.user!.id;
+app.post('/api/deployments/:id/toggle', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  if (req.org!.role === 'viewer') {
+    return res.status(403).json({ success: false, error: { message: 'Viewers cannot modify deployments.' } });
+  }
+
+  const orgId = req.org!.id;
   const { id } = req.params;
   const { status } = req.body;
 
@@ -686,8 +828,8 @@ app.post('/api/deployments/:id/toggle', authenticateToken, (req: AuthenticatedRe
   db.get(
     `SELECT deployments.* FROM deployments
      JOIN workflows ON deployments.workflow_id = workflows.id
-     WHERE deployments.id = ? AND workflows.owner_id = ?`,
-    [id, userId],
+     WHERE deployments.id = ? AND workflows.org_id = ?`,
+    [id, orgId],
     (err, row) => {
       if (err || !row) {
         return res.status(404).json({ success: false, error: { message: 'Deployment not found.' } });
@@ -706,15 +848,19 @@ app.post('/api/deployments/:id/toggle', authenticateToken, (req: AuthenticatedRe
 });
 
 // Regenerate Bearer API Token
-app.post('/api/deployments/:id/token', authenticateToken, (req: AuthenticatedRequest, res) => {
-  const userId = req.user!.id;
+app.post('/api/deployments/:id/token', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  if (req.org!.role === 'viewer') {
+    return res.status(403).json({ success: false, error: { message: 'Viewers cannot regenerate tokens.' } });
+  }
+
+  const orgId = req.org!.id;
   const { id } = req.params;
 
   db.get(
     `SELECT deployments.* FROM deployments
      JOIN workflows ON deployments.workflow_id = workflows.id
-     WHERE deployments.id = ? AND workflows.owner_id = ?`,
-    [id, userId],
+     WHERE deployments.id = ? AND workflows.org_id = ?`,
+    [id, orgId],
     (err, row) => {
       if (err || !row) {
         return res.status(404).json({ success: false, error: { message: 'Deployment not found.' } });
@@ -774,7 +920,7 @@ app.post('/api/webhooks/:workflowId', async (req, res) => {
       }
 
       // Fetch workflow details
-      db.get('SELECT owner_id FROM workflows WHERE id = ?', [workflowId], (wfErr, workflow: any) => {
+      db.get('SELECT org_id FROM workflows WHERE id = ?', [workflowId], (wfErr, workflow: any) => {
         if (wfErr || !workflow) {
           return res.status(500).json({ error: 'Internal Server Error', message: 'Workflow details not found.' });
         }
@@ -793,7 +939,7 @@ app.post('/api/webhooks/:workflowId', async (req, res) => {
             db.run('UPDATE deployments SET request_count = request_count + 1, last_called_at = CURRENT_TIMESTAMP WHERE id = ?', [deployment.id]);
 
             // Execute asynchronously (webhook returns immediately)
-            executeRunBackend(runId, workflowId, workflow.owner_id, undefined, undefined, {
+            executeRunBackend(runId, workflowId, workflow.org_id, undefined, undefined, {
               body: req.body,
               headers: req.headers
             });
@@ -979,7 +1125,7 @@ app.post('/api/run-node', async (req, res) => {
   }
 });
 
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
   console.log(`Server running on http://localhost:${PORT}`);
   // Wait a moment for db migrations in db.ts to finish (sqlite async startup)
   setTimeout(async () => {
@@ -989,6 +1135,118 @@ app.listen(PORT, async () => {
       console.error('Template seeding error:', e);
     }
   }, 500);
+});
+
+// -------------------------------------------------------------
+// YJS WEBSOCKET COLLABORATION SYNC
+// -------------------------------------------------------------
+
+setPersistence({
+  bindState: async (docName: string, ydoc: Y.Doc) => {
+    return new Promise<void>((resolve, reject) => {
+      db.get('SELECT graph_json FROM workflows WHERE id = ?', [docName], (err, row: any) => {
+        if (err) return reject(err);
+        if (row && row.graph_json) {
+          try {
+            const graph = JSON.parse(row.graph_json);
+            if (graph.nodes) {
+              const yNodes = ydoc.getArray('nodes');
+              yNodes.insert(0, graph.nodes);
+            }
+            if (graph.edges) {
+              const yEdges = ydoc.getArray('edges');
+              yEdges.insert(0, graph.edges);
+            }
+          } catch (e) {
+            console.error('Error parsing graph_json during bindState', e);
+          }
+        }
+        resolve();
+      });
+    });
+  },
+  writeState: async (docName: string, ydoc: Y.Doc) => {
+    return new Promise<void>((resolve, reject) => {
+      const nodes = ydoc.getArray('nodes').toJSON();
+      const edges = ydoc.getArray('edges').toJSON();
+      const graph_json = JSON.stringify({ nodes, edges });
+      
+      db.run('UPDATE workflows SET graph_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [graph_json, docName], (err) => {
+        if (err) return reject(err);
+        resolve();
+      });
+    });
+  }
+});
+
+const wss = new WebSocketServer({ noServer: true });
+
+server.on('upgrade', (request: any, socket, head) => {
+  try {
+    const parsedUrl = url.parse(request.url, true);
+    const pathname = parsedUrl.pathname || '';
+
+    // Route matching: /api/workflows/:workflowId/sync
+    const match = pathname.match(/^\/api\/workflows\/([^/]+)\/sync$/);
+    if (!match) {
+      // Allow other upgrades to fail or be handled elsewhere
+      socket.destroy();
+      return;
+    }
+
+    const workflowId = match[1];
+    const token = parsedUrl.query.token as string;
+    const orgId = parsedUrl.query.orgId as string;
+
+    if (!token || !orgId) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    jwt.verify(token, JWT_SECRET, (err: any, decoded: any) => {
+      if (err || !decoded) {
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+
+      const userId = decoded.id;
+      db.get(
+        'SELECT role FROM organization_members WHERE org_id = ? AND user_id = ?',
+        [orgId, userId],
+        (err, row: any) => {
+          if (err || !row) {
+            socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+            socket.destroy();
+            return;
+          }
+
+          // Must also check if the workflow belongs to this org
+          db.get('SELECT id FROM workflows WHERE id = ? AND org_id = ?', [workflowId, orgId], (err, wf) => {
+            if (err || !wf) {
+              socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
+              socket.destroy();
+              return;
+            }
+
+            // Upgrade connection and setup Yjs sync
+            wss.handleUpgrade(request, socket, head, (ws) => {
+              // Standard y-websocket setup uses the URL pathname as document name
+              // We pass it to setupWSConnection which initializes the Yjs doc for that room
+              wss.emit('connection', ws, request);
+            });
+          });
+        }
+      );
+    });
+  } catch (e) {
+    socket.destroy();
+  }
+});
+
+wss.on('connection', (ws, request) => {
+  setupWSConnection(ws, request);
 });
 
 // -------------------------------------------------------------
@@ -1040,7 +1298,7 @@ setInterval(() => {
   const currentMinuteStr = now.toISOString().slice(0, 16); // e.g. "2026-07-31T13:45"
   
   db.all(
-    `SELECT triggers.*, workflows.owner_id
+    `SELECT triggers.*, workflows.org_id
      FROM triggers
      JOIN workflows ON triggers.workflow_id = workflows.id
      LEFT JOIN deployments ON triggers.workflow_id = deployments.workflow_id
@@ -1074,7 +1332,7 @@ setInterval(() => {
                 db.run('UPDATE triggers SET last_triggered_at = CURRENT_TIMESTAMP WHERE id = ?', [trigger.id]);
                 
                 // Execute in background
-                executeRunBackend(runId, trigger.workflow_id, trigger.owner_id, undefined, undefined, {
+                executeRunBackend(runId, trigger.workflow_id, trigger.org_id, undefined, undefined, {
                   triggeredAt: now.toISOString(),
                   cronPattern: cronExpr
                 });
