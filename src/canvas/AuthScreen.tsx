@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Waves, Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
+import { Waves, Mail, Lock, Loader2, ArrowRight, Plus, X, UserPlus } from 'lucide-react';
 
 interface AuthScreenProps {
   onAuthSuccess: (token: string, user: { id: string; email: string }) => void;
@@ -10,8 +10,17 @@ export const AuthScreen = ({ onAuthSuccess }: AuthScreenProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [accountType, setAccountType] = useState<'individual' | 'team' | 'organization'>('individual');
+  const [teamMembers, setTeamMembers] = useState<string[]>(['']);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  const handleAddMember = () => setTeamMembers([...teamMembers, '']);
+  const handleRemoveMember = (idx: number) => setTeamMembers(teamMembers.filter((_, i) => i !== idx));
+  const handleMemberChange = (idx: number, val: string) => {
+    const newMembers = [...teamMembers];
+    newMembers[idx] = val;
+    setTeamMembers(newMembers);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,10 +34,11 @@ export const AuthScreen = ({ onAuthSuccess }: AuthScreenProps) => {
     const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
 
     try {
+      const validMembers = teamMembers.filter(m => m.trim().length > 0);
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, accountType }),
+        body: JSON.stringify({ email, password, accountType, teamMembers: validMembers }),
       });
       const result = await response.json();
 
@@ -137,6 +147,47 @@ export const AuthScreen = ({ onAuthSuccess }: AuthScreenProps) => {
                   Organization
                 </button>
               </div>
+            </div>
+          )}
+
+          {!isLogin && (accountType === 'team' || accountType === 'organization') && (
+            <div className="space-y-2 pt-2 border-t border-zinc-900">
+              <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                <UserPlus className="w-3 h-3" />
+                Invite Team Members <span className="text-zinc-600 font-normal normal-case">(Optional)</span>
+              </label>
+              
+              <div className="space-y-2">
+                {teamMembers.map((memberEmail, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input
+                      type="email"
+                      value={memberEmail}
+                      onChange={(e) => handleMemberChange(idx, e.target.value)}
+                      disabled={loading}
+                      placeholder="colleague@domain.com"
+                      className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+                    />
+                    {teamMembers.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMember(idx)}
+                        className="p-1.5 text-zinc-550 hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition-colors flex-shrink-0"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              <button
+                type="button"
+                onClick={handleAddMember}
+                className="text-[10px] text-purple-400 hover:text-purple-300 font-medium flex items-center gap-1 pt-1"
+              >
+                <Plus className="w-3 h-3" /> Add another member
+              </button>
             </div>
           )}
 

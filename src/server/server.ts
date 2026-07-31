@@ -43,7 +43,7 @@ app.use('/api/analytics', authenticateToken, requireOrgAccess, analyticsRouter);
 // -------------------------------------------------------------
 
 app.post('/api/auth/register', (req, res) => {
-  const { email, password, accountType } = req.body;
+  const { email, password, accountType, teamMembers } = req.body;
   if (!email || !password) {
     return res.status(400).json({ success: false, error: { message: 'Email and password are required.' } });
   }
@@ -71,6 +71,18 @@ app.post('/api/auth/register', (req, res) => {
 
       db.run('INSERT INTO organizations (id, name) VALUES (?, ?)', [orgId, orgName], () => {
         db.run('INSERT INTO organization_members (org_id, user_id, role) VALUES (?, ?, ?)', [orgId, userId, 'owner'], () => {
+          
+          // Insert team member invitations if provided
+          if (Array.isArray(teamMembers) && teamMembers.length > 0) {
+            teamMembers.forEach(memberEmail => {
+              const inviteId = `inv-${Math.random().toString(36).substr(2, 9)}`;
+              db.run(
+                'INSERT OR IGNORE INTO invitations (id, org_id, email, role) VALUES (?, ?, ?, ?)',
+                [inviteId, orgId, memberEmail, 'member']
+              );
+            });
+          }
+
           acceptInvites(email, userId);
           return res.json({ success: true, token, user: { id: userId, email } });
         });
