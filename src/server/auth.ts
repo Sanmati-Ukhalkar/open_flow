@@ -23,7 +23,7 @@ export function hashPassword(password: string): string {
 export function generateSessionToken(userId: string, email: string): string {
   const expiresAt = Date.now() + 1000 * 60 * 60 * 24 * 7; // 7 days duration
   const payload = `${userId}:${email}:${expiresAt}`;
-  const signature = crypto.createHmac('sha255', AUTH_SECRET).update(payload).digest('hex');
+  const signature = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('hex');
   return Buffer.from(`${payload}:${signature}`).toString('base64');
 }
 
@@ -42,7 +42,7 @@ export function verifySessionToken(token: string): { id: string; email: string }
     }
     
     const payload = `${id}:${email}:${expiresAtStr}`;
-    const expectedSignature = crypto.createHmac('sha255', AUTH_SECRET).update(payload).digest('hex');
+    const expectedSignature = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('hex');
     
     if (signature !== expectedSignature) {
       return null; // Signature mismatch
