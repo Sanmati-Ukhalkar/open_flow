@@ -1,0 +1,38 @@
+{
+  "id": "mcp-tool",
+  "displayName": "MCP Tool",
+  "icon": "Wrench",
+  "category": "MCP",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "text": { "type": "string" }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "object" }
+    }
+  },
+  "configFields": [
+    {
+      "name": "toolName",
+      "label": "Select Tool",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "text_analyzer", "label": "text_analyzer" }
+      ],
+      "defaultValue": "text_analyzer"
+    },
+    {
+      "name": "inputParamName",
+      "label": "Map Input to Parameter",
+      "type": "text",
+      "required": true,
+      "defaultValue": "text",
+      "placeholder": "e.g. text"
+    }
+  ]
+}

@@ -1,23 +1,23 @@
 import { Handle, Position } from 'reactflow';
-import { Bot, Loader2, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import { Wrench, Loader2, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 
-export interface LLMPromptNodeData {
+export interface MCPToolNodeData {
   label?: string;
   status: 'idle' | 'running' | 'success' | 'error' | 'skipped';
   config: {
-    promptText: string;
-    model: string;
+    toolName: string;
+    inputParamName: string;
   };
   error?: string;
 }
 
-export const LLMPromptNode = ({ data, selected }: { data: LLMPromptNodeData; selected: boolean }) => {
+export const MCPToolNode = ({ data, selected }: { data: MCPToolNodeData; selected: boolean }) => {
   const statusColors = {
     idle: 'border-zinc-800 bg-zinc-950/90 text-zinc-400 shadow-md',
     running: 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.25)] bg-zinc-950/90 text-blue-400',
     success: 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.25)] bg-zinc-950/90 text-emerald-400',
     error: 'border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.25)] bg-zinc-950/90 text-rose-400',
-    skipped: 'border-zinc-900 bg-zinc-950/45 text-zinc-650 opacity-50',
+    skipped: 'border-zinc-900 bg-zinc-950/45 text-zinc-600 opacity-50',
   };
 
   return (
@@ -35,8 +35,8 @@ export const LLMPromptNode = ({ data, selected }: { data: LLMPromptNodeData; sel
 
       <div className="flex items-center justify-between border-b border-zinc-800 pb-2 mb-3">
         <div className="flex items-center gap-2">
-          <Bot className="w-4 h-4 text-zinc-300" />
-          <span className="font-semibold text-sm text-zinc-100">LLM Prompt</span>
+          <Wrench className="w-4 h-4 text-zinc-300" />
+          <span className="font-semibold text-sm text-zinc-100">MCP Tool</span>
         </div>
 
         {/* Status Indicator */}
@@ -61,16 +61,16 @@ export const LLMPromptNode = ({ data, selected }: { data: LLMPromptNodeData; sel
 
       <div className="text-xs text-zinc-400 space-y-2">
         <div>
-          <span className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-0.5">Model</span>
+          <span className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-0.5">Selected Tool</span>
           <div className="font-mono bg-zinc-900/80 p-1.5 rounded border border-zinc-800 truncate max-w-[200px] text-zinc-300">
-            {data.config?.model || 'gpt-4o-mini'}
+            {data.config?.toolName || 'Not Selected'}
           </div>
         </div>
         <div>
-          <span className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-0.5">Prompt</span>
-          <p className="truncate max-w-[200px] text-zinc-400 italic">
-            {data.config?.promptText ? `"${data.config.promptText}"` : 'No prompt configured'}
-          </p>
+          <span className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-0.5">Input Parameter</span>
+          <div className="font-mono bg-zinc-900/80 p-1.5 rounded border border-zinc-800 truncate max-w-[200px] text-zinc-450">
+            {data.config?.inputParamName || 'text'}
+          </div>
         </div>
       </div>
 
@@ -84,4 +84,4 @@ export const LLMPromptNode = ({ data, selected }: { data: LLMPromptNodeData; sel
   );
 };
 
-export default LLMPromptNode;
+export default MCPToolNode;

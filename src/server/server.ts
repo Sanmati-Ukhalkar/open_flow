@@ -1,7 +1,11 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { run as runLLMPrompt } from '../nodes/llm-prompt/run';
+import { run as runMCPTool } from '../nodes/mcp-tool/run';
 
 dotenv.config();
 
@@ -11,25 +15,58 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
 
+// GET API to retrieve tools from the local stdio MCP server
+app.get('/api/mcp/tools', async (_req, res) => {
+  const serverPath = path.resolve(process.cwd(), 'src/server/mcp-server.ts');
+  const transport = new StdioClientTransport({
+    command: process.platform === 'win32' ? 'npx.cmd' : 'npx',
+    args: ["tsx", serverPath]
+  });
+
+  const client = new Client({
+    name: "open-flow-express-client",
+    version: "0.1.0"
+  }, {
+    capabilities: {}
+  });
+
+  try {
+    await client.connect(transport);
+    const toolsResult = await client.listTools();
+    await transport.close();
+    
+    return res.json({ success: true, tools: toolsResult.tools });
+  } catch (error: any) {
+    console.error("Error listing MCP tools:", error);
+    try {
+      await transport.close();
+    } catch {}
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // POST API to run a specific node
 app.post('/api/run-node', async (req, res) => {
   const { nodeType, config, input } = req.body;
 
-  if (nodeType !== 'llm-prompt') {
-    return res.status(400).json({
-      success: false,
-      error: {
-        code: 'INVALID_NODE_TYPE',
-        message: `Unsupported node type: ${nodeType}`
-      }
-    });
-  }
-
   try {
-    const output = await runLLMPrompt(input || {}, config || {});
-    return res.json({ success: true, output });
+    if (nodeType === 'llm-prompt') {
+      const output = await runLLMPrompt(input || {}, config || {});
+      return res.json({ success: true, output });
+    } else if (nodeType === 'mcp-tool') {
+      const output = await runMCPTool(input || {}, config || {});
+      return res.json({ success: true, output });
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_NODE_TYPE',
+          message: `Unsupported node type: ${nodeType}`
+        }
+      });
+    }
   } catch (error: any) {
-    console.error('Error executing node:', error);
+    console.error(`Error executing node type ${nodeType}:`, error);
     return res.status(500).json({
       success: false,
       error: {

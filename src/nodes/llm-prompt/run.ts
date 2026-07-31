@@ -6,7 +6,9 @@ interface LLMPromptConfig {
 }
 
 interface LLMPromptOutput {
-  text: string;
+  data: {
+    text: string;
+  };
 }
 
 class NodeExecutionError extends Error {
@@ -22,13 +24,32 @@ export async function run(
   _input: Record<string, any>,
   config: LLMPromptConfig
 ): Promise<LLMPromptOutput> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const model = config.model || 'llama-3.1-8b-instant';
+  const isGroqModel = model.startsWith('llama') || model.startsWith('mixtral') || model.startsWith('gemma');
 
-  if (!apiKey || apiKey === 'your_openai_api_key_here') {
-    throw new NodeExecutionError(
-      'MISSING_API_KEY',
-      'OpenAI API Key is missing or not configured. Please create a .env file and set OPENAI_API_KEY to your actual key.'
-    );
+  let apiKey: string | undefined;
+  let baseURL: string | undefined;
+
+  if (isGroqModel) {
+    apiKey = process.env.GROQ_API_KEY;
+    baseURL = 'https://api.groq.com/openai/v1';
+
+    if (!apiKey || apiKey === 'your_groq_api_key_here') {
+      throw new NodeExecutionError(
+        'MISSING_GROQ_API_KEY',
+        'Groq API Key is missing or not configured. Please set GROQ_API_KEY in your .env file.'
+      );
+    }
+  } else {
+    apiKey = process.env.OPENAI_API_KEY;
+    baseURL = undefined; // Use default OpenAI base URL
+
+    if (!apiKey || apiKey === 'your_openai_api_key_here') {
+      throw new NodeExecutionError(
+        'MISSING_OPENAI_API_KEY',
+        'OpenAI API Key is missing or not configured. Please set OPENAI_API_KEY in your .env file.'
+      );
+    }
   }
 
   if (!config.promptText) {
@@ -38,10 +59,8 @@ export async function run(
     );
   }
 
-  const model = config.model || 'gpt-4o-mini';
-
   try {
-    const openai = new OpenAI({ apiKey });
+    const openai = new OpenAI({ apiKey, baseURL });
     const response = await openai.chat.completions.create({
       model: model,
       messages: [
@@ -54,34 +73,36 @@ export async function run(
     if (text === null || text === undefined) {
       throw new NodeExecutionError(
         'EMPTY_RESPONSE',
-        'Received an empty response from the OpenAI API.'
+        'Received an empty response from the API.'
       );
     }
 
-    return { text };
+    return {
+      data: { text }
+    };
   } catch (error: any) {
     if (error instanceof NodeExecutionError) {
       throw error;
     }
 
-    // Handle OpenAI specific API errors
+    // Handle API-specific errors
     if (error.status === 401) {
       throw new NodeExecutionError(
         'INVALID_API_KEY',
-        'The provided OpenAI API Key is invalid. Please check your credentials in the .env file.'
+        `The provided API Key is invalid. Please check your credentials for ${isGroqModel ? 'Groq' : 'OpenAI'} in the .env file.`
       );
     }
 
     if (error.status === 429) {
       throw new NodeExecutionError(
         'RATE_LIMIT_EXCEEDED',
-        'OpenAI API rate limit exceeded or quota exhausted. Please check your billing details or try again later.'
+        'API rate limit exceeded or quota exhausted. Please try again later.'
       );
     }
 
     throw new NodeExecutionError(
-      'OPENAI_API_ERROR',
-      error.message || 'An error occurred while calling the OpenAI API.'
+      'API_EXECUTION_ERROR',
+      error.message || `An error occurred while calling the ${isGroqModel ? 'Groq' : 'OpenAI'} API.`
     );
   }
 }
