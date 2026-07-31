@@ -270,10 +270,24 @@ export const ConfigPanel = ({
           <button
             onClick={handleDelete}
             title="Delete Node"
-            className="p-1.5 rounded-lg border border-zinc-850 bg-zinc-900 text-zinc-500 hover:text-rose-400 hover:border-rose-500/20 hover:bg-rose-500/5 transition-all duration-150"
+            className="p-1.5 rounded-lg border border-zinc-850 bg-zinc-900 text-zinc-550 hover:text-rose-455 hover:border-rose-500/20 hover:bg-rose-500/5 transition-all duration-150"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
+        </div>
+
+        {/* Output Node Switch */}
+        <div className="flex items-center justify-between p-3 border border-zinc-850 bg-zinc-900/20 rounded-xl">
+          <div>
+            <h4 className="text-[10px] font-bold text-zinc-300 uppercase tracking-wide">Workflow Output</h4>
+            <span className="text-[9px] text-zinc-550 block">Include in deployment response</span>
+          </div>
+          <input
+            type="checkbox"
+            checked={!!data.isOutputNode}
+            onChange={() => onChangeConfig(id, { ...(data.config || {}), isOutputNode: !data.isOutputNode })}
+            className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-zinc-800 bg-zinc-900 accent-purple-500 cursor-pointer"
+          />
         </div>
 
         {/* Dynamic form field section */}

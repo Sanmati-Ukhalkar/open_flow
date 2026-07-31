@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import crypto from 'crypto';
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { db } from './db';
@@ -374,6 +375,272 @@ app.get('/api/workflows/:id/runs', authenticateToken, (req: AuthenticatedRequest
       }
     );
   });
+});
+
+// -------------------------------------------------------------
+// API DEPLOYMENTS & VERSIONING ROUTES
+// -------------------------------------------------------------
+
+// Rate limiting map
+const rateLimits = new Map<string, number[]>();
+
+function checkRateLimit(deploymentId: string, limitPerMinute: number = 30): boolean {
+  const now = Date.now();
+  const timestamps = rateLimits.get(deploymentId) || [];
+  const oneMinuteAgo = now - 60000;
+  const activeTimestamps = timestamps.filter(t => t > oneMinuteAgo);
+  
+  if (activeTimestamps.length >= limitPerMinute) {
+    return false;
+  }
+  
+  activeTimestamps.push(now);
+  rateLimits.set(deploymentId, activeTimestamps);
+  return true;
+}
+
+// Public Callable API Deployment execution path
+app.post('/api/deployments/:id/execute', async (req, res) => {
+  const { id } = req.params;
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'Bearer API token is required to execute this deployment.' });
+  }
+
+  db.get('SELECT * FROM deployments WHERE id = ?', [id], async (err, deployment: any) => {
+    if (err) {
+      return res.status(500).json({ error: 'Internal Server Error', message: err.message });
+    }
+    if (!deployment) {
+      return res.status(404).json({ error: 'Not Found', message: 'Deployment not found.' });
+    }
+    if (deployment.status !== 'active') {
+      return res.status(403).json({ error: 'Forbidden', message: 'This deployment is currently paused.' });
+    }
+    if (deployment.bearer_token !== token) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'Invalid bearer API token.' });
+    }
+
+    // Apply Rate Limiting
+    if (!checkRateLimit(id)) {
+      return res.status(429).json({ error: 'Too Many Requests', message: 'Rate limit cap exceeded. Maximum 30 requests/minute.' });
+    }
+
+    // Fetch the version of the workflow
+    db.get('SELECT * FROM workflow_versions WHERE id = ?', [deployment.workflow_version_id], async (verErr, version: any) => {
+      if (verErr || !version) {
+        return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to retrieve deployed version.' });
+      }
+
+      // Fetch the owner of the workflow to resolve credentials correctly
+      db.get('SELECT owner_id FROM workflows WHERE id = ?', [deployment.workflow_id], async (wfErr, workflow: any) => {
+        if (wfErr || !workflow) {
+          return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to retrieve owner details.' });
+        }
+
+        const runId = `run-${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Log the start of this run in the DB
+        db.run(
+          'INSERT INTO runs (id, workflow_id, status) VALUES (?, ?, ?)',
+          [runId, deployment.workflow_id, 'running'],
+          async (insertErr) => {
+            if (insertErr) {
+              return res.status(500).json({ error: 'Internal Server Error', message: insertErr.message });
+            }
+
+            // Update deployment stats
+            db.run(
+              'UPDATE deployments SET request_count = request_count + 1, last_called_at = CURRENT_TIMESTAMP WHERE id = ?',
+              [id]
+            );
+
+            // Execute the run synchronously (await it)
+            await executeRunBackend(runId, deployment.workflow_id, workflow.owner_id, undefined, version.id, req.body);
+
+            // Fetch results
+            db.all('SELECT * FROM run_node_results WHERE run_id = ?', [runId], (resErr, results: any[]) => {
+              if (resErr) {
+                return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to read run results.' });
+              }
+
+              // Determine output nodes
+              const graph = JSON.parse(version.graph_json);
+              const nodes = graph.nodes || [];
+              const edges = graph.edges || [];
+
+              // Output nodes are marked as isOutputNode or are leaf nodes (nodes with no outgoing edges)
+              let outputNodeIds = nodes.filter((n: any) => n.data?.isOutputNode).map((n: any) => n.id);
+              
+              if (outputNodeIds.length === 0) {
+                // Default to leaf nodes
+                outputNodeIds = nodes.filter((n: any) => {
+                  const hasOutgoing = edges.some((e: any) => e.source === n.id);
+                  return !hasOutgoing;
+                }).map((n: any) => n.id);
+              }
+
+              const outputResults: Record<string, any> = {};
+              results.forEach(r => {
+                if (outputNodeIds.includes(r.node_id)) {
+                  outputResults[r.node_id] = {
+                    status: r.status,
+                    output: r.output_json ? JSON.parse(r.output_json) : undefined,
+                    error: r.error_json ? JSON.parse(r.error_json) : undefined
+                  };
+                }
+              });
+
+              db.get('SELECT status FROM runs WHERE id = ?', [runId], (_statusErr, runStatus: any) => {
+                return res.json({
+                  success: true,
+                  runId,
+                  status: runStatus?.status || 'unknown',
+                  outputs: outputResults
+                });
+              });
+            });
+          }
+        );
+      });
+    });
+  });
+});
+
+// GET user's active deployments
+app.get('/api/deployments', authenticateToken, (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  db.all(
+    `SELECT deployments.*, workflows.name as workflow_name
+     FROM deployments
+     JOIN workflows ON deployments.workflow_id = workflows.id
+     WHERE workflows.owner_id = ?`,
+    [userId],
+    (err, rows) => {
+      if (err) return res.status(500).json({ success: false, error: { message: err.message } });
+      return res.json({ success: true, deployments: rows });
+    }
+  );
+});
+
+// Deploy or redeploy a workflow
+app.post('/api/deployments', authenticateToken, (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const { workflowId } = req.body;
+
+  if (!workflowId) {
+    return res.status(400).json({ success: false, error: { message: 'Workflow ID is required.' } });
+  }
+
+  db.get('SELECT * FROM workflows WHERE id = ? AND owner_id = ?', [workflowId, userId], (err, workflow: any) => {
+    if (err || !workflow) {
+      return res.status(404).json({ success: false, error: { message: 'Workflow not found.' } });
+    }
+
+    const versionId = `ver-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Create version snapshot
+    db.run(
+      'INSERT INTO workflow_versions (id, workflow_id, graph_json) VALUES (?, ?, ?)',
+      [versionId, workflowId, workflow.graph_json],
+      (verErr) => {
+        if (verErr) {
+          return res.status(500).json({ success: false, error: { message: verErr.message } });
+        }
+
+        const deployId = `dep-${Math.random().toString(36).substr(2, 9)}`;
+        const token = `tok_${crypto.randomBytes(24).toString('hex')}`;
+
+        // Create or update deployment to point to new version
+        db.run(
+          `INSERT INTO deployments (id, workflow_id, workflow_version_id, bearer_token, status)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(workflow_id) DO UPDATE SET
+             workflow_version_id = excluded.workflow_version_id,
+             updated_at = CURRENT_TIMESTAMP`,
+          [deployId, workflowId, versionId, token, 'active'],
+          function (deployErr) {
+            if (deployErr) {
+              return res.status(500).json({ success: false, error: { message: deployErr.message } });
+            }
+
+            // Get final deployment details
+            db.get('SELECT * FROM deployments WHERE workflow_id = ?', [workflowId], (_selErr, deployment: any) => {
+              return res.json({
+                success: true,
+                deployment: {
+                  ...deployment,
+                  workflow_name: workflow.name
+                }
+              });
+            });
+          }
+        );
+      }
+    );
+  });
+});
+
+// Toggle deployment between active and paused
+app.post('/api/deployments/:id/toggle', authenticateToken, (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (status !== 'active' && status !== 'paused') {
+    return res.status(400).json({ success: false, error: { message: 'Invalid status. Expected active or paused.' } });
+  }
+
+  db.get(
+    `SELECT deployments.* FROM deployments
+     JOIN workflows ON deployments.workflow_id = workflows.id
+     WHERE deployments.id = ? AND workflows.owner_id = ?`,
+    [id, userId],
+    (err, row) => {
+      if (err || !row) {
+        return res.status(404).json({ success: false, error: { message: 'Deployment not found.' } });
+      }
+
+      db.run(
+        'UPDATE deployments SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [status, id],
+        (updateErr) => {
+          if (updateErr) return res.status(500).json({ success: false, error: { message: updateErr.message } });
+          return res.json({ success: true, status });
+        }
+      );
+    }
+  );
+});
+
+// Regenerate Bearer API Token
+app.post('/api/deployments/:id/token', authenticateToken, (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const { id } = req.params;
+
+  db.get(
+    `SELECT deployments.* FROM deployments
+     JOIN workflows ON deployments.workflow_id = workflows.id
+     WHERE deployments.id = ? AND workflows.owner_id = ?`,
+    [id, userId],
+    (err, row) => {
+      if (err || !row) {
+        return res.status(404).json({ success: false, error: { message: 'Deployment not found.' } });
+      }
+
+      const newToken = `tok_${crypto.randomBytes(24).toString('hex')}`;
+      db.run(
+        'UPDATE deployments SET bearer_token = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [newToken, id],
+        (updateErr) => {
+          if (updateErr) return res.status(500).json({ success: false, error: { message: updateErr.message } });
+          return res.json({ success: true, token: newToken });
+        }
+      );
+    }
+  );
 });
 
 // -------------------------------------------------------------

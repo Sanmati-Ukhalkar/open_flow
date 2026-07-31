@@ -102,16 +102,33 @@ function getDownstreamDescendants(nodeId: string, edges: any[]): string[] {
 }
 
 // Main server-side DAG execution engine
-export async function executeRunBackend(runId: string, workflowId: string, userId: string, startNodeId?: string) {
+export async function executeRunBackend(
+  runId: string,
+  workflowId: string,
+  userId: string,
+  startNodeId?: string,
+  versionId?: string,
+  initialInput?: any
+) {
   try {
-    // 1. Fetch workflow definition
-    const workflow = await dbGet('SELECT * FROM workflows WHERE id = ?', [workflowId]);
-    if (!workflow) {
-      await dbRun('UPDATE runs SET status = ?, finished_at = CURRENT_TIMESTAMP WHERE id = ?', ['failed', runId]);
-      return;
+    let graphJson: string;
+    if (versionId) {
+      const version = await dbGet('SELECT * FROM workflow_versions WHERE id = ?', [versionId]);
+      if (!version) {
+        await dbRun('UPDATE runs SET status = ?, finished_at = CURRENT_TIMESTAMP WHERE id = ?', ['failed', runId]);
+        return;
+      }
+      graphJson = version.graph_json;
+    } else {
+      const workflow = await dbGet('SELECT * FROM workflows WHERE id = ?', [workflowId]);
+      if (!workflow) {
+        await dbRun('UPDATE runs SET status = ?, finished_at = CURRENT_TIMESTAMP WHERE id = ?', ['failed', runId]);
+        return;
+      }
+      graphJson = workflow.graph_json;
     }
 
-    const graph = JSON.parse(workflow.graph_json);
+    const graph = JSON.parse(graphJson);
     const { nodes, edges } = graph;
 
     // Check for cycles
@@ -233,7 +250,9 @@ export async function executeRunBackend(runId: string, workflowId: string, userI
 
           // Compile parent outputs
           let nodeInput: any = {};
-          if (parents.length === 1) {
+          if (parents.length === 0) {
+            nodeInput = initialInput || {};
+          } else if (parents.length === 1) {
             nodeInput = nodeOutputs.get(parents[0]) || {};
           } else if (parents.length > 1) {
             nodeInput = parents.reduce((acc: any, pId: string) => {

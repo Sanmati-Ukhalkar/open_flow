@@ -16,7 +16,8 @@ import AuthScreen from './canvas/AuthScreen';
 import Dashboard from './canvas/Dashboard';
 import CredentialsManager from './canvas/CredentialsManager';
 import { topoSort } from './engine/topoSort';
-import { Play, AlertTriangle, Save, FolderOpen, ShieldCheck } from 'lucide-react';
+import { Play, AlertTriangle, Save, FolderOpen, ShieldCheck, Key } from 'lucide-react';
+import DeployModal from './canvas/DeployModal';
 
 function AppContent() {
   // Session States
@@ -39,6 +40,11 @@ function AppContent() {
   const [runLogs, setRunLogs] = useState<WorkflowRunLog[]>([]);
   const [workflowStatus, setWorkflowStatus] = useState<'idle' | 'running' | 'success' | 'partial' | 'failed'>('idle');
   const [isWorkflowRunning, setIsWorkflowRunning] = useState(false);
+
+  // Deployment States
+  const [activeDeployment, setActiveDeployment] = useState<any>(null);
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
+  const [deploying, setDeploying] = useState(false);
 
   const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
   const pollingIntervalRef = useRef<any>(null);
@@ -106,11 +112,13 @@ function AppContent() {
     setNodes(nds =>
       nds.map(node => {
         if (node.id === nodeId) {
+          const { isOutputNode, ...configWithoutOutputField } = updatedConfig;
           return {
             ...node,
             data: {
               ...node.data,
-              config: updatedConfig,
+              config: configWithoutOutputField,
+              isOutputNode: isOutputNode !== undefined ? !!isOutputNode : node.data.isOutputNode
             },
           };
         }
@@ -221,6 +229,37 @@ function AppContent() {
       }
     } catch {
       alert('Error connecting to backend database.');
+    }
+  };
+
+  const handleDeployWorkflow = async () => {
+    if (!currentWorkflowId) {
+      alert('Please save the workflow definition before deploying.');
+      return;
+    }
+
+    setDeploying(true);
+    try {
+      const res = await fetch('/api/deployments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ workflowId: currentWorkflowId })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setActiveDeployment(data.deployment);
+        setDeployModalOpen(true);
+      } else {
+        alert(data.error?.message || 'Deployment compilation failed.');
+      }
+    } catch {
+      alert('Failed to connect to backend deployments controller.');
+    } finally {
+      setDeploying(false);
     }
   };
 
@@ -541,6 +580,24 @@ function AppContent() {
             Save Definition
           </button>
 
+          {/* Deploy Button */}
+          <button
+            onClick={handleDeployWorkflow}
+            disabled={deploying || !currentWorkflowId}
+            className={`flex items-center gap-1.5 py-1.5 px-3 rounded-lg border transition-all text-[11px] font-semibold ${
+              !currentWorkflowId
+                ? 'bg-zinc-950 text-zinc-650 border-zinc-900 cursor-not-allowed'
+                : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300'
+            }`}
+          >
+            {deploying ? (
+              <div className="w-3.5 h-3.5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Key className="w-3.5 h-3.5" />
+            )}
+            Deploy API
+          </button>
+
           {workflowStatus !== 'idle' && (
             <div className="flex items-center gap-1.5 border-l border-zinc-850 pl-3">
               <span className="text-[9px] text-zinc-550 uppercase tracking-widest font-bold">Run rollup:</span>
@@ -633,6 +690,13 @@ function AppContent() {
           onDeleteNode={handleDeleteNode}
         />
       </div>
+
+      {deployModalOpen && (
+        <DeployModal
+          deployment={activeDeployment}
+          onClose={() => setDeployModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

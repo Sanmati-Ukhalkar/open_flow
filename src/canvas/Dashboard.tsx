@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Waves, Folder, Plus, Trash2, Key, LogOut, Clock } from 'lucide-react';
+import { Waves, Folder, Plus, Trash2, Key, LogOut, Clock, Globe } from 'lucide-react';
+import DeploymentDashboard from './DeploymentDashboard';
 
 interface DashboardProps {
   token: string;
@@ -21,6 +22,7 @@ export const Dashboard = ({
   const [workflows, setWorkflows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [activeTab, setActiveTab] = useState<'workflows' | 'deployments'>('workflows');
 
   const fetchWorkflows = async () => {
     setLoading(true);
@@ -67,7 +69,7 @@ export const Dashboard = ({
       <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-purple-600/5 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-blue-600/5 blur-[120px] pointer-events-none" />
 
-      <div className="w-full max-w-4xl space-y-8 z-10">
+      <div className="w-full max-w-4xl space-y-6 z-10">
         {/* Top Navbar */}
         <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
           <div className="flex items-center gap-2">
@@ -102,32 +104,62 @@ export const Dashboard = ({
           </div>
         )}
 
-        {/* Directory & Create button */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-2">
-              <Folder className="w-4 h-4 text-zinc-400" />
-              My Workflows
-            </h2>
-            <p className="text-[10px] text-zinc-500 mt-1">Select an existing graph composition or instantiate a new one.</p>
-          </div>
-
+        {/* Tab Selection Navigation */}
+        <div className="flex gap-4 border-b border-zinc-850 pb-2">
           <button
-            onClick={onCreateWorkflow}
-            className="flex items-center gap-1.5 py-2 px-4 rounded-lg font-semibold text-xs transition-all duration-200 bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/15 hover:scale-[1.02] active:scale-[0.98]"
+            onClick={() => setActiveTab('workflows')}
+            className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all ${
+              activeTab === 'workflows'
+                ? 'text-purple-400 border-purple-500'
+                : 'text-zinc-500 border-transparent hover:text-zinc-305'
+            }`}
           >
-            <Plus className="w-4 h-4" />
-            Create Workflow
+            <Folder className="w-3.5 h-3.5" />
+            My Workflows
+          </button>
+          <button
+            onClick={() => setActiveTab('deployments')}
+            className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all ${
+              activeTab === 'deployments'
+                ? 'text-purple-400 border-purple-500'
+                : 'text-zinc-500 border-transparent hover:text-zinc-305'
+            }`}
+          >
+            <Globe className="w-3.5 h-3.5" />
+            API Deployments
           </button>
         </div>
 
-        {/* Grid directory */}
-        {loading ? (
-          <div className="text-xs text-zinc-500 py-16 text-center flex flex-col items-center justify-center gap-2">
-            <div className="w-6 h-6 border-2 border-zinc-650 border-t-transparent rounded-full animate-spin" />
-            <span>Loading workflows...</span>
-          </div>
+        {activeTab === 'deployments' ? (
+          <DeploymentDashboard token={token} />
         ) : (
+          <>
+            {/* Directory & Create button */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-2">
+                  <Folder className="w-4 h-4 text-zinc-400" />
+                  My Workflows
+                </h2>
+                <p className="text-[10px] text-zinc-500 mt-1">Select an existing graph composition or instantiate a new one.</p>
+              </div>
+
+              <button
+                onClick={onCreateWorkflow}
+                className="flex items-center gap-1.5 py-2 px-4 rounded-lg font-semibold text-xs transition-all duration-200 bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/15 hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Plus className="w-4 h-4" />
+                Create Workflow
+              </button>
+            </div>
+
+            {/* Grid directory */}
+            {loading ? (
+              <div className="text-xs text-zinc-500 py-16 text-center flex flex-col items-center justify-center gap-2">
+                <div className="w-6 h-6 border-2 border-zinc-650 border-t-transparent rounded-full animate-spin" />
+                <span>Loading workflows...</span>
+              </div>
+            ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {workflows.length === 0 ? (
               <div className="col-span-full border border-dashed border-zinc-800 p-12 rounded-2xl text-center text-zinc-550 flex flex-col justify-center items-center">
@@ -192,6 +224,7 @@ export const Dashboard = ({
             )}
           </div>
         )}
+      </>)}
       </div>
     </div>
   );
