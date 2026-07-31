@@ -10,6 +10,7 @@ const TEMPLATES = [
     category: 'AI/LLM',
     required_credentials: JSON.stringify(['secrets:llm']),
     is_template: true,
+    thumbnail_url: '/thumbnails/tmpl-summarize-slack.png',
     graph_json: JSON.stringify({
       nodes: [
         {
@@ -47,6 +48,7 @@ const TEMPLATES = [
     category: 'Data Processing',
     required_credentials: JSON.stringify([]),
     is_template: true,
+    thumbnail_url: '/thumbnails/tmpl-data-logger.png',
     graph_json: JSON.stringify({
       nodes: [
         {
@@ -83,6 +85,7 @@ const TEMPLATES = [
     category: 'Notifications',
     required_credentials: JSON.stringify([]),
     is_template: true,
+    thumbnail_url: '/thumbnails/tmpl-cron-task.png',
     graph_json: JSON.stringify({
       nodes: [
         {
@@ -119,6 +122,7 @@ const TEMPLATES = [
     category: 'AI/LLM',
     required_credentials: JSON.stringify(['secrets:llm']),
     is_template: true,
+    thumbnail_url: '/thumbnails/tmpl-text-transformer.png',
     graph_json: JSON.stringify({
       nodes: [
         {
@@ -162,6 +166,7 @@ const TEMPLATES = [
     category: 'AI/LLM',
     required_credentials: JSON.stringify(['secrets:llm']),
     is_template: true,
+    thumbnail_url: '/thumbnails/tmpl-sentiment-analysis.png',
     graph_json: JSON.stringify({
       nodes: [
         {
@@ -206,6 +211,7 @@ const TEMPLATES = [
     category: 'Notifications',
     required_credentials: JSON.stringify(['secrets:llm']),
     is_template: true,
+    thumbnail_url: '/thumbnails/tmpl-daily-quote.png',
     graph_json: JSON.stringify({
       nodes: [
         {
@@ -262,8 +268,8 @@ export async function seedTemplates() {
       console.log('Seeding starter templates...');
       const stmt = db.prepare(`
         INSERT OR IGNORE INTO workflows 
-        (id, name, description, category, required_credentials, is_template, graph_json, owner_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (id, name, description, category, required_credentials, is_template, thumbnail_url, graph_json, owner_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       for (const t of TEMPLATES) {
@@ -274,6 +280,7 @@ export async function seedTemplates() {
           t.category,
           t.required_credentials,
           t.is_template,
+          t.thumbnail_url,
           t.graph_json,
           SYSTEM_OWNER_ID,
           (insertErr: any) => {

@@ -111,28 +111,37 @@ export const Templates = ({ token, onSelectWorkflow }: TemplatesProps) => {
               return (
                 <div
                   key={template.id}
-                  className="p-5 border border-zinc-800 bg-zinc-950/40 backdrop-blur-md rounded-2xl flex flex-col justify-between h-56 relative group"
+                  className="p-5 border border-zinc-800 bg-zinc-950/40 backdrop-blur-md rounded-2xl flex flex-col justify-between h-56 relative group overflow-hidden"
                 >
-                  <div className="space-y-2">
+                  {template.thumbnail_url && (
+                    <div 
+                      className="absolute inset-0 bg-cover bg-center z-0 transition-transform duration-500 group-hover:scale-105"
+                      style={{ backgroundImage: `url(${template.thumbnail_url})` }}
+                    />
+                  )}
+                  {/* Dark gradient overlay for text legibility */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-zinc-900/40 z-0" />
+
+                  <div className="space-y-2 relative z-10">
                     <div className="flex justify-between items-start">
-                      <span className="text-[8px] font-bold uppercase tracking-wider text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
+                      <span className="text-[8px] font-bold uppercase tracking-wider text-purple-300 bg-purple-900/50 px-2 py-0.5 rounded-full border border-purple-500/30 backdrop-blur-sm">
                         {template.category || 'General'}
                       </span>
                     </div>
                     <h3 className="text-sm font-bold text-zinc-100 line-clamp-1">{template.name}</h3>
-                    <p className="text-[10px] text-zinc-400 line-clamp-3 leading-relaxed">
+                    <p className="text-[10px] text-zinc-300 line-clamp-3 leading-relaxed drop-shadow-md">
                       {template.description}
                     </p>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-4 relative z-10">
                     {reqCreds.length > 0 && (
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[9px] text-zinc-600 flex items-center gap-1">
+                        <span className="text-[9px] text-zinc-400 flex items-center gap-1 drop-shadow-md">
                           <ShieldAlert className="w-3 h-3" /> Requires:
                         </span>
                         {reqCreds.map(cap => (
-                          <span key={cap} className="text-[8px] font-mono text-orange-300 bg-orange-500/10 border border-orange-500/20 px-1.5 py-0.5 rounded-full">
+                          <span key={cap} className="text-[8px] font-mono text-orange-200 bg-orange-900/50 border border-orange-500/30 px-1.5 py-0.5 rounded-full backdrop-blur-sm">
                             {cap}
                           </span>
                         ))}
@@ -141,7 +150,7 @@ export const Templates = ({ token, onSelectWorkflow }: TemplatesProps) => {
                     
                     <button
                       onClick={() => setSelectedTemplate(template)}
-                      className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-purple-600 hover:border-purple-500 hover:text-white transition-all duration-200 text-xs font-bold group-hover:shadow-lg group-hover:shadow-purple-900/20"
+                      className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-zinc-900/80 backdrop-blur-md border border-zinc-700 text-zinc-200 hover:bg-purple-600 hover:border-purple-500 hover:text-white transition-all duration-200 text-xs font-bold group-hover:shadow-lg group-hover:shadow-purple-900/30"
                     >
                       <FolderPlus className="w-4 h-4" />
                       Use Template
