@@ -111,7 +111,7 @@ function getDownstreamDescendants(nodeId: string, edges: any[]): string[] {
 export async function executeRunBackend(
   runId: string,
   workflowId: string,
-  userId: string,
+  orgId: string,
   startNodeId?: string,
   versionId?: string,
   initialInput?: any
@@ -287,8 +287,8 @@ export async function executeRunBackend(
               
               // Load user's credential from DB if configured
               const credential = await dbGet(
-                'SELECT encrypted_key FROM credentials WHERE user_id = ? AND provider = ?',
-                [userId, provider]
+                'SELECT encrypted_key FROM credentials WHERE org_id = ? AND provider = ?',
+                [orgId, provider]
               );
               let apiKey = undefined;
               if (credential) {

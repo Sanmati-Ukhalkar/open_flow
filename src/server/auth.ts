@@ -8,6 +8,10 @@ export interface AuthenticatedRequest extends Request {
     id: string;
     email: string;
   };
+  org?: {
+    id: string;
+    role: 'owner' | 'editor' | 'viewer';
+  };
 }
 
 // Secure PBKDF2 Password Hashing

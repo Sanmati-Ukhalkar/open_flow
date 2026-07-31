@@ -5,9 +5,15 @@ import TriggerDashboard from './TriggerDashboard';
 import Marketplace from './Marketplace';
 import Templates from '../pages/Templates';
 
+import { Users } from 'lucide-react';
+
 interface DashboardProps {
   token: string;
   user: { id: string; email: string };
+  activeOrg: any;
+  orgs: any[];
+  setActiveOrg: (org: any) => void;
+  onOpenOrgSettings: () => void;
   onSelectWorkflow: (workflowId: string) => void;
   onCreateWorkflow: () => void;
   onOpenCredentials: () => void;
@@ -17,6 +23,10 @@ interface DashboardProps {
 export const Dashboard = ({
   token,
   user,
+  activeOrg,
+  orgs,
+  setActiveOrg,
+  onOpenOrgSettings,
   onSelectWorkflow,
   onCreateWorkflow,
   onOpenCredentials,
@@ -45,8 +55,10 @@ export const Dashboard = ({
   };
 
   useEffect(() => {
-    fetchWorkflows();
-  }, []);
+    if (activeOrg) {
+      fetchWorkflows();
+    }
+  }, [activeOrg]);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation(); // Avoid triggering open on click
@@ -81,6 +93,31 @@ export const Dashboard = ({
           </div>
 
           <div className="flex items-center gap-3">
+            {activeOrg && (
+              <div className="flex items-center gap-2">
+                <select
+                  value={activeOrg.id}
+                  onChange={(e) => {
+                    const org = orgs.find((o) => o.id === e.target.value);
+                    if (org) setActiveOrg(org);
+                  }}
+                  className="bg-zinc-900 border border-zinc-850 text-xs text-zinc-300 rounded px-2 py-1 outline-none"
+                >
+                  {orgs.map((org) => (
+                    <option key={org.id} value={org.id}>
+                      {org.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={onOpenOrgSettings}
+                  className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg border border-zinc-850 bg-zinc-900/40 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 transition-all text-[11px]"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  Org Settings
+                </button>
+              </div>
+            )}
             <span className="text-[10px] font-mono text-zinc-550 border border-zinc-850 bg-zinc-900/30 px-2 py-1 rounded">
               User: {user.email}
             </span>
@@ -186,13 +223,15 @@ export const Dashboard = ({
                 <p className="text-[10px] text-zinc-500 mt-1">Select an existing graph composition or instantiate a new one.</p>
               </div>
 
-              <button
-                onClick={onCreateWorkflow}
-                className="flex items-center gap-1.5 py-2 px-4 rounded-lg font-semibold text-xs transition-all duration-200 bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/15 hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <Plus className="w-4 h-4" />
-                Create Workflow
-              </button>
+              {activeOrg?.role !== 'viewer' && (
+                <button
+                  onClick={onCreateWorkflow}
+                  className="flex items-center gap-1.5 py-2 px-4 rounded-lg font-semibold text-xs transition-all duration-200 bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/15 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Workflow
+                </button>
+              )}
             </div>
 
             {/* Grid directory */}
@@ -207,12 +246,14 @@ export const Dashboard = ({
               <div className="col-span-full border border-dashed border-zinc-800 p-12 rounded-2xl text-center text-zinc-550 flex flex-col justify-center items-center">
                 <Folder className="w-8 h-8 mb-2 text-zinc-700" />
                 <p className="text-xs mb-1">No workflows composed yet.</p>
-                <button
-                  onClick={onCreateWorkflow}
-                  className="text-[10px] text-purple-400 hover:underline mb-2"
-                >
-                  Create your first workflow
-                </button>
+                {activeOrg?.role !== 'viewer' && (
+                  <button
+                    onClick={onCreateWorkflow}
+                    className="text-[10px] text-purple-400 hover:underline mb-2"
+                  >
+                    Create your first workflow
+                  </button>
+                )}
                 <button
                   onClick={() => setActiveTab('templates')}
                   className="px-4 py-2 mt-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-bold text-zinc-300 hover:text-purple-400 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all"
@@ -223,56 +264,59 @@ export const Dashboard = ({
             ) : (
               workflows.map(wf => {
                 const nodeCount = wf.graph?.nodes?.length || 0;
-                const edgeCount = wf.graph?.edges?.length || 0;
-                const date = new Date(wf.updated_at).toLocaleDateString(undefined, {
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                });
+                  const edgeCount = wf.graph?.edges?.length || 0;
+                  const date = new Date(wf.updated_at).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  });
 
-                return (
-                  <div
-                    key={wf.id}
-                    onClick={() => onSelectWorkflow(wf.id)}
-                    className="p-5 border border-zinc-800 hover:border-zinc-700 bg-zinc-950/40 backdrop-blur-md rounded-2xl hover:scale-[1.01] transition-all duration-150 cursor-pointer flex flex-col justify-between h-40 group relative overflow-hidden"
-                  >
-                    {/* Hover glow */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/0 via-purple-500/0 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  return (
+                    <div
+                      key={wf.id}
+                      onClick={() => onSelectWorkflow(wf.id)}
+                      className="p-5 border border-zinc-800 hover:border-zinc-700 bg-zinc-950/40 backdrop-blur-md rounded-2xl hover:scale-[1.01] transition-all duration-150 cursor-pointer flex flex-col justify-between h-40 group relative overflow-hidden"
+                    >
+                      {/* Hover glow */}
+                      <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/0 via-purple-500/0 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-                    <div className="space-y-1 z-10">
-                      <h3 className="text-xs font-bold text-zinc-200 group-hover:text-purple-400 transition-colors duration-150 truncate max-w-[200px]">
-                        {wf.name}
-                      </h3>
-                      <span className="text-[9px] font-mono text-zinc-600 block">ID: {wf.id}</span>
+                      <div className="space-y-1 z-10">
+                        <h3 className="text-xs font-bold text-zinc-200 group-hover:text-purple-400 transition-colors duration-150 truncate max-w-[200px]">
+                          {wf.name}
+                        </h3>
+                        <span className="text-[9px] font-mono text-zinc-600 block">ID: {wf.id}</span>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-[10px] text-zinc-500 z-10 font-mono">
+                        <span>Nodes: {nodeCount}</span>
+                        <span>Edges: {edgeCount}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between border-t border-zinc-900 pt-3 z-10">
+                        <span className="text-[9px] text-zinc-650 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {date}
+                        </span>
+
+                        {activeOrg?.role !== 'viewer' && (
+                          <button
+                            onClick={(e) => handleDelete(e, wf.id)}
+                            className="flex items-center justify-center p-2 rounded hover:bg-rose-500/10 text-zinc-500 hover:text-rose-400 transition-colors"
+                            title="Delete Workflow"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-
-                    <div className="flex items-center gap-3 text-[10px] text-zinc-500 z-10 font-mono">
-                      <span>Nodes: {nodeCount}</span>
-                      <span>Edges: {edgeCount}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between border-t border-zinc-900 pt-3 z-10">
-                      <span className="text-[9px] text-zinc-650 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {date}
-                      </span>
-
-                      <button
-                        onClick={(e) => handleDelete(e, wf.id)}
-                        title="Delete Workflow"
-                        className="p-1 rounded-lg border border-zinc-900 bg-zinc-900/30 text-zinc-600 hover:text-rose-400 hover:border-rose-500/20 hover:bg-rose-500/5 transition-all duration-150"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        )}
-      </>)}
+                  );
+                })
+              )}
+            </div>
+          )}
+        </>
+      )}
       </div>
     </div>
   );

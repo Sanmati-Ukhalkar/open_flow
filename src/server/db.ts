@@ -111,32 +111,103 @@ db.serialize(() => {
     )
   `);
 
-  // v0.10 Template schema migration
-  const columnsToAdd = [
-    { name: 'is_template', definition: 'BOOLEAN DEFAULT FALSE' },
-    { name: 'description', definition: 'TEXT' },
-    { name: 'category', definition: 'TEXT' },
-    { name: 'required_credentials', definition: 'TEXT' },
-    { name: 'thumbnail_url', definition: 'TEXT' }
+  // v0.11 Organizations schema migration
+  db.run(`
+    CREATE TABLE IF NOT EXISTS organizations (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS organization_members (
+      org_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      role TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (org_id, user_id),
+      FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS invitations (
+      id TEXT PRIMARY KEY,
+      org_id TEXT NOT NULL,
+      email TEXT NOT NULL,
+      role TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE,
+      UNIQUE(org_id, email)
+    )
+  `);
+
+  const v11ColumnsToAdd = [
+    { table: 'workflows', name: 'org_id', definition: 'TEXT' },
+    { table: 'credentials', name: 'org_id', definition: 'TEXT' },
+    { table: 'deployments', name: 'org_id', definition: 'TEXT' },
+    { table: 'triggers', name: 'org_id', definition: 'TEXT' }
   ];
 
-  db.all("PRAGMA table_info(workflows)", (err, rows: any[]) => {
-    if (err) {
-      console.error('Failed to check workflows schema:', err.message);
-      return;
-    }
-    const existingColumns = rows.map(r => r.name);
-    
-    columnsToAdd.forEach(col => {
-      if (!existingColumns.includes(col.name)) {
-        db.run(`ALTER TABLE workflows ADD COLUMN ${col.name} ${col.definition}`, (alterErr) => {
-          if (alterErr) {
-            console.error(`Failed to add column ${col.name}:`, alterErr.message);
-          } else {
-            console.log(`Added column ${col.name} to workflows table.`);
+  v11ColumnsToAdd.forEach(({ table, name, definition }) => {
+    db.all(`PRAGMA table_info(${table})`, (err, rows: any[]) => {
+      if (err) return;
+      const existingColumns = rows.map(r => r.name);
+      if (!existingColumns.includes(name)) {
+        db.run(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`, (alterErr) => {
+          if (!alterErr) {
+            console.log(`Added column ${name} to ${table} table.`);
+            
+            // If it's workflows, run the v0.11 auto-migration after adding the column
+            if (table === 'workflows') {
+              runV11Migration();
+            }
           }
         });
+      } else if (table === 'workflows') {
+        // If the column already exists, still run the migration in case there's unmigrated data
+        runV11Migration();
       }
     });
   });
+
+  function runV11Migration() {
+    // For every user, ensure they have a Personal org
+    db.all('SELECT id, email FROM users', [], (err, users: any[]) => {
+      if (err || !users) return;
+      
+      users.forEach(user => {
+        db.get('SELECT org_id FROM organization_members WHERE user_id = ? AND role = "owner" LIMIT 1', [user.id], (_err, row: any) => {
+          if (!row) {
+            const orgId = `org-${Math.random().toString(36).substr(2, 9)}`;
+            db.run('INSERT INTO organizations (id, name) VALUES (?, ?)', [orgId, 'Personal'], () => {
+              db.run('INSERT INTO organization_members (org_id, user_id, role) VALUES (?, ?, ?)', [orgId, user.id, 'owner'], () => {
+                // Migrate resources
+                migrateResources(user.id, orgId);
+              });
+            });
+          } else {
+            // Re-run migration for safety just in case
+            migrateResources(user.id, row.org_id);
+          }
+        });
+      });
+    });
+  }
+
+  function migrateResources(userId: string, orgId: string) {
+    db.run('UPDATE workflows SET org_id = ? WHERE owner_id = ? AND org_id IS NULL', [orgId, userId]);
+    db.run('UPDATE credentials SET org_id = ? WHERE user_id = ? AND org_id IS NULL', [orgId, userId]);
+    // Deployments and triggers can be joined to workflows to find their owner for migration
+    db.run(`
+      UPDATE deployments SET org_id = ? 
+      WHERE org_id IS NULL AND workflow_id IN (SELECT id FROM workflows WHERE owner_id = ?)
+    `, [orgId, userId]);
+    db.run(`
+      UPDATE triggers SET org_id = ? 
+      WHERE org_id IS NULL AND workflow_id IN (SELECT id FROM workflows WHERE owner_id = ?)
+    `, [orgId, userId]);
+  }
 });
