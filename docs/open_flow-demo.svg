@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="open_flow demo screenshot">
+  <rect width="960" height="540" fill="#0d1117"/>
+  <rect x="24" y="24" width="912" height="492" rx="12" fill="#161b22" stroke="#30363d"/>
+  <circle cx="52" cy="52" r="7" fill="#ff5f56"/>
+  <circle cx="76" cy="52" r="7" fill="#ffbd2e"/>
+  <circle cx="100" cy="52" r="7" fill="#27c93f"/>
+  <text x="130" y="58" fill="#8b949e" font-family="monospace" font-size="16">open_flow dev server</text>
+
+  <text x="48" y="110" fill="#c9d1d9" font-family="monospace" font-size="20">$ npm run dev</text>
+  <text x="48" y="150" fill="#58a6ff" font-family="monospace" font-size="18">&gt; open_flow@0.1.0 dev</text>
+  <text x="48" y="180" fill="#58a6ff" font-family="monospace" font-size="18">&gt; vite</text>
+
+  <text x="48" y="230" fill="#3fb950" font-family="monospace" font-size="18">✓ Local:   http://localhost:5173/</text>
+  <text x="48" y="260" fill="#3fb950" font-family="monospace" font-size="18">✓ Network: http://192.168.1.10:5173/</text>
+  <text x="48" y="300" fill="#c9d1d9" font-family="monospace" font-size="18">ready in 289ms</text>
+
+  <rect x="48" y="340" width="864" height="150" rx="8" fill="#0d1117" stroke="#30363d"/>
+  <text x="68" y="378" fill="#f0f6fc" font-family="monospace" font-size="24">open_flow</text>
+  <text x="68" y="410" fill="#8b949e" font-family="monospace" font-size="18">Build, test, and iterate on flow-based experiences faster.</text>
+  <text x="68" y="445" fill="#58a6ff" font-family="monospace" font-size="16">http://localhost:5173</text>
+</svg>
