@@ -1,0 +1,10 @@
+{
+  "default":           { "timeoutMs": 30000 },
+  "llm-prompt":        { "timeoutMs": 60000 },
+  "mcp-tool":          { "timeoutMs": 45000 },
+  "http-webhook":      { "timeoutMs": 30000 },
+  "sqlite-storage":    { "timeoutMs": 15000 },
+  "text-transform":    { "timeoutMs": 10000 },
+  "cron-trigger":      { "timeoutMs": 5000  },
+  "webhook-trigger":   { "timeoutMs": 5000  }
+}

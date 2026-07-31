@@ -3,6 +3,7 @@
   "displayName": "Math Helper",
   "category": "Math",
   "icon": "Combine",
+  "capabilities": [],
   "configFields": [
     {
       "name": "operation",

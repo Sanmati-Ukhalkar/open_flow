@@ -15,6 +15,7 @@
       "data": { "type": "object" }
     }
   },
+  "capabilities": ["network:fetch"],
   "configFields": [
     {
       "name": "toolName",

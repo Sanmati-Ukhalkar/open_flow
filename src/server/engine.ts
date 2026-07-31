@@ -8,6 +8,7 @@ import { run as runSQLiteStorage } from '../nodes/sqlite-storage/run';
 import { run as runTextTransform } from '../nodes/text-transform/run';
 import { run as runCronTrigger } from '../nodes/cron-trigger/run';
 import { run as runWebhookTrigger } from '../nodes/webhook-trigger/run';
+import { runInSandbox, getNodeCapabilities } from './sandbox';
 import path from 'path';
 import fs from 'fs';
 
@@ -316,14 +317,17 @@ export async function executeRunBackend(
             } else if (node.type === 'webhook-trigger') {
               output = await runWebhookTrigger(nodeInput, node.data.config);
             } else {
-              // Community node dynamic imports load
+              // Community node: execute in sandboxed Worker thread
+              // Only capabilities declared in definition.json are injected
               const runPath = path.resolve(process.cwd(), 'src/nodes/community', node.type, 'run.ts');
               if (fs.existsSync(runPath)) {
-                // Dynamically import community node executor
-                const module = await import(runPath);
-                output = await module.run(nodeInput, node.data.config);
+                const capabilities = getNodeCapabilities(node.type, true);
+                output = await runInSandbox(node.type, runPath, nodeInput, node.data.config, capabilities);
               } else {
-                throw new Error(`Unsupported node type: ${node.type}`);
+                throw {
+                  code: 'UNKNOWN_NODE_TYPE',
+                  message: `Unsupported node type: "${node.type}". No run.ts found in src/nodes/community/${node.type}/`
+                };
               }
             }
 

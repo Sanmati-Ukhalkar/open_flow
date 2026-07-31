@@ -80,6 +80,15 @@ export const Sidebar = () => {
                   )}
                 </div>
                 <p className="text-[10px] text-zinc-550 leading-normal line-clamp-2">{node.description || (node.manifest && node.manifest.description)}</p>
+                {isCommunity && node.capabilities && node.capabilities.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {(node.capabilities as string[]).map((cap: string) => (
+                      <span key={cap} className="text-[8px] font-mono text-orange-300 bg-orange-500/10 border border-orange-500/20 px-1.5 py-0.5 rounded-full">
+                        {cap}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           );

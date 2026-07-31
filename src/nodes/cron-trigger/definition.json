@@ -3,6 +3,7 @@
   "displayName": "Cron Trigger",
   "category": "Trigger",
   "icon": "Clock",
+  "capabilities": [],
   "configFields": [
     {
       "name": "cronExpression",

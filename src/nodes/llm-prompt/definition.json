@@ -15,6 +15,7 @@
       }
     }
   },
+  "capabilities": ["network:fetch", "secrets:llm"],
   "configFields": [
     {
       "name": "promptText",

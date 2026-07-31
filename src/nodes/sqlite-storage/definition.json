@@ -21,6 +21,7 @@
       }
     }
   },
+  "capabilities": ["storage:sqlite"],
   "configFields": [
     {
       "name": "tableName",

@@ -3,6 +3,7 @@
   "displayName": "Webhook Trigger",
   "category": "Trigger",
   "icon": "Globe",
+  "capabilities": [],
   "configFields": [
     {
       "name": "webhookPath",
