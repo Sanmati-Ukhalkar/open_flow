@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Key, Copy, Check, ToggleLeft, ToggleRight, Loader2, RefreshCw } from 'lucide-react';
+import { Key, Copy, Check, ToggleLeft, ToggleRight, Loader2, RefreshCw, Bell } from 'lucide-react';
+import { DeploymentAlertModal } from './DeploymentAlertModal';
 
 interface DeploymentDashboardProps {
   token: string;
@@ -11,6 +12,7 @@ export const DeploymentDashboard = ({ token }: DeploymentDashboardProps) => {
   const [toggling, setToggling] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState<string | null>(null);
+  const [configuringAlertFor, setConfiguringAlertFor] = useState<string | null>(null);
 
   const fetchDeployments = async () => {
     setLoading(true);
@@ -185,6 +187,18 @@ export const DeploymentDashboard = ({ token }: DeploymentDashboardProps) => {
                       Regenerate Token
                     </button>
                   </div>
+                  
+                  {/* Alert Settings */}
+                  <div className="space-y-1">
+                    <span className="text-[9px] font-semibold text-zinc-550 uppercase tracking-wider block">Monitoring & Alerts</span>
+                    <button
+                      onClick={() => setConfiguringAlertFor(d.id)}
+                      className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg border border-zinc-850 bg-zinc-900/50 text-[11px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 transition-all"
+                    >
+                      <Bell className="w-3.5 h-3.5 text-amber-400" />
+                      Configure Alerts
+                    </button>
+                  </div>
                 </div>
 
                 {/* Call stats */}
@@ -207,6 +221,14 @@ export const DeploymentDashboard = ({ token }: DeploymentDashboardProps) => {
             );
           })}
         </div>
+      )}
+      
+      {configuringAlertFor && (
+        <DeploymentAlertModal 
+          deploymentId={configuringAlertFor} 
+          token={token} 
+          onClose={() => setConfiguringAlertFor(null)} 
+        />
       )}
     </div>
   );

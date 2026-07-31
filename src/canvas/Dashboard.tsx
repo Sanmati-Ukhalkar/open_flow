@@ -4,6 +4,7 @@ import DeploymentDashboard from './DeploymentDashboard';
 import TriggerDashboard from './TriggerDashboard';
 import Marketplace from './Marketplace';
 import Templates from '../pages/Templates';
+import AnalyticsDashboard from './AnalyticsDashboard';
 
 import { Users } from 'lucide-react';
 
@@ -35,7 +36,7 @@ export const Dashboard = ({
   const [workflows, setWorkflows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [activeTab, setActiveTab] = useState<'workflows' | 'templates' | 'deployments' | 'triggers' | 'marketplace'>('workflows');
+  const [activeTab, setActiveTab] = useState<'workflows' | 'templates' | 'deployments' | 'triggers' | 'marketplace' | 'analytics'>('workflows');
 
   const fetchWorkflows = async () => {
     setLoading(true);
@@ -201,6 +202,17 @@ export const Dashboard = ({
             <Package className="w-3.5 h-3.5" />
             Node Marketplace
           </button>
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all flex-shrink-0 ${
+              activeTab === 'analytics'
+                ? 'text-purple-400 border-purple-500'
+                : 'text-zinc-505 border-transparent hover:text-zinc-300'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            Analytics
+          </button>
         </div>
 
         {activeTab === 'deployments' ? (
@@ -211,6 +223,8 @@ export const Dashboard = ({
           <Marketplace />
         ) : activeTab === 'templates' ? (
           <Templates token={token} onSelectWorkflow={onSelectWorkflow} />
+        ) : activeTab === 'analytics' ? (
+          <AnalyticsDashboard token={token} orgId={activeOrg?.id} />
         ) : (
           <>
             {/* Directory & Create button */}

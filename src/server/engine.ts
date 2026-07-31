@@ -40,6 +40,23 @@ const dbGet = (sql: string, params: any[] = []): Promise<any> => {
   });
 };
 
+// Helper to estimate cost
+function calculateNodeCost(nodeType: string, output: any, config?: any): { costCents: number, metadata: any } {
+  if (nodeType === 'llm-prompt' && output?.usage) {
+    const model = config?.model || 'llama-3.1-8b-instant';
+    const tokens = output.usage.total_tokens || 0;
+    let costCents = 0;
+    if (model.includes('llama')) costCents = tokens * 0.00001; 
+    else if (model.includes('gpt-4')) costCents = tokens * 0.003;
+    else costCents = tokens * 0.0001;
+    return { costCents, metadata: { tokens } };
+  }
+  if (nodeType === 'mcp-tool' || nodeType === 'http-webhook') {
+    return { costCents: 0.01, metadata: { calls: 1 } }; 
+  }
+  return { costCents: 0, metadata: {} };
+}
+
 // Helper to validate output schema against definition
 function checkOutputSchema(nodeType: string, output: any): { isValid: boolean; warning?: string } {
   try {
@@ -116,6 +133,7 @@ export async function executeRunBackend(
   versionId?: string,
   initialInput?: any
 ) {
+  const runStartTime = Date.now();
   try {
     let graphJson: string;
     if (versionId) {
@@ -224,10 +242,16 @@ export async function executeRunBackend(
             finalStatus = hasSuccess ? 'partial' : 'failed';
           }
 
+          const runDurationMs = Date.now() - runStartTime;
           await dbRun(
-            'UPDATE runs SET status = ?, finished_at = CURRENT_TIMESTAMP WHERE id = ?',
-            [finalStatus, runId]
+            'UPDATE runs SET status = ?, finished_at = CURRENT_TIMESTAMP, duration_ms = ? WHERE id = ?',
+            [finalStatus, runDurationMs, runId]
           );
+          
+          // Fire deployment alerts if necessary (in background)
+          if (finalStatus === 'failed') {
+            checkDeploymentAlerts(workflowId).catch(err => console.error('Alert check failed:', err));
+          }
         }
         return;
       }
@@ -277,6 +301,7 @@ export async function executeRunBackend(
           // Artificial delay for canvas visualizations
           await new Promise(r => setTimeout(r, 700));
 
+          const nodeStartTime = Date.now();
           try {
             let output: any;
 
@@ -341,10 +366,13 @@ export async function executeRunBackend(
             const outputToSave = validation.isValid 
               ? output 
               : { ...output, warning: validation.warning };
+              
+            const durationMs = Date.now() - nodeStartTime;
+            const { costCents, metadata } = calculateNodeCost(node.type, output, node.data.config);
 
             await dbRun(
-              'UPDATE run_node_results SET status = ?, output_json = ? WHERE run_id = ? AND node_id = ?',
-              [status, JSON.stringify(outputToSave), runId, node.id]
+              'UPDATE run_node_results SET status = ?, output_json = ?, duration_ms = ?, cost_cents = ?, metadata_json = ? WHERE run_id = ? AND node_id = ?',
+              [status, JSON.stringify(outputToSave), durationMs, costCents, JSON.stringify(metadata), runId, node.id]
             );
 
           } catch (err: any) {
@@ -356,9 +384,10 @@ export async function executeRunBackend(
             nodeStatuses.set(node.id, 'error');
             nodeErrors.set(node.id, errorPayload);
 
+            const durationMs = Date.now() - nodeStartTime;
             await dbRun(
-              'UPDATE run_node_results SET status = ?, error_json = ? WHERE run_id = ? AND node_id = ?',
-              ['error', JSON.stringify(errorPayload), runId, node.id]
+              'UPDATE run_node_results SET status = ?, error_json = ?, duration_ms = ? WHERE run_id = ? AND node_id = ?',
+              ['error', JSON.stringify(errorPayload), durationMs, runId, node.id]
             );
 
             // Propagate cascade skips immediately to descendants
@@ -382,5 +411,47 @@ export async function executeRunBackend(
   } catch (error) {
     console.error('Fatal engine failure inside backend scheduler:', error);
     await dbRun('UPDATE runs SET status = ?, finished_at = CURRENT_TIMESTAMP WHERE id = ?', ['failed', runId]);
+  }
+}
+
+async function checkDeploymentAlerts(workflowId: string) {
+  // Find if there is an active deployment for this workflow
+  const deployment = await dbGet('SELECT * FROM deployments WHERE workflow_id = ?', [workflowId]);
+  if (!deployment) return;
+
+  const alertConfig = await dbGet('SELECT * FROM deployment_alerts WHERE deployment_id = ?', [deployment.id]);
+  if (!alertConfig) return;
+
+  // Calculate error rate over the last window_runs
+  const runs = await dbAll(
+    'SELECT status FROM runs WHERE workflow_id = ? ORDER BY started_at DESC LIMIT ?', 
+    [workflowId, alertConfig.window_runs]
+  );
+  
+  if (runs.length === 0) return;
+
+  const errorCount = runs.filter((r: any) => r.status === 'failed' || r.status === 'partial').length;
+  const errorRatePercent = (errorCount / runs.length) * 100;
+
+  if (errorRatePercent >= alertConfig.error_threshold_percent) {
+    console.log(`Alert triggered for deployment ${deployment.id}: ${errorRatePercent}% error rate.`);
+    // Fire the webhook
+    try {
+      await fetch(alertConfig.webhook_url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          alert: 'Deployment Error Rate Threshold Exceeded',
+          deploymentId: deployment.id,
+          workflowId,
+          errorRatePercent,
+          thresholdPercent: alertConfig.error_threshold_percent,
+          windowRuns: alertConfig.window_runs,
+          timestamp: new Date().toISOString()
+        })
+      });
+    } catch (e) {
+      console.error('Failed to deliver webhook alert:', e);
+    }
   }
 }

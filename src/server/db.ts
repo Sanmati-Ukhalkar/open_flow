@@ -144,6 +144,36 @@ db.serialize(() => {
     )
   `);
 
+  // v0.13 Observability schema migration
+  db.run(`
+    CREATE TABLE IF NOT EXISTS deployment_alerts (
+      id TEXT PRIMARY KEY,
+      deployment_id TEXT NOT NULL,
+      error_threshold_percent REAL NOT NULL,
+      window_runs INTEGER NOT NULL DEFAULT 10,
+      webhook_url TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (deployment_id) REFERENCES deployments(id) ON DELETE CASCADE,
+      UNIQUE(deployment_id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS aggregated_metrics (
+      id TEXT PRIMARY KEY,
+      org_id TEXT NOT NULL,
+      workflow_id TEXT,
+      deployment_id TEXT,
+      date TEXT NOT NULL,
+      total_runs INTEGER DEFAULT 0,
+      total_errors INTEGER DEFAULT 0,
+      total_cost_cents REAL DEFAULT 0,
+      total_duration_ms INTEGER DEFAULT 0,
+      FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE,
+      UNIQUE(org_id, workflow_id, deployment_id, date)
+    )
+  `);
+
   const v11ColumnsToAdd = [
     { table: 'workflows', name: 'org_id', definition: 'TEXT' },
     { table: 'credentials', name: 'org_id', definition: 'TEXT' },
@@ -169,6 +199,24 @@ db.serialize(() => {
       } else if (table === 'workflows') {
         // If the column already exists, still run the migration in case there's unmigrated data
         runV11Migration();
+      }
+    });
+  });
+
+  const v13ColumnsToAdd = [
+    { table: 'run_node_results', name: 'cost_cents', definition: 'REAL DEFAULT 0' },
+    { table: 'run_node_results', name: 'duration_ms', definition: 'INTEGER DEFAULT 0' },
+    { table: 'run_node_results', name: 'metadata_json', definition: 'TEXT' },
+    { table: 'runs', name: 'duration_ms', definition: 'INTEGER DEFAULT 0' }
+  ];
+
+  v13ColumnsToAdd.forEach(({ table, name, definition }) => {
+    db.all(`PRAGMA table_info(${table})`, (err, rows: any[]) => {
+      if (err) return;
+      if (!rows.map(r => r.name).includes(name)) {
+        db.run(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`, (alterErr) => {
+          if (!alterErr) console.log(`Added column ${name} to ${table} table.`);
+        });
       }
     });
   });

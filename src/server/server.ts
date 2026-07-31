@@ -9,6 +9,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { db } from './db';
 import { encrypt } from './crypto';
 import { hashPassword, generateSessionToken, authenticateToken, AuthenticatedRequest } from './auth';
+import { analyticsRouter } from './analytics';
 import { executeRunBackend } from './engine';
 import { run as runLLMPrompt } from '../nodes/llm-prompt/run';
 import { run as runMCPTool } from '../nodes/mcp-tool/run';
@@ -31,6 +32,9 @@ import { WebSocketServer } from 'ws';
 const { setupWSConnection, setPersistence } = require('y-websocket/bin/utils');
 import * as url from 'url';
 import * as Y from 'yjs';
+
+// Mount sub-routers
+app.use('/api/analytics', authenticateToken, requireOrgAccess, analyticsRouter);
 
 // -------------------------------------------------------------
 // AUTH ROUTES
