@@ -1,14 +1,39 @@
 # Open Flow 🌊
 
-**An open-source, no-code, drag-and-drop canvas for composing AI tool-calls and MCP servers into runnable, deployable workflows.**
+**A visual, no-code, drag-and-drop workflow builder — built AI/MCP-first from the ground up, not bolted on as an afterthought.**
 
-"n8n for MCP" — automation-native for AI, not AI bolted onto automation.
+> Think "n8n for MCP": a canvas where you chain AI tool-calls, MCP servers, and everyday automation steps together, without writing code.
+
+![status](https://img.shields.io/badge/status-active--development-purple)
+![license](https://img.shields.io/badge/license-MIT-blue)
+![version](https://img.shields.io/badge/version-v1.0-orange)
 
 ---
 
-## 🚀 Vision
+## 🚀 Why Open Flow
 
-Open Flow is designed for users who want to chain AI steps together without writing code, using **AI-native building blocks**. The node model, the canvas, and the workflow engine are designed around AI tool-calling as the default case.
+Developers and teams juggle a fragmented toolkit today: coding assistants, separate AI-orchestration frameworks (LangChain, MCP servers), and separate automation tools (n8n, Zapier). Nothing connects them well, so the same integration patterns get rebuilt from scratch every time.
+
+Most existing visual workflow tools were built **automation-first**, with AI features added on top later. Open Flow flips that: the node model, the canvas, and the execution engine are designed around AI tool-calling and MCP servers as the default case — not a plugin bolted onto a generic automation tool.
+
+**Why not just use n8n?** n8n is automation-first with AI added on; Open Flow is AI/MCP-first from the ground up.
+
+---
+
+## ⚙️ What It Does
+
+Drag nodes onto a canvas, connect them, configure them, hit run. A typical workflow might look like:
+
+```
+Webhook Trigger → PDF OCR → LLM Extraction → SQLite Storage → Slack Notification
+```
+
+Every node is:
+- **Real**, not mocked — an LLM node actually calls OpenAI, an MCP node actually calls a real MCP server.
+- **Composable** — outputs from one node feed into the next, branches run independently, multi-input nodes merge upstream data.
+- **Shareable** — nodes follow a standard package format (`definition.json` + `run.ts` + `README.md`) so anyone can build and contribute new ones.
+
+---
 
 ## 🖼️ Starter Templates
 
@@ -40,34 +65,74 @@ Kickstart your workflow automations with these gorgeous, pre-configured blueprin
 
 ---
 
-## 🛠 Features
+## 🛠 Features & Status
 
-- **No-Code Drag-and-Drop Canvas:** Powered by React Flow and Yjs for real-time collaborative editing.
-- **Workflow Engine:** Built-in validation, topological execution, and real-time streaming status.
-- **Organization & RBAC Support:** Granular team access and role-based controls.
-- **Observability:** Granular run analytics, token cost monitoring, and execution tracking out of the box.
-- **Deployments:** Provision production-ready webhook trigger URLs instantly.
+Open Flow was built version by version, with each version shipping something fully working before the next begins.
+
+| Version | Status | What it adds |
+|---|---|---|
+| v0.1 | ✅ Shipped | Canvas + one real node (LLM Prompt), full run loop |
+| v0.2 | ✅ Shipped | Second node type (MCP Tool), node-to-node data flow |
+| v0.3 | ✅ Shipped | Node library/sidebar, 5 node types, multi-input support |
+| v0.4 | ✅ Shipped | Parallel branches, per-node retry, run log, output validation |
+| v0.5 | ✅ Shipped | Save/load workflows, basic auth, server-side execution |
+| v0.6 | ✅ Shipped | Deploy a workflow as a public API endpoint |
+| v0.7 | ✅ Shipped | Cron/webhook triggers, community node marketplace |
+| v0.8+ | ✅ Shipped | Teams, RBAC, real-time collaboration (Yjs), observability & token usage analytics, templates |
+
+See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the full architecture history.
+
+---
+
+## 🧩 Node Types (so far)
+
+| Node | What it does |
+|---|---|
+| **LLM Prompt** | Calls OpenAI (or other providers) with a configurable prompt and model |
+| **MCP Tool** | Executes a tool exposed by a connected MCP server |
+| **Text Transform** | Combines/formats multiple upstream inputs into one output |
+| **SQLite Storage** | Appends a row of data to a local SQLite table |
+| **HTTP Webhook** | Fires a POST request (e.g. a Slack-compatible webhook) |
+| **Cron Trigger** | Automatically executes workflows on a scheduled interval |
+| **Webhook Trigger** | Instantly executes workflows upon receiving HTTP POST requests |
+
+More node types are planned — see [`CONTRIBUTING.md`](./CONTRIBUTING.md) for how to build and submit your own.
+
+---
 
 ## 💻 Tech Stack
 - **Frontend:** React, Vite, TailwindCSS, React Flow, Yjs
 - **Backend:** Node.js, Express, WebSocket, SQLite
+- **Execution:** In-process async node runners
 - **AI Integrations:** LLMs (OpenAI SDK), Model Context Protocol (MCP)
 
-## 📦 Quickstart
+---
+
+## 📦 Quick Start
 
 ```bash
-# Clone the repository
 git clone https://github.com/Sanmati-Ukhalkar/open_flow.git
 cd open_flow
-
-# Install dependencies
 npm install
-
-# Start the dev server (frontend + backend)
+cp .env.example .env   # add your OpenAI API key
 npm run dev
 ```
 
-Visit `http://localhost:5173` to get started!
+Visit `http://localhost:5173`, create a Team, drag a node onto the canvas (or clone a starter template!), and hit **Run Workflow**.
 
 ---
+
+## 🤝 Contributing
+
+Open Flow is actively evolving — contributions, bug reports, and node ideas are welcome. Start here:
+
+1. Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) to understand the current scope.
+2. Read [`AGENTS.md`](./AGENTS.md) if you're using an AI coding assistant (Claude Code, Cursor, etc.) to contribute.
+3. Check issues labeled `good first issue`.
+4. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for how to run the project locally and submit a node or a PR.
+
+## 📄 License
+
+MIT — see [`LICENSE`](./LICENSE) for details.
+
 *Built for the future of AI automation.*
