@@ -73,7 +73,7 @@ export const AnalyticsDashboard = ({ token, orgId }: AnalyticsDashboardProps) =>
             Observability & Analytics
           </h1>
           <p className="text-zinc-400 text-sm mt-1">
-            Monitor workflow execution costs, error rates, and usage metrics across your organization.
+            Monitor workflow execution costs, error rates, and usage metrics across your team.
           </p>
         </div>
 

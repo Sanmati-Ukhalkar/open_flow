@@ -67,7 +67,6 @@ app.post('/api/auth/register', (req, res) => {
       const orgId = `org-${Math.random().toString(36).substr(2, 9)}`;
       let orgName = 'Personal';
       if (accountType === 'team') orgName = 'My Team';
-      else if (accountType === 'organization') orgName = 'My Organization';
 
       db.run('INSERT INTO organizations (id, name) VALUES (?, ?)', [orgId, orgName], () => {
         db.run('INSERT INTO organization_members (org_id, user_id, role) VALUES (?, ?, ?)', [orgId, userId, 'owner'], () => {

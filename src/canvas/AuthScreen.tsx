@@ -9,7 +9,7 @@ export const AuthScreen = ({ onAuthSuccess }: AuthScreenProps) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [accountType, setAccountType] = useState<'individual' | 'team' | 'organization'>('individual');
+  const [accountType, setAccountType] = useState<'individual' | 'team'>('individual');
   const [teamMembers, setTeamMembers] = useState<string[]>(['']);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -118,7 +118,7 @@ export const AuthScreen = ({ onAuthSuccess }: AuthScreenProps) => {
           {!isLogin && (
             <div className="space-y-2 pt-2">
               <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">Account Type</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setAccountType('individual')}
@@ -137,20 +137,11 @@ export const AuthScreen = ({ onAuthSuccess }: AuthScreenProps) => {
                 >
                   Team
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setAccountType('organization')}
-                  className={`py-2 px-1 rounded-lg text-[10px] font-medium border transition-colors ${
-                    accountType === 'organization' ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-300' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
-                  }`}
-                >
-                  Organization
-                </button>
               </div>
             </div>
           )}
 
-          {!isLogin && (accountType === 'team' || accountType === 'organization') && (
+          {!isLogin && accountType === 'team' && (
             <div className="space-y-2 pt-2 border-t border-zinc-900">
               <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
                 <UserPlus className="w-3 h-3" />

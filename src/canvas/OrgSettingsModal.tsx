@@ -75,7 +75,7 @@ export default function OrgSettingsModal({ token, activeOrg, onClose }: OrgSetti
               <Users className="w-5 h-5 text-purple-400" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-zinc-100">Organization Settings</h2>
+              <h2 className="text-sm font-bold text-zinc-100">Team Settings</h2>
               <p className="text-[10px] text-zinc-500">{activeOrg.name} — Role: {activeOrg.role}</p>
             </div>
           </div>
