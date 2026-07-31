@@ -3,6 +3,7 @@ import { Waves, Folder, Plus, Trash2, Key, LogOut, Clock, Globe, Play, Package }
 import DeploymentDashboard from './DeploymentDashboard';
 import TriggerDashboard from './TriggerDashboard';
 import Marketplace from './Marketplace';
+import Templates from '../pages/Templates';
 
 interface DashboardProps {
   token: string;
@@ -24,7 +25,7 @@ export const Dashboard = ({
   const [workflows, setWorkflows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [activeTab, setActiveTab] = useState<'workflows' | 'deployments' | 'triggers' | 'marketplace'>('workflows');
+  const [activeTab, setActiveTab] = useState<'workflows' | 'templates' | 'deployments' | 'triggers' | 'marketplace'>('workflows');
 
   const fetchWorkflows = async () => {
     setLoading(true);
@@ -120,6 +121,17 @@ export const Dashboard = ({
             My Workflows
           </button>
           <button
+            onClick={() => setActiveTab('templates')}
+            className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all flex-shrink-0 ${
+              activeTab === 'templates'
+                ? 'text-purple-400 border-purple-500'
+                : 'text-zinc-505 border-transparent hover:text-zinc-300'
+            }`}
+          >
+            <Package className="w-3.5 h-3.5" />
+            Templates
+          </button>
+          <button
             onClick={() => setActiveTab('deployments')}
             className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all flex-shrink-0 ${
               activeTab === 'deployments'
@@ -160,6 +172,8 @@ export const Dashboard = ({
           <TriggerDashboard token={token} />
         ) : activeTab === 'marketplace' ? (
           <Marketplace />
+        ) : activeTab === 'templates' ? (
+          <Templates token={token} onSelectWorkflow={onSelectWorkflow} />
         ) : (
           <>
             {/* Directory & Create button */}
@@ -195,9 +209,15 @@ export const Dashboard = ({
                 <p className="text-xs mb-1">No workflows composed yet.</p>
                 <button
                   onClick={onCreateWorkflow}
-                  className="text-[10px] text-purple-400 hover:underline"
+                  className="text-[10px] text-purple-400 hover:underline mb-2"
                 >
                   Create your first workflow
+                </button>
+                <button
+                  onClick={() => setActiveTab('templates')}
+                  className="px-4 py-2 mt-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-bold text-zinc-300 hover:text-purple-400 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all"
+                >
+                  Explore Templates
                 </button>
               </div>
             ) : (

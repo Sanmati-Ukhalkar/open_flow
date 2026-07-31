@@ -15,6 +15,7 @@ import { run as runMCPTool } from '../nodes/mcp-tool/run';
 import { run as runHTTPWebhook } from '../nodes/http-webhook/run';
 import { run as runSQLiteStorage } from '../nodes/sqlite-storage/run';
 import { run as runTextTransform } from '../nodes/text-transform/run';
+import { seedTemplates } from './seed-templates';
 
 dotenv.config();
 
@@ -262,6 +263,56 @@ app.delete('/api/workflows/:id', authenticateToken, (req: AuthenticatedRequest, 
       return res.status(404).json({ success: false, error: { message: 'Workflow not found.' } });
     }
     return res.json({ success: true });
+  });
+});
+
+// -------------------------------------------------------------
+// TEMPLATES ROUTES (v0.10)
+// -------------------------------------------------------------
+
+app.get('/api/templates', authenticateToken, (_req: AuthenticatedRequest, res) => {
+  db.all(
+    'SELECT id, name, description, category, required_credentials, thumbnail_url, graph_json FROM workflows WHERE is_template = 1',
+    [],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ success: false, error: { message: err.message } });
+      }
+      return res.json({ success: true, templates: rows });
+    }
+  );
+});
+
+app.post('/api/templates/:id/clone', authenticateToken, (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+  const templateId = req.params.id;
+
+  db.get('SELECT * FROM workflows WHERE id = ? AND is_template = 1', [templateId], (err, template: any) => {
+    if (err) return res.status(500).json({ success: false, error: { message: err.message } });
+    if (!template) return res.status(404).json({ success: false, error: { message: 'Template not found' } });
+
+    const newWorkflowId = `wf-${Math.random().toString(36).substr(2, 9)}`;
+    const clonedName = `${template.name} (Clone)`;
+
+    db.run(
+      'INSERT INTO workflows (id, name, graph_json, owner_id, is_template) VALUES (?, ?, ?, ?, 0)',
+      [newWorkflowId, clonedName, template.graph_json, userId],
+      function (insertErr) {
+        if (insertErr) return res.status(500).json({ success: false, error: { message: insertErr.message } });
+        
+        // Save initial version
+        const versionId = `v-${Math.random().toString(36).substr(2, 9)}`;
+        db.run(
+          'INSERT INTO workflow_versions (id, workflow_id, graph_json) VALUES (?, ?, ?)',
+          [versionId, newWorkflowId, template.graph_json],
+          (versionErr) => {
+            if (versionErr) console.error('Failed to save initial template clone version:', versionErr);
+            
+            return res.json({ success: true, workflowId: newWorkflowId });
+          }
+        );
+      }
+    );
   });
 });
 
@@ -928,8 +979,16 @@ app.post('/api/run-node', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  // Wait a moment for db migrations in db.ts to finish (sqlite async startup)
+  setTimeout(async () => {
+    try {
+      await seedTemplates();
+    } catch (e) {
+      console.error('Template seeding error:', e);
+    }
+  }, 500);
 });
 
 // -------------------------------------------------------------

@@ -110,4 +110,33 @@ db.serialize(() => {
       UNIQUE(workflow_id, trigger_type)
     )
   `);
+
+  // v0.10 Template schema migration
+  const columnsToAdd = [
+    { name: 'is_template', definition: 'BOOLEAN DEFAULT FALSE' },
+    { name: 'description', definition: 'TEXT' },
+    { name: 'category', definition: 'TEXT' },
+    { name: 'required_credentials', definition: 'TEXT' },
+    { name: 'thumbnail_url', definition: 'TEXT' }
+  ];
+
+  db.all("PRAGMA table_info(workflows)", (err, rows: any[]) => {
+    if (err) {
+      console.error('Failed to check workflows schema:', err.message);
+      return;
+    }
+    const existingColumns = rows.map(r => r.name);
+    
+    columnsToAdd.forEach(col => {
+      if (!existingColumns.includes(col.name)) {
+        db.run(`ALTER TABLE workflows ADD COLUMN ${col.name} ${col.definition}`, (alterErr) => {
+          if (alterErr) {
+            console.error(`Failed to add column ${col.name}:`, alterErr.message);
+          } else {
+            console.log(`Added column ${col.name} to workflows table.`);
+          }
+        });
+      }
+    });
+  });
 });
