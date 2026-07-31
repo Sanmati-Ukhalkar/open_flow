@@ -154,6 +154,94 @@ const TEMPLATES = [
         { id: 'e2', source: 'llm-1', target: 'format-1' }
       ]
     })
+  },
+  {
+    id: 'tmpl-sentiment-analysis',
+    name: 'Customer Feedback Sentiment Analysis',
+    description: 'Listens for customer feedback via webhook, analyzes the sentiment (Positive/Neutral/Negative) using an LLM, and stores the structured result into a local database.',
+    category: 'AI/LLM',
+    required_credentials: JSON.stringify(['secrets:llm']),
+    is_template: true,
+    graph_json: JSON.stringify({
+      nodes: [
+        {
+          id: 'trigger-1',
+          type: 'webhook-trigger',
+          position: { x: 50, y: 150 },
+          data: { config: { webhookPath: '/feedback' } }
+        },
+        {
+          id: 'llm-1',
+          type: 'llm-prompt',
+          position: { x: 350, y: 150 },
+          data: {
+            config: {
+              promptText: 'Analyze the sentiment of this feedback. Reply with EXACTLY ONE WORD: "Positive", "Neutral", or "Negative".\n\nFeedback: {{trigger-1.body.text}}',
+              model: 'llama-3.1-8b-instant'
+            }
+          }
+        },
+        {
+          id: 'storage-1',
+          type: 'sqlite-storage',
+          position: { x: 700, y: 150 },
+          data: {
+            config: {
+              tableName: 'customer_sentiment',
+              columnName: 'sentiment_result'
+            }
+          }
+        }
+      ],
+      edges: [
+        { id: 'e1', source: 'trigger-1', target: 'llm-1' },
+        { id: 'e2', source: 'llm-1', target: 'storage-1' }
+      ]
+    })
+  },
+  {
+    id: 'tmpl-daily-quote',
+    name: 'Daily Inspirational Slack Quote',
+    description: 'A cron job that triggers an LLM every morning to generate an inspirational quote and posts it automatically to a Slack channel.',
+    category: 'Notifications',
+    required_credentials: JSON.stringify(['secrets:llm']),
+    is_template: true,
+    graph_json: JSON.stringify({
+      nodes: [
+        {
+          id: 'cron-1',
+          type: 'cron-trigger',
+          position: { x: 50, y: 200 },
+          data: { config: { cronExpression: '0 9 * * *' } }
+        },
+        {
+          id: 'llm-1',
+          type: 'llm-prompt',
+          position: { x: 350, y: 200 },
+          data: {
+            config: {
+              promptText: 'Generate a short, inspiring quote for the team to start their morning. Do not include quotes or surrounding text, just the quote and author.',
+              model: 'llama-3.1-8b-instant'
+            }
+          }
+        },
+        {
+          id: 'webhook-1',
+          type: 'http-webhook',
+          position: { x: 700, y: 200 },
+          data: {
+            config: {
+              url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL',
+              bodyTemplate: '{\n  "text": "🌅 *Good morning team!*\\n\\n_{{llm-1.text}}_"\n}'
+            }
+          }
+        }
+      ],
+      edges: [
+        { id: 'e1', source: 'cron-1', target: 'llm-1' },
+        { id: 'e2', source: 'llm-1', target: 'webhook-1' }
+      ]
+    })
   }
 ];
 

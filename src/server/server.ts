@@ -43,7 +43,7 @@ app.use('/api/analytics', authenticateToken, requireOrgAccess, analyticsRouter);
 // -------------------------------------------------------------
 
 app.post('/api/auth/register', (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, accountType } = req.body;
   if (!email || !password) {
     return res.status(400).json({ success: false, error: { message: 'Email and password are required.' } });
   }
@@ -63,8 +63,18 @@ app.post('/api/auth/register', (req, res) => {
       }
 
       const token = generateSessionToken(userId, email);
-      acceptInvites(email, userId);
-      return res.json({ success: true, token, user: { id: userId, email } });
+      
+      const orgId = `org-${Math.random().toString(36).substr(2, 9)}`;
+      let orgName = 'Personal';
+      if (accountType === 'team') orgName = 'My Team';
+      else if (accountType === 'organization') orgName = 'My Organization';
+
+      db.run('INSERT INTO organizations (id, name) VALUES (?, ?)', [orgId, orgName], () => {
+        db.run('INSERT INTO organization_members (org_id, user_id, role) VALUES (?, ?, ?)', [orgId, userId, 'owner'], () => {
+          acceptInvites(email, userId);
+          return res.json({ success: true, token, user: { id: userId, email } });
+        });
+      });
     }
   );
 });

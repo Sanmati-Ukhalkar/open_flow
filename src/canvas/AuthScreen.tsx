@@ -9,6 +9,7 @@ export const AuthScreen = ({ onAuthSuccess }: AuthScreenProps) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [accountType, setAccountType] = useState<'individual' | 'team' | 'organization'>('individual');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -27,7 +28,7 @@ export const AuthScreen = ({ onAuthSuccess }: AuthScreenProps) => {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, accountType }),
       });
       const result = await response.json();
 
@@ -103,6 +104,41 @@ export const AuthScreen = ({ onAuthSuccess }: AuthScreenProps) => {
               />
             </div>
           </div>
+
+          {!isLogin && (
+            <div className="space-y-2 pt-2">
+              <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">Account Type</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAccountType('individual')}
+                  className={`py-2 px-1 rounded-lg text-[10px] font-medium border transition-colors ${
+                    accountType === 'individual' ? 'bg-purple-600/20 border-purple-500/50 text-purple-300' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  Individual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAccountType('team')}
+                  className={`py-2 px-1 rounded-lg text-[10px] font-medium border transition-colors ${
+                    accountType === 'team' ? 'bg-blue-600/20 border-blue-500/50 text-blue-300' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  Team
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAccountType('organization')}
+                  className={`py-2 px-1 rounded-lg text-[10px] font-medium border transition-colors ${
+                    accountType === 'organization' ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-300' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  Organization
+                </button>
+              </div>
+            </div>
+          )}
 
           <button
             type="submit"
