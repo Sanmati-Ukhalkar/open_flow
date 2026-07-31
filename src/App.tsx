@@ -1,10 +1,9 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   useNodesState,
   useEdgesState,
   addEdge,
   Node,
-  Edge,
   Connection,
   ReactFlowProvider
 } from 'reactflow';
@@ -13,33 +12,65 @@ import Canvas from './canvas/Canvas';
 import ConfigPanel from './canvas/ConfigPanel';
 import OutputPanel from './canvas/OutputPanel';
 import RunLogPanel, { WorkflowRunLog } from './canvas/RunLogPanel';
+import AuthScreen from './canvas/AuthScreen';
+import Dashboard from './canvas/Dashboard';
+import CredentialsManager from './canvas/CredentialsManager';
 import { topoSort } from './engine/topoSort';
-import { Waves, Play, AlertTriangle } from 'lucide-react';
+import { Play, AlertTriangle, Save, FolderOpen, ShieldCheck } from 'lucide-react';
 
 function AppContent() {
+  // Session States
+  const [token, setToken] = useState<string>(localStorage.getItem('openflow_jwt') || '');
+  const [user, setUser] = useState<any>(JSON.parse(localStorage.getItem('openflow_user') || 'null'));
+  const [view, setView] = useState<'auth' | 'dashboard' | 'credentials' | 'canvas'>('auth');
+
+  // Active Workflow States
+  const [currentWorkflowId, setCurrentWorkflowId] = useState<string | null>(null);
+  const [workflowName, setWorkflowName] = useState('My Workspace Graph');
+
+  // React Flow canvas states
   const [nodes, setNodes, onNodesChange] = useNodesState<any>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+  // Execution States
   const [executionOutputs, setExecutionOutputs] = useState<Record<string, any>>({});
   const [executionErrors, setExecutionErrors] = useState<Record<string, any>>({});
   const [runLogs, setRunLogs] = useState<WorkflowRunLog[]>([]);
-  
-  // workflowStatus tracks the overall run rollup state
   const [workflowStatus, setWorkflowStatus] = useState<'idle' | 'running' | 'success' | 'partial' | 'failed'>('idle');
   const [isWorkflowRunning, setIsWorkflowRunning] = useState(false);
 
   const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
+  const pollingIntervalRef = useRef<any>(null);
 
-  // Ref to hold log events for sync access during execution steps
-  const logEventsRef = useRef<WorkflowRunLog[]>([]);
+  // Track node status changes locally to generate chronological timeline logs
+  const prevStatusesRef = useRef<Record<string, string>>({});
 
-  // Add event logger helper
-  const addLog = useCallback((nodeId: string, nodeType: string, event: 'start' | 'end', status?: WorkflowRunLog['status'], message?: string) => {
-    const timestamp = new Date().toLocaleTimeString();
-    const newLog: WorkflowRunLog = { timestamp, nodeId, nodeType, event, status, message };
-    logEventsRef.current = [...logEventsRef.current, newLog];
-    setRunLogs([...logEventsRef.current]);
-  }, []);
+  // Route to auth if token is invalid or missing
+  useEffect(() => {
+    if (!token) {
+      setView('auth');
+    } else {
+      setView('dashboard');
+    }
+  }, [token]);
+
+  // Auth Callbacks
+  const handleAuthSuccess = (newToken: string, authenticatedUser: { id: string; email: string }) => {
+    localStorage.setItem('openflow_jwt', newToken);
+    localStorage.setItem('openflow_user', JSON.stringify(authenticatedUser));
+    setToken(newToken);
+    setUser(authenticatedUser);
+    setView('dashboard');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('openflow_jwt');
+    localStorage.removeItem('openflow_user');
+    setToken('');
+    setUser(null);
+    setView('auth');
+  };
 
   // Connection Handler
   const onConnect = useCallback(
@@ -86,23 +117,6 @@ function AppContent() {
         return node;
       })
     );
-  };
-
-  // Helper to trace descendant nodes downstream in the DAG
-  const getDescendants = (nodeId: string, currentEdges: Edge[]): string[] => {
-    const visited = new Set<string>();
-    const queue = [nodeId];
-    while (queue.length > 0) {
-      const current = queue.shift()!;
-      const children = currentEdges.filter(e => e.source === current).map(e => e.target);
-      for (const child of children) {
-        if (!visited.has(child)) {
-          visited.add(child);
-          queue.push(child);
-        }
-      }
-    }
-    return Array.from(visited);
   };
 
   // Safe delete node and its connected edges
@@ -166,356 +180,370 @@ function AppContent() {
     setNodes(nds => nds.concat(newNode));
   };
 
-  // Asynchronous Event-Driven DAG Scheduler
-  const runScheduler = async (
-    initialOutputs: Record<string, any>,
-    initialErrors: Record<string, any>,
-    nodesToReset: string[] = []
-  ) => {
-    setIsWorkflowRunning(true);
-    setWorkflowStatus('running');
+  // Save workflow API call
+  const handleSaveWorkflow = async () => {
+    if (!token) return;
+    const payload = {
+      name: workflowName,
+      graph: { nodes, edges }
+    };
 
-    // Create a mutable copy of outputs and errors
-    const currentOutputs = { ...initialOutputs };
-    const currentErrors = { ...initialErrors };
-
-    // Create mapping of active status in memory to resolve concurrent dependencies safely
-    const nodeStatuses = new Map<string, 'idle' | 'running' | 'success' | 'success-with-warning' | 'error' | 'skipped'>();
-    
-    nodes.forEach(node => {
-      if (nodesToReset.includes(node.id)) {
-        nodeStatuses.set(node.id, 'idle');
-      } else {
-        nodeStatuses.set(node.id, node.data.status);
-      }
-    });
-
-    const triggerNextSchedulerStep = async () => {
-      // Find all idle nodes whose parents have all finished execution
-      const readyNodes = nodes.filter(node => {
-        if (nodeStatuses.get(node.id) !== 'idle') {
-          return false;
-        }
-
-        const incomingEdges = edges.filter(e => e.target === node.id);
-        const parents = incomingEdges.map(e => e.source);
-
-        // Check if all parent nodes have completed execution
-        const allParentsFinished = parents.every(pId => {
-          const pStatus = nodeStatuses.get(pId);
-          return (
-            pStatus === 'success' ||
-            pStatus === 'success-with-warning' ||
-            pStatus === 'error' ||
-            pStatus === 'skipped'
-          );
+    try {
+      let res;
+      if (currentWorkflowId) {
+        res = await fetch(`/api/workflows/${currentWorkflowId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
         });
-
-        return allParentsFinished;
-      });
-
-      // Done checking if no nodes are running or idle
-      if (readyNodes.length === 0) {
-        const statuses = Array.from(nodeStatuses.values());
-        const hasRunning = statuses.some(s => s === 'running');
-        
-        if (!hasRunning) {
-          // Rollup workflow status
-          const hasSuccess = statuses.some(s => s === 'success' || s === 'success-with-warning');
-          const hasFailure = statuses.some(s => s === 'error');
-          const hasSkipped = statuses.some(s => s === 'skipped');
-
-          if (hasFailure) {
-            if (hasSuccess) {
-              setWorkflowStatus('partial');
-            } else {
-              setWorkflowStatus('failed');
-            }
-          } else if (hasSkipped) {
-            if (hasSuccess) {
-              setWorkflowStatus('partial');
-            } else {
-              setWorkflowStatus('failed');
-            }
-          } else {
-            setWorkflowStatus('success');
-          }
-          setIsWorkflowRunning(false);
-        }
-        return;
+      } else {
+        res = await fetch('/api/workflows', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
       }
 
-      // Execute ready nodes concurrently
-      await Promise.all(
-        readyNodes.map(async node => {
-          const incomingEdges = edges.filter(e => e.target === node.id);
-          const parents = incomingEdges.map(e => e.source);
+      const result = await res.json();
+      if (res.ok && result.success) {
+        if (!currentWorkflowId) {
+          setCurrentWorkflowId(result.workflow.id);
+        }
+        alert('Workflow definition successfully saved to metadata database.');
+      } else {
+        alert(result.error?.message || 'Failed to save workflow.');
+      }
+    } catch {
+      alert('Error connecting to backend database.');
+    }
+  };
 
-          // Check if any upstream parent failed or was skipped
-          const parentFailedOrSkipped = parents.some(pId => {
-            const pStatus = nodeStatuses.get(pId);
-            return pStatus === 'error' || pStatus === 'skipped';
-          });
+  // Load selected workflow state
+  const handleSelectWorkflow = async (workflowId: string) => {
+    try {
+      const res = await fetch(`/api/workflows/${workflowId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
 
-          if (parentFailedOrSkipped) {
-            // Mark node as skipped (Skip propagation)
-            nodeStatuses.set(node.id, 'skipped');
-            setNodes(nds =>
-              nds.map(n => {
-                if (n.id === node.id) {
-                  return { ...n, data: { ...n.data, status: 'skipped' } };
-                }
-                return n;
-              })
-            );
-            setEdges(eds =>
-              eds.map(e => {
-                if (e.source === node.id) {
-                  return { ...e, style: { stroke: '#18181b', strokeWidth: 2 } };
-                }
-                return e;
-              })
-            );
-            addLog(node.id, node.type || 'unknown', 'end', 'skipped');
-            
-            // Recurse instantly to propagate cascade skips
-            await triggerNextSchedulerStep();
-            return;
-          }
+      if (res.ok && data.success) {
+        const wf = data.workflow;
+        setCurrentWorkflowId(wf.id);
+        setWorkflowName(wf.name);
+        setNodes(wf.graph.nodes || []);
+        setEdges(wf.graph.edges || []);
+        
+        // Reset execution states
+        setExecutionOutputs({});
+        setExecutionErrors({});
+        setRunLogs([]);
+        setWorkflowStatus('idle');
+        prevStatusesRef.current = {};
+        
+        setView('canvas');
+      } else {
+        alert('Failed to retrieve workflow definitions.');
+      }
+    } catch {
+      alert('Error fetching workflow from database.');
+    }
+  };
 
-          // Compile outputs from parents
-          let nodeInput: any = {};
-          if (parents.length === 1) {
-            nodeInput = currentOutputs[parents[0]] || {};
-          } else if (parents.length > 1) {
-            nodeInput = parents.reduce((acc, pId) => {
-              acc[pId] = currentOutputs[pId] || {};
-              return acc;
-            }, {} as Record<string, any>);
-          }
+  // Instantiates new empty canvas workflow
+  const handleCreateNewWorkflow = () => {
+    setCurrentWorkflowId(null);
+    setWorkflowName('Untitled Workflow');
+    setNodes([]);
+    setEdges([]);
+    setExecutionOutputs({});
+    setExecutionErrors({});
+    setRunLogs([]);
+    setWorkflowStatus('idle');
+    prevStatusesRef.current = {};
+    setView('canvas');
+  };
 
-          // Mark node as running
-          nodeStatuses.set(node.id, 'running');
+  // Poll database run status
+  const startStatusPolling = (runId: string) => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+
+    const localLogs: WorkflowRunLog[] = [];
+
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/runs/${runId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const result = await res.json();
+
+        if (res.ok && result.success) {
+          const run = result.run;
+          setWorkflowStatus(run.status);
+
+          const updatedOutputs: Record<string, any> = {};
+          const updatedErrors: Record<string, any> = {};
+
+          // Sync database statuses to React Flow canvas nodes
           setNodes(nds =>
-            nds.map(n => {
-              if (n.id === node.id) {
-                return { ...n, data: { ...n.data, status: 'running' } };
+            nds.map(node => {
+              const nodeRes = run.nodes[node.id];
+              if (!nodeRes) return node;
+
+              const prevStatus = prevStatusesRef.current[node.id] || 'idle';
+              const currentStatus = nodeRes.status;
+
+              // Generate real-time timeline logs from DB state comparisons
+              if (prevStatus !== currentStatus) {
+                const timestamp = new Date().toLocaleTimeString();
+                if (currentStatus === 'running') {
+                  localLogs.push({ timestamp, nodeId: node.id, nodeType: node.type || 'node', event: 'start' });
+                } else if (currentStatus === 'success') {
+                  localLogs.push({ timestamp, nodeId: node.id, nodeType: node.type || 'node', event: 'end', status: 'success' });
+                } else if (currentStatus === 'success-with-warning') {
+                  localLogs.push({ timestamp, nodeId: node.id, nodeType: node.type || 'node', event: 'end', status: 'success-with-warning', message: nodeRes.output?.warning });
+                } else if (currentStatus === 'error') {
+                  localLogs.push({ timestamp, nodeId: node.id, nodeType: node.type || 'node', event: 'end', status: 'error', message: nodeRes.error?.message });
+                } else if (currentStatus === 'skipped') {
+                  localLogs.push({ timestamp, nodeId: node.id, nodeType: node.type || 'node', event: 'end', status: 'skipped' });
+                }
+                prevStatusesRef.current[node.id] = currentStatus;
+                setRunLogs([...localLogs]);
               }
-              return n;
+
+              if (nodeRes.output) {
+                updatedOutputs[node.id] = nodeRes.output;
+              }
+              if (nodeRes.error) {
+                updatedErrors[node.id] = nodeRes.error;
+              }
+
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  status: currentStatus
+                }
+              };
             })
           );
+
+          // Update execution variables
+          setExecutionOutputs(updatedOutputs);
+          setExecutionErrors(updatedErrors);
+
+          // Style canvas edges based on polled results
           setEdges(eds =>
             eds.map(e => {
-              if (e.target === node.id) {
+              const targetRes = run.nodes[e.target];
+              if (!targetRes) return e;
+
+              if (targetRes.status === 'running') {
                 return { ...e, animated: true, style: { stroke: '#3b82f6', strokeWidth: 2 } };
+              }
+              if (targetRes.status === 'success') {
+                return { ...e, animated: false, style: { stroke: '#10b981', strokeWidth: 2 } };
+              }
+              if (targetRes.status === 'success-with-warning') {
+                return { ...e, animated: false, style: { stroke: '#f59e0b', strokeWidth: 2 } };
+              }
+              if (targetRes.status === 'error') {
+                return { ...e, animated: false, style: { stroke: '#f43f5e', strokeWidth: 2 } };
+              }
+              if (targetRes.status === 'skipped') {
+                return { ...e, animated: false, style: { stroke: '#18181b', strokeWidth: 2 } };
               }
               return e;
             })
           );
-          addLog(node.id, node.type || 'unknown', 'start');
 
-          // Artificial delay for sequential/concurrency visualizations
-          await new Promise(r => setTimeout(r, 750));
-
-          try {
-            const response = await fetch('/api/run-node', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                nodeType: node.type,
-                config: node.data.config,
-                input: nodeInput,
-              }),
-            });
-
-            if (!response.ok) {
-              const responseText = await response.text();
-              let errorMsg = responseText;
-              try {
-                const parsed = JSON.parse(responseText);
-                errorMsg = parsed.error?.message || parsed.message || responseText;
-              } catch {}
-              throw {
-                code: 'SERVER_ERROR',
-                message: errorMsg || `HTTP error ${response.status}`
-              };
-            }
-
-            const result = await response.json();
-
-            if (result.success) {
-              currentOutputs[node.id] = result.output;
-              setExecutionOutputs({ ...currentOutputs });
-
-              if (result.warning) {
-                // Warning status matching Output Schema mismatches
-                nodeStatuses.set(node.id, 'success-with-warning');
-                setNodes(nds =>
-                  nds.map(n => {
-                    if (n.id === node.id) {
-                      return { ...n, data: { ...n.data, status: 'success-with-warning' } };
-                    }
-                    return n;
-                  })
-                );
-                setEdges(eds =>
-                  eds.map(e => {
-                    if (e.target === node.id) {
-                      return { ...e, animated: false, style: { stroke: '#f59e0b', strokeWidth: 2 } }; // Amber warning edge
-                    }
-                    return e;
-                  })
-                );
-                addLog(node.id, node.type || 'unknown', 'end', 'success-with-warning', result.warning);
-              } else {
-                // Success status
-                nodeStatuses.set(node.id, 'success');
-                setNodes(nds =>
-                  nds.map(n => {
-                    if (n.id === node.id) {
-                      return { ...n, data: { ...n.data, status: 'success' } };
-                    }
-                    return n;
-                  })
-                );
-                setEdges(eds =>
-                  eds.map(e => {
-                    if (e.target === node.id) {
-                      return { ...e, animated: false, style: { stroke: '#10b981', strokeWidth: 2 } }; // Green success edge
-                    }
-                    return e;
-                  })
-                );
-                addLog(node.id, node.type || 'unknown', 'end', 'success');
-              }
-            } else {
-              throw result.error || {
-                code: 'SERVER_ERROR',
-                message: 'An error occurred during node execution.',
-              };
-            }
-          } catch (err: any) {
-            const errorPayload = {
-              code: err.code || 'CONNECTION_ERROR',
-              message: err.message || 'Failed to connect to execution server.',
-            };
-            currentErrors[node.id] = errorPayload;
-            setExecutionErrors({ ...currentErrors });
-
-            nodeStatuses.set(node.id, 'error');
-            setNodes(nds =>
-              nds.map(n => {
-                if (n.id === node.id) {
-                  return { ...n, data: { ...n.data, status: 'error' } };
-                }
-                return n;
-              })
-            );
-            setEdges(eds =>
-              eds.map(e => {
-                if (e.target === node.id) {
-                  return { ...e, animated: false, style: { stroke: '#f43f5e', strokeWidth: 2 } }; // Red failed edge
-                }
-                return e;
-              })
-            );
-            addLog(node.id, node.type || 'unknown', 'end', 'error', errorPayload.message);
+          // Stop polling on terminal states
+          if (run.status === 'success' || run.status === 'partial' || run.status === 'failed') {
+            clearInterval(pollingIntervalRef.current);
+            setIsWorkflowRunning(false);
           }
-
-          // Recurse to check for ready descendants
-          await triggerNextSchedulerStep();
-        })
-      );
-    };
-
-    await triggerNextSchedulerStep();
+        } else {
+          clearInterval(pollingIntervalRef.current);
+          setIsWorkflowRunning(false);
+        }
+      } catch {
+        clearInterval(pollingIntervalRef.current);
+        setIsWorkflowRunning(false);
+      }
+    }, 300);
   };
 
-  // Run Workflow entry point
+  // Launch execution run server-side
   const handleRunWorkflow = async () => {
-    if (isWorkflowRunning || nodes.length === 0) return;
+    if (isWorkflowRunning || nodes.length === 0 || !currentWorkflowId) {
+      if (!currentWorkflowId) {
+        alert('Please Save your workflow first before starting execution.');
+      }
+      return;
+    }
 
     try {
-      // Topologically sort to ensure there are no cycles
       topoSort(nodes, edges);
     } catch (err: any) {
       alert(err.message);
       return;
     }
 
-    logEventsRef.current = [];
+    setIsWorkflowRunning(true);
+    setWorkflowStatus('running');
     setRunLogs([]);
     setExecutionOutputs({});
     setExecutionErrors({});
+    prevStatusesRef.current = {};
 
-    // Reset nodes to idle
+    // Visual reset to idle
     setNodes(nds => nds.map(n => ({ ...n, data: { ...n.data, status: 'idle' } })));
     setEdges(eds => eds.map(e => ({ ...e, animated: false, style: { stroke: '#27272a', strokeWidth: 2 } })));
 
-    // Reset reset Node ID lists
-    const allNodeIds = nodes.map(n => n.id);
-    await runScheduler({}, {}, allNodeIds);
+    try {
+      const res = await fetch(`/api/workflows/${currentWorkflowId}/run`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const result = await res.json();
+
+      if (res.ok && result.success) {
+        startStatusPolling(result.runId);
+      } else {
+        alert(result.error?.message || 'Failed to initialize execution run.');
+        setIsWorkflowRunning(false);
+      }
+    } catch {
+      alert('Error triggering execution on backend.');
+      setIsWorkflowRunning(false);
+    }
   };
 
-  // Retry Node implementation
+  // Retry failed node execution server-side
   const handleRetryNode = async (nodeId: string) => {
-    if (isWorkflowRunning) return;
+    if (isWorkflowRunning || !currentWorkflowId) return;
 
-    // Find all descendants of the retried node to clear stale values
-    const descendants = getDescendants(nodeId, edges);
-    const resetNodeIds = [nodeId, ...descendants];
+    // Find active run ID from logs if any, or retrieve last running run ID.
+    // In our polling structure, we poll for the last run. We can trigger retry API directly:
+    // Let's retrieve all runs to get the last run ID
+    try {
+      const runsRes = await fetch(`/api/workflows/${currentWorkflowId}/runs`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const runsData = await runsRes.json();
+      if (!runsRes.ok || !runsData.success || runsData.runs.length === 0) {
+        alert('No previous runs found to retry.');
+        return;
+      }
 
-    // Mark retried node and descendants as idle
-    setNodes(nds =>
-      nds.map(n => {
-        if (resetNodeIds.includes(n.id)) {
-          return { ...n, data: { ...n.data, status: 'idle' } };
-        }
-        return n;
-      })
-    );
+      const lastRunId = runsData.runs[0].id;
+      setIsWorkflowRunning(true);
+      setWorkflowStatus('running');
 
-    // Filter outputs and errors to preserve parent cache
-    const newOutputs = { ...executionOutputs };
-    const newErrors = { ...executionErrors };
-    resetNodeIds.forEach(id => {
-      delete newOutputs[id];
-      delete newErrors[id];
-    });
-    setExecutionOutputs(newOutputs);
-    setExecutionErrors(newErrors);
+      const res = await fetch(`/api/runs/${lastRunId}/retry`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ nodeId })
+      });
+      const result = await res.json();
 
-    // Reset edges styles
-    setEdges(eds =>
-      eds.map(e => {
-        if (resetNodeIds.includes(e.source) || resetNodeIds.includes(e.target)) {
-          return { ...e, animated: false, style: { stroke: '#27272a', strokeWidth: 2 } };
-        }
-        return e;
-      })
-    );
-
-    // Run scheduler using cached variables
-    await runScheduler(newOutputs, newErrors, resetNodeIds);
+      if (res.ok && result.success) {
+        startStatusPolling(lastRunId);
+      } else {
+        alert(result.error?.message || 'Failed to retry execution.');
+        setIsWorkflowRunning(false);
+      }
+    } catch {
+      alert('Error sending retry request to backend.');
+      setIsWorkflowRunning(false);
+    }
   };
+
+  // Clear polling interval on component unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // ROUTER RENDERING
+  if (view === 'auth') {
+    return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+  }
+
+  if (view === 'dashboard') {
+    return (
+      <Dashboard
+        token={token}
+        user={user}
+        onSelectWorkflow={handleSelectWorkflow}
+        onCreateWorkflow={handleCreateNewWorkflow}
+        onOpenCredentials={() => setView('credentials')}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  if (view === 'credentials') {
+    return (
+      <CredentialsManager
+        token={token}
+        onBack={() => setView('dashboard')}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-[#09090b]">
       {/* Top Header */}
       <header className="h-12 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md px-6 flex items-center justify-between z-10 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <Waves className="w-4 h-4 text-purple-400 animate-pulse" />
-          <span className="font-bold text-xs tracking-wider text-zinc-100 uppercase font-sans">Open Flow</span>
-          <span className="text-[9px] font-semibold text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20 font-mono">v0.4</span>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setView('dashboard')}
+            className="flex items-center gap-2 text-zinc-500 hover:text-zinc-300 transition-all text-xs font-semibold"
+          >
+            <FolderOpen className="w-4 h-4" />
+            Dashboard
+          </button>
+
+          <span className="text-zinc-800">/</span>
+
+          {/* Workflow Name Input */}
+          <input
+            type="text"
+            value={workflowName}
+            onChange={(e) => setWorkflowName(e.target.value)}
+            placeholder="Workflow Name"
+            className="bg-transparent border-0 border-b border-transparent hover:border-zinc-800 focus:border-purple-500 focus:ring-0 text-zinc-100 font-bold text-xs px-1.5 py-0.5 max-w-[200px]"
+          />
         </div>
 
-        {/* Global Rollup Status indicator */}
-        <div className="flex items-center gap-4">
+        {/* Global Action Bar */}
+        <div className="flex items-center gap-3">
+          {/* Save Button */}
+          <button
+            onClick={handleSaveWorkflow}
+            className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg border border-zinc-850 bg-zinc-900/40 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 transition-all text-[11px]"
+          >
+            <Save className="w-3.5 h-3.5 text-zinc-400" />
+            Save Definition
+          </button>
+
           {workflowStatus !== 'idle' && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-[9px] text-zinc-550 uppercase tracking-widest font-bold">Run Status:</span>
+            <div className="flex items-center gap-1.5 border-l border-zinc-850 pl-3">
+              <span className="text-[9px] text-zinc-550 uppercase tracking-widest font-bold">Run rollup:</span>
               {workflowStatus === 'running' && (
                 <span className="text-[9px] font-semibold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20 animate-pulse uppercase tracking-wider">
                   Running
@@ -550,22 +578,14 @@ function AppContent() {
                 : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/15 hover:scale-[1.02] active:scale-[0.98]'
             }`}
           >
-            {isWorkflowRunning ? (
-              <>
-                <div className="w-3.5 h-3.5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                Running Workflow...
-              </>
-            ) : (
-              <>
-                <Play className="w-3.5 h-3.5" />
-                Run Workflow
-              </>
-            )}
+            <Play className="w-3.5 h-3.5" />
+            Run Workflow
           </button>
         </div>
 
-        <div className="text-[9px] text-zinc-500 font-mono uppercase tracking-wider">
-          Concurrency Engine: Active
+        <div className="text-[9px] text-zinc-550 font-mono uppercase tracking-wider flex items-center gap-1">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+          Server-Side Runs: Active
         </div>
       </header>
 

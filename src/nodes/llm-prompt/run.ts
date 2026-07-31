@@ -31,23 +31,23 @@ export async function run(
   let baseURL: string | undefined;
 
   if (isGroqModel) {
-    apiKey = process.env.GROQ_API_KEY;
+    apiKey = (config as any).apiKey || process.env.GROQ_API_KEY;
     baseURL = 'https://api.groq.com/openai/v1';
 
     if (!apiKey || apiKey === 'your_groq_api_key_here') {
       throw new NodeExecutionError(
         'MISSING_GROQ_API_KEY',
-        'Groq API Key is missing or not configured. Please set GROQ_API_KEY in your .env file.'
+        'Groq API Key is missing or not configured. Please set GROQ_API_KEY in your .env file or Credentials panel.'
       );
     }
   } else {
-    apiKey = process.env.OPENAI_API_KEY;
+    apiKey = (config as any).apiKey || process.env.OPENAI_API_KEY;
     baseURL = undefined; // Use default OpenAI base URL
 
     if (!apiKey || apiKey === 'your_openai_api_key_here') {
       throw new NodeExecutionError(
         'MISSING_OPENAI_API_KEY',
-        'OpenAI API Key is missing or not configured. Please set OPENAI_API_KEY in your .env file.'
+        'OpenAI API Key is missing or not configured. Please set OPENAI_API_KEY in your .env file or Credentials panel.'
       );
     }
   }
