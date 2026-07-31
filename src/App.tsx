@@ -28,7 +28,7 @@ const originalFetch = window.fetch;
 window.fetch = async (input, init) => {
   if (typeof input === 'string' && input.startsWith('/api/')) {
     const token = localStorage.getItem('openflow_jwt');
-    const orgId = localStorage.getItem('openflow_org_id');
+    const orgId = localStorage.getItem('openflow_active_org_id');
     const newInit = { ...init };
     newInit.headers = { ...newInit.headers };
     if (token && !(newInit.headers as any)['Authorization']) {
