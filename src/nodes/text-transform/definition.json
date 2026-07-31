@@ -1,0 +1,31 @@
+{
+  "id": "text-transform",
+  "displayName": "Text Transform",
+  "icon": "Combine",
+  "category": "Storage",
+  "inputSchema": {
+    "type": "object",
+    "properties": {}
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string" }
+        }
+      }
+    }
+  },
+  "configFields": [
+    {
+      "name": "template",
+      "label": "Text Template",
+      "type": "textarea",
+      "required": true,
+      "defaultValue": "Template with placeholders: {{llm-node-1}}",
+      "placeholder": "Combined output: {{llm-node-1}} and {{mcp-node-1}}"
+    }
+  ]
+}

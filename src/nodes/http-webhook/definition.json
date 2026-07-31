@@ -1,0 +1,35 @@
+{
+  "id": "http-webhook",
+  "displayName": "HTTP Webhook",
+  "icon": "Globe",
+  "category": "Output",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "text": { "type": "string" }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "data": { "type": "object" }
+    }
+  },
+  "configFields": [
+    {
+      "name": "url",
+      "label": "Webhook URL",
+      "type": "text",
+      "required": true,
+      "placeholder": "https://hooks.slack.com/services/..."
+    },
+    {
+      "name": "bodyTemplate",
+      "label": "JSON Body Template",
+      "type": "textarea",
+      "required": true,
+      "defaultValue": "{\n  \"text\": \"{{input}}\"\n}",
+      "placeholder": "{\n  \"text\": \"{{input}}\"\n}"
+    }
+  ]
+}

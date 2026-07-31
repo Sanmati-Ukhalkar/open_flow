@@ -1,0 +1,42 @@
+{
+  "id": "sqlite-storage",
+  "displayName": "SQLite Storage",
+  "icon": "Database",
+  "category": "Storage",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "payload": { "type": "object" }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "rowId": { "type": "number" }
+        }
+      }
+    }
+  },
+  "configFields": [
+    {
+      "name": "tableName",
+      "label": "Table Name",
+      "type": "text",
+      "required": true,
+      "defaultValue": "workflow_data",
+      "placeholder": "workflow_data"
+    },
+    {
+      "name": "columnName",
+      "label": "Data Column Name",
+      "type": "text",
+      "required": true,
+      "defaultValue": "payload",
+      "placeholder": "payload"
+    }
+  ]
+}

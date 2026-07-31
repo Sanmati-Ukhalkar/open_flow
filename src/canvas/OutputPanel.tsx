@@ -60,7 +60,14 @@ export const OutputPanel = ({ nodes, outputs, errors, selectedNodeId }: OutputPa
                     : tabStatusColors[nodeStatus as keyof typeof tabStatusColors] || tabStatusColors.idle
                 }`}
               >
-                <span>{node.type === 'llm-prompt' ? 'LLM' : 'MCP'}:{node.id}</span>
+                <span>
+                  {node.type === 'llm-prompt' ? 'LLM' :
+                   node.type === 'mcp-tool' ? 'MCP' :
+                   node.type === 'http-webhook' ? 'HTTP' :
+                   node.type === 'sqlite-storage' ? 'SQL' :
+                   node.type === 'text-transform' ? 'TXT' : 'NODE'}
+                  :{node.id}
+                </span>
                 <span className={`w-1 h-1 rounded-full ${
                   nodeStatus === 'running' ? 'bg-blue-400 animate-pulse' :
                   nodeStatus === 'success' ? 'bg-emerald-400' :

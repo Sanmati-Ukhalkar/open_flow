@@ -6,6 +6,9 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { run as runLLMPrompt } from '../nodes/llm-prompt/run';
 import { run as runMCPTool } from '../nodes/mcp-tool/run';
+import { run as runHTTPWebhook } from '../nodes/http-webhook/run';
+import { run as runSQLiteStorage } from '../nodes/sqlite-storage/run';
+import { run as runTextTransform } from '../nodes/text-transform/run';
 
 dotenv.config();
 
@@ -55,6 +58,15 @@ app.post('/api/run-node', async (req, res) => {
       return res.json({ success: true, output });
     } else if (nodeType === 'mcp-tool') {
       const output = await runMCPTool(input || {}, config || {});
+      return res.json({ success: true, output });
+    } else if (nodeType === 'http-webhook') {
+      const output = await runHTTPWebhook(input || {}, config || {});
+      return res.json({ success: true, output });
+    } else if (nodeType === 'sqlite-storage') {
+      const output = await runSQLiteStorage(input || {}, config || {});
+      return res.json({ success: true, output });
+    } else if (nodeType === 'text-transform') {
+      const output = await runTextTransform(input || {}, config || {});
       return res.json({ success: true, output });
     } else {
       return res.status(400).json({

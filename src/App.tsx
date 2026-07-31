@@ -4,55 +4,19 @@ import {
   useEdgesState,
   addEdge,
   Node,
-  Edge,
-  Connection
+  Connection,
+  ReactFlowProvider
 } from 'reactflow';
+import Sidebar from './canvas/Sidebar';
 import Canvas from './canvas/Canvas';
 import ConfigPanel from './canvas/ConfigPanel';
 import OutputPanel from './canvas/OutputPanel';
 import { topoSort } from './engine/topoSort';
 import { Waves, Play } from 'lucide-react';
 
-const initialNodes: Node<any>[] = [
-  {
-    id: 'llm-node-1',
-    type: 'llm-prompt',
-    position: { x: 80, y: 150 },
-    data: {
-      status: 'idle',
-      config: {
-        promptText: 'Write a catchy tagline for Open Flow, an open-source visual workflow composer for AI and MCP.',
-        model: 'llama-3.1-8b-instant',
-      },
-    },
-  },
-  {
-    id: 'mcp-node-1',
-    type: 'mcp-tool',
-    position: { x: 420, y: 150 },
-    data: {
-      status: 'idle',
-      config: {
-        toolName: 'text_analyzer',
-        inputParamName: 'text',
-      },
-    },
-  },
-];
-
-const initialEdges: Edge[] = [
-  {
-    id: 'edge-1',
-    source: 'llm-node-1',
-    target: 'mcp-node-1',
-    animated: false,
-    style: { stroke: '#27272a', strokeWidth: 2 },
-  },
-];
-
-function App() {
-  const [nodes, setNodes, onNodesChange] = useNodesState<any>(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+function AppContent() {
+  const [nodes, setNodes, onNodesChange] = useNodesState<any>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [executionOutputs, setExecutionOutputs] = useState<Record<string, any>>({});
   const [executionErrors, setExecutionErrors] = useState<Record<string, any>>({});
@@ -97,9 +61,70 @@ function App() {
     );
   };
 
+  // Safe delete node and its connected edges
+  const handleDeleteNode = (nodeId: string) => {
+    setNodes(nds => nds.filter(n => n.id !== nodeId));
+    setEdges(eds => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
+    if (selectedNodeId === nodeId) {
+      setSelectedNodeId(null);
+    }
+  };
+
+  // Drop Node handler
+  const handleDropNode = (type: string, position: { x: number; y: number }) => {
+    const id = `${type.replace('-node', '')}-${Math.random().toString(36).substr(2, 4)}`;
+    
+    let defaultConfig: any = {};
+    switch (type) {
+      case 'llm-prompt':
+        defaultConfig = {
+          promptText: 'Write a catchy tagline for Open Flow, an open-source visual workflow composer.',
+          model: 'llama-3.1-8b-instant',
+        };
+        break;
+      case 'mcp-tool':
+        defaultConfig = {
+          toolName: 'text_analyzer',
+          inputParamName: 'text',
+        };
+        break;
+      case 'http-webhook':
+        defaultConfig = {
+          url: '',
+          bodyTemplate: '{\n  "text": "{{input}}"\n}',
+        };
+        break;
+      case 'sqlite-storage':
+        defaultConfig = {
+          tableName: 'workflow_data',
+          columnName: 'payload',
+        };
+        break;
+      case 'text-transform':
+        defaultConfig = {
+          template: 'Combined output template.',
+        };
+        break;
+      default:
+        break;
+    }
+
+    const newNode: Node = {
+      id,
+      type,
+      position,
+      data: {
+        status: 'idle',
+        config: defaultConfig,
+      },
+    };
+
+    setNodes(nds => nds.concat(newNode));
+  };
+
   // Run topological graph workflow execution
   const handleRunWorkflow = async () => {
-    if (isWorkflowRunning) return;
+    if (isWorkflowRunning || nodes.length === 0) return;
 
     setIsWorkflowRunning(true);
     setExecutionOutputs({});
@@ -141,7 +166,7 @@ function App() {
             return n;
           })
         );
-        // Style outgoing edge to inactive state
+        // Style outgoing edges to inactive state
         setEdges(eds =>
           eds.map(e => {
             if (e.source === node.id) {
@@ -156,9 +181,15 @@ function App() {
 
       // Resolve node inputs
       let nodeInput: any = {};
-      if (parents.length > 0) {
-        const parentId = parents[0];
-        nodeInput = currentOutputs[parentId] || {};
+      if (parents.length === 1) {
+        // Single parent input
+        nodeInput = currentOutputs[parents[0]] || {};
+      } else if (parents.length > 1) {
+        // Multi-parent inputs: compile a dictionary keyed by parent node ID
+        nodeInput = parents.reduce((acc, pId) => {
+          acc[pId] = currentOutputs[pId] || {};
+          return acc;
+        }, {} as Record<string, any>);
       }
 
       // Mark active node as running
@@ -171,7 +202,7 @@ function App() {
         })
       );
 
-      // Animate incoming edge to show active data flow
+      // Animate incoming edges to show active data flow
       setEdges(eds =>
         eds.map(e => {
           if (e.target === node.id) {
@@ -213,7 +244,7 @@ function App() {
             })
           );
 
-          // Change incoming edge to green done state
+          // Change incoming edges to green done state
           setEdges(eds =>
             eds.map(e => {
               if (e.target === node.id) {
@@ -245,7 +276,7 @@ function App() {
           })
         );
 
-        // Change incoming edge to red failed state
+        // Change incoming edges to red failed state
         setEdges(eds =>
           eds.map(e => {
             if (e.target === node.id) {
@@ -269,16 +300,16 @@ function App() {
         <div className="flex items-center gap-2">
           <Waves className="w-4 h-4 text-purple-400 animate-pulse" />
           <span className="font-bold text-xs tracking-wider text-zinc-100 uppercase font-sans">Open Flow</span>
-          <span className="text-[9px] font-semibold text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20 font-mono">v0.2</span>
+          <span className="text-[9px] font-semibold text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20 font-mono">v0.3</span>
         </div>
 
         {/* Global Run Workflow Button */}
         <button
           onClick={handleRunWorkflow}
-          disabled={isWorkflowRunning}
+          disabled={isWorkflowRunning || nodes.length === 0}
           className={`flex items-center gap-2 py-1.5 px-4 rounded-lg font-semibold text-xs transition-all duration-200 ${
-            isWorkflowRunning
-              ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20 cursor-not-allowed'
+            isWorkflowRunning || nodes.length === 0
+              ? 'bg-zinc-900 text-zinc-500 border border-zinc-850 cursor-not-allowed'
               : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/15 hover:scale-[1.02] active:scale-[0.98]'
           }`}
         >
@@ -302,7 +333,10 @@ function App() {
 
       {/* Main Workspace */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Side Canvas and Output */}
+        {/* Left-hand Node Library Sidebar */}
+        <Sidebar />
+
+        {/* Center Canvas and Output */}
         <div className="flex-1 flex flex-col h-full overflow-hidden">
           {/* Canvas Wrapper */}
           <div className="flex-1 relative overflow-hidden">
@@ -313,6 +347,7 @@ function App() {
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               onSelectNode={handleSelectNode}
+              onDropNode={handleDropNode}
             />
           </div>
 
@@ -330,9 +365,18 @@ function App() {
           selectedNode={selectedNode}
           onChangeConfig={handleChangeConfig}
           onRunNode={handleRunWorkflow}
+          onDeleteNode={handleDeleteNode}
         />
       </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <ReactFlowProvider>
+      <AppContent />
+    </ReactFlowProvider>
   );
 }
 
