@@ -222,7 +222,7 @@ export const Dashboard = ({
         ) : activeTab === 'marketplace' ? (
           <Marketplace />
         ) : activeTab === 'templates' ? (
-          <Templates token={token} onSelectWorkflow={onSelectWorkflow} />
+          <Templates token={token} activeOrg={activeOrg} onSelectWorkflow={onSelectWorkflow} />
         ) : activeTab === 'analytics' ? (
           <AnalyticsDashboard token={token} orgId={activeOrg?.id} />
         ) : (

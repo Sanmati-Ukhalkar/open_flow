@@ -4,10 +4,11 @@ import TemplateCloneModal from '../components/TemplateCloneModal';
 
 interface TemplatesProps {
   token: string;
+  activeOrg: any;
   onSelectWorkflow: (workflowId: string) => void;
 }
 
-export const Templates = ({ token, onSelectWorkflow }: TemplatesProps) => {
+export const Templates = ({ token, activeOrg, onSelectWorkflow }: TemplatesProps) => {
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
@@ -44,7 +45,10 @@ export const Templates = ({ token, onSelectWorkflow }: TemplatesProps) => {
     try {
       const res = await fetch(`/api/templates/${templateId}/clone`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'x-org-id': activeOrg?.id
+        }
       });
       const data = await res.json();
       if (res.ok && data.success) {
