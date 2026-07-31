@@ -1,0 +1,7 @@
+{
+  "name": "Math Helper",
+  "id": "math-helper",
+  "version": "1.0.0",
+  "author": "FlowCommunity",
+  "description": "Performs basic mathematical operations like add, subtract, multiply, and divide."
+}

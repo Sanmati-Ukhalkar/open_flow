@@ -6,6 +6,8 @@ import { run as runMCPTool } from '../nodes/mcp-tool/run';
 import { run as runHTTPWebhook } from '../nodes/http-webhook/run';
 import { run as runSQLiteStorage } from '../nodes/sqlite-storage/run';
 import { run as runTextTransform } from '../nodes/text-transform/run';
+import { run as runCronTrigger } from '../nodes/cron-trigger/run';
+import { run as runWebhookTrigger } from '../nodes/webhook-trigger/run';
 import path from 'path';
 import fs from 'fs';
 
@@ -40,7 +42,10 @@ const dbGet = (sql: string, params: any[] = []): Promise<any> => {
 // Helper to validate output schema against definition
 function checkOutputSchema(nodeType: string, output: any): { isValid: boolean; warning?: string } {
   try {
-    const definitionPath = path.resolve(process.cwd(), `src/nodes/${nodeType}/definition.json`);
+    let definitionPath = path.resolve(process.cwd(), `src/nodes/${nodeType}/definition.json`);
+    if (!fs.existsSync(definitionPath)) {
+      definitionPath = path.resolve(process.cwd(), `src/nodes/community/${nodeType}/definition.json`);
+    }
     if (!fs.existsSync(definitionPath)) {
       return { isValid: true };
     }
@@ -306,8 +311,20 @@ export async function executeRunBackend(
               output = await runSQLiteStorage(nodeInput, node.data.config);
             } else if (node.type === 'text-transform') {
               output = await runTextTransform(nodeInput, node.data.config);
+            } else if (node.type === 'cron-trigger') {
+              output = await runCronTrigger(nodeInput, node.data.config);
+            } else if (node.type === 'webhook-trigger') {
+              output = await runWebhookTrigger(nodeInput, node.data.config);
             } else {
-              throw new Error(`Unsupported node type: ${node.type}`);
+              // Community node dynamic imports load
+              const runPath = path.resolve(process.cwd(), 'src/nodes/community', node.type, 'run.ts');
+              if (fs.existsSync(runPath)) {
+                // Dynamically import community node executor
+                const module = await import(runPath);
+                output = await module.run(nodeInput, node.data.config);
+              } else {
+                throw new Error(`Unsupported node type: ${node.type}`);
+              }
             }
 
             // Output Validation

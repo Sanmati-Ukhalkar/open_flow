@@ -1,0 +1,7 @@
+{
+  "name": "Cron Trigger",
+  "id": "cron-trigger",
+  "version": "1.0.0",
+  "author": "OpenFlow Core",
+  "description": "Trigger workflows automatically on a cron schedule."
+}

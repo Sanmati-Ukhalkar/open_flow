@@ -1,0 +1,18 @@
+[
+  {
+    "id": "math-helper",
+    "name": "Math Helper",
+    "version": "1.0.0",
+    "author": "FlowCommunity",
+    "description": "Performs basic mathematical operations like add, subtract, multiply, and divide.",
+    "repo": "https://github.com/FlowCommunity/math-helper"
+  },
+  {
+    "id": "json-parser",
+    "name": "JSON Schema Validator",
+    "version": "1.1.2",
+    "author": "FlowCommunity",
+    "description": "Validates a JSON object output against a JSON Schema template definition.",
+    "repo": "https://github.com/FlowCommunity/json-parser"
+  }
+]

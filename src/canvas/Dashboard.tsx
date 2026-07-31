@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Waves, Folder, Plus, Trash2, Key, LogOut, Clock, Globe } from 'lucide-react';
+import { Waves, Folder, Plus, Trash2, Key, LogOut, Clock, Globe, Play, Package } from 'lucide-react';
 import DeploymentDashboard from './DeploymentDashboard';
+import TriggerDashboard from './TriggerDashboard';
+import Marketplace from './Marketplace';
 
 interface DashboardProps {
   token: string;
@@ -22,7 +24,7 @@ export const Dashboard = ({
   const [workflows, setWorkflows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [activeTab, setActiveTab] = useState<'workflows' | 'deployments'>('workflows');
+  const [activeTab, setActiveTab] = useState<'workflows' | 'deployments' | 'triggers' | 'marketplace'>('workflows');
 
   const fetchWorkflows = async () => {
     setLoading(true);
@@ -105,13 +107,13 @@ export const Dashboard = ({
         )}
 
         {/* Tab Selection Navigation */}
-        <div className="flex gap-4 border-b border-zinc-850 pb-2">
+        <div className="flex gap-4 border-b border-zinc-850 pb-2 overflow-x-auto select-none no-scrollbar">
           <button
             onClick={() => setActiveTab('workflows')}
-            className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all ${
+            className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all flex-shrink-0 ${
               activeTab === 'workflows'
                 ? 'text-purple-400 border-purple-500'
-                : 'text-zinc-500 border-transparent hover:text-zinc-305'
+                : 'text-zinc-505 border-transparent hover:text-zinc-300'
             }`}
           >
             <Folder className="w-3.5 h-3.5" />
@@ -119,19 +121,45 @@ export const Dashboard = ({
           </button>
           <button
             onClick={() => setActiveTab('deployments')}
-            className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all ${
+            className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all flex-shrink-0 ${
               activeTab === 'deployments'
                 ? 'text-purple-400 border-purple-500'
-                : 'text-zinc-500 border-transparent hover:text-zinc-305'
+                : 'text-zinc-505 border-transparent hover:text-zinc-300'
             }`}
           >
             <Globe className="w-3.5 h-3.5" />
             API Deployments
           </button>
+          <button
+            onClick={() => setActiveTab('triggers')}
+            className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all flex-shrink-0 ${
+              activeTab === 'triggers'
+                ? 'text-purple-400 border-purple-500'
+                : 'text-zinc-505 border-transparent hover:text-zinc-300'
+            }`}
+          >
+            <Play className="w-3.5 h-3.5" />
+            Automated Triggers
+          </button>
+          <button
+            onClick={() => setActiveTab('marketplace')}
+            className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all flex-shrink-0 ${
+              activeTab === 'marketplace'
+                ? 'text-purple-400 border-purple-500'
+                : 'text-zinc-505 border-transparent hover:text-zinc-300'
+            }`}
+          >
+            <Package className="w-3.5 h-3.5" />
+            Node Marketplace
+          </button>
         </div>
 
         {activeTab === 'deployments' ? (
           <DeploymentDashboard token={token} />
+        ) : activeTab === 'triggers' ? (
+          <TriggerDashboard token={token} />
+        ) : activeTab === 'marketplace' ? (
+          <Marketplace />
         ) : (
           <>
             {/* Directory & Create button */}

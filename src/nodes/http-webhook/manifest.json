@@ -1,0 +1,7 @@
+{
+  "name": "HTTP Webhook",
+  "id": "http-webhook",
+  "version": "1.0.0",
+  "author": "OpenFlow Core",
+  "description": "Fire a POST webhook query."
+}

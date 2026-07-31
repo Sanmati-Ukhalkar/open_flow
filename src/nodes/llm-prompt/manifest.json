@@ -1,0 +1,7 @@
+{
+  "name": "LLM Prompt",
+  "id": "llm-prompt",
+  "version": "1.0.0",
+  "author": "OpenFlow Core",
+  "description": "Call OpenAI or Groq LLM model."
+}

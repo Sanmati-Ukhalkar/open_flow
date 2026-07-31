@@ -96,4 +96,18 @@ db.serialize(() => {
       UNIQUE(workflow_id)
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS triggers (
+      id TEXT PRIMARY KEY,
+      workflow_id TEXT NOT NULL,
+      trigger_type TEXT NOT NULL,
+      status TEXT NOT NULL,
+      config_json TEXT NOT NULL,
+      last_triggered_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE,
+      UNIQUE(workflow_id, trigger_type)
+    )
+  `);
 });

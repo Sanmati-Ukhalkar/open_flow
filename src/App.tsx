@@ -688,6 +688,7 @@ function AppContent() {
           onChangeConfig={handleChangeConfig}
           onRunNode={handleRunWorkflow}
           onDeleteNode={handleDeleteNode}
+          workflowId={currentWorkflowId}
         />
       </div>
 

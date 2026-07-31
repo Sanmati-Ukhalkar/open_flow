@@ -1,0 +1,7 @@
+{
+  "name": "Text Transform",
+  "id": "text-transform",
+  "version": "1.0.0",
+  "author": "OpenFlow Core",
+  "description": "Combine and format parent inputs."
+}

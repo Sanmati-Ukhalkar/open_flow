@@ -1,0 +1,7 @@
+{
+  "name": "SQLite Storage",
+  "id": "sqlite-storage",
+  "version": "1.0.0",
+  "author": "OpenFlow Core",
+  "description": "Append row to local SQLite DB."
+}

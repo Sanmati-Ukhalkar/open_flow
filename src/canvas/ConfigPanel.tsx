@@ -1,22 +1,36 @@
 import { useState, useEffect } from 'react';
 import { Node } from 'reactflow';
-import { Play, Settings, Wrench, Globe, Database, Combine, Trash2, Bot } from 'lucide-react';
+import { Play, Settings, Wrench, Globe, Database, Combine, Trash2, Bot, Calendar, Package, ShieldAlert } from 'lucide-react';
 
 interface ConfigPanelProps {
   selectedNode: Node<any> | null;
   onChangeConfig: (nodeId: string, updatedConfig: any) => void;
   onRunNode: (nodeId: string) => void;
   onDeleteNode: (nodeId: string) => void;
+  workflowId?: string | null;
 }
 
 export const ConfigPanel = ({
   selectedNode,
   onChangeConfig,
   onRunNode,
-  onDeleteNode
+  onDeleteNode,
+  workflowId
 }: ConfigPanelProps) => {
   const [availableTools, setAvailableTools] = useState<{ name: string; description: string }[]>([]);
   const [loadingTools, setLoadingTools] = useState(false);
+  const [definitions, setDefinitions] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('/api/node-definitions')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.nodes) {
+          setDefinitions(data.nodes);
+        }
+      })
+      .catch(err => console.error("Failed to load definitions", err));
+  }, []);
 
   useEffect(() => {
     if (selectedNode && selectedNode.type === 'mcp-tool') {
@@ -230,8 +244,79 @@ export const ConfigPanel = ({
         );
       }
 
-      default:
-        return null;
+      case 'cron-trigger': {
+        const config = data.config || { cronExpression: '*/5 * * * *' };
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">Cron Expression</label>
+              <input
+                type="text"
+                value={config.cronExpression}
+                onChange={(e) => onChangeConfig(id, { ...config, cronExpression: e.target.value })}
+                placeholder="*/5 * * * *"
+                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono"
+              />
+              <p className="text-[9px] text-zinc-550 leading-relaxed">
+                Cron pattern format: <code>minute hour day-of-month month day-of-week</code> (e.g. <code>0 9 * * *</code> for daily at 9:00 AM).
+              </p>
+            </div>
+          </div>
+        );
+      }
+
+      case 'webhook-trigger': {
+        const webhookUrl = `${window.location.protocol}//${window.location.host}/api/webhooks/${workflowId || 'workflow_id'}`;
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">Webhook URL</label>
+              <input
+                type="text"
+                readOnly
+                value={webhookUrl}
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 focus:outline-none font-mono"
+              />
+              <p className="text-[9px] text-zinc-550 leading-relaxed">
+                External systems should send HTTP POST requests with a JSON body to this URL to trigger execution. Webhooks verify the token set in your active deployment.
+              </p>
+            </div>
+          </div>
+        );
+      }
+
+      default: {
+        // Fallback dynamically rendering community node configuration fields
+        const isCommunity = type && !['llm-prompt', 'mcp-tool', 'http-webhook', 'sqlite-storage', 'text-transform', 'cron-trigger', 'webhook-trigger'].includes(type);
+        if (!isCommunity) return null;
+
+        const definition = type ? definitions.find(d => d.id === type) : undefined;
+        const fields = definition?.configFields || [];
+
+        return (
+          <div className="space-y-4">
+            <div className="flex items-start gap-2 bg-orange-950/20 border border-orange-900/30 p-3 rounded-lg text-[10px] text-orange-300 leading-normal">
+              <ShieldAlert className="w-4 h-4 text-orange-400 flex-shrink-0 mt-0.5" />
+              <p>
+                <b>Third-Party Node Warning:</b> This node executes code directly on your host machine. Make sure you trust this code before running.
+              </p>
+            </div>
+            
+            {fields.map((f: any) => (
+              <div key={f.name} className="space-y-1">
+                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">{f.displayName}</label>
+                <input
+                  type="text"
+                  value={data.config?.[f.name] ?? f.defaultValue ?? ''}
+                  onChange={(e) => onChangeConfig(id, { ...(data.config || {}), [f.name]: e.target.value })}
+                  disabled={isRunning}
+                  className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+                />
+              </div>
+            ))}
+          </div>
+        );
+      }
     }
   };
 
@@ -247,8 +332,12 @@ export const ConfigPanel = ({
         return { label: 'SQLite Storage', icon: Database, color: 'text-emerald-400' };
       case 'text-transform':
         return { label: 'Text Transform', icon: Combine, color: 'text-yellow-400' };
+      case 'cron-trigger':
+        return { label: 'Cron Trigger', icon: Calendar, color: 'text-purple-300' };
+      case 'webhook-trigger':
+        return { label: 'Webhook Trigger', icon: Globe, color: 'text-blue-300' };
       default:
-        return { label: 'Configure Node', icon: Settings, color: 'text-purple-400' };
+        return { label: 'Community Node', icon: Package, color: 'text-orange-400' };
     }
   };
 

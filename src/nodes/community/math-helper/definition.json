@@ -1,0 +1,29 @@
+{
+  "id": "math-helper",
+  "displayName": "Math Helper",
+  "category": "Math",
+  "icon": "Combine",
+  "configFields": [
+    {
+      "name": "operation",
+      "type": "string",
+      "displayName": "Operation (add/sub/mul/div)",
+      "required": true,
+      "defaultValue": "add"
+    },
+    {
+      "name": "value",
+      "type": "string",
+      "displayName": "Value to apply",
+      "required": true,
+      "defaultValue": "1"
+    }
+  ],
+  "inputSchema": {},
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "result": { "type": "number" }
+    }
+  }
+}

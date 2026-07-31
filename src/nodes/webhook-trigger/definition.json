@@ -1,0 +1,23 @@
+{
+  "id": "webhook-trigger",
+  "displayName": "Webhook Trigger",
+  "category": "Trigger",
+  "icon": "Globe",
+  "configFields": [
+    {
+      "name": "webhookPath",
+      "type": "string",
+      "displayName": "Webhook URL Path",
+      "required": false,
+      "defaultValue": ""
+    }
+  ],
+  "inputSchema": {},
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "body": { "type": "object" },
+      "headers": { "type": "object" }
+    }
+  }
+}

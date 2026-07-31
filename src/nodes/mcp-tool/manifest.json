@@ -1,0 +1,7 @@
+{
+  "name": "MCP Tool",
+  "id": "mcp-tool",
+  "version": "1.0.0",
+  "author": "OpenFlow Core",
+  "description": "Execute a tool on an MCP server."
+}

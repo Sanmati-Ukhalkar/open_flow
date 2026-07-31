@@ -1,0 +1,23 @@
+{
+  "id": "cron-trigger",
+  "displayName": "Cron Trigger",
+  "category": "Trigger",
+  "icon": "Clock",
+  "configFields": [
+    {
+      "name": "cronExpression",
+      "type": "string",
+      "displayName": "Cron Expression",
+      "required": true,
+      "defaultValue": "*/5 * * * *"
+    }
+  ],
+  "inputSchema": {},
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "triggeredAt": { "type": "string" },
+      "cronPattern": { "type": "string" }
+    }
+  }
+}
