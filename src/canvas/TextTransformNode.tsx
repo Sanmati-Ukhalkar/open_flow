@@ -1,9 +1,9 @@
 import { Handle, Position } from 'reactflow';
-import { Combine, Loader2, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import { Combine, Loader2, CheckCircle2, AlertCircle, XCircle, AlertTriangle } from 'lucide-react';
 
 export interface TextTransformNodeData {
   label?: string;
-  status: 'idle' | 'running' | 'success' | 'error' | 'skipped';
+  status: 'idle' | 'running' | 'success' | 'success-with-warning' | 'error' | 'skipped';
   config: {
     template: string;
   };
@@ -15,8 +15,9 @@ export const TextTransformNode = ({ data, selected }: { data: TextTransformNodeD
     idle: 'border-zinc-800 bg-zinc-950/90 text-zinc-400 shadow-md',
     running: 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.25)] bg-zinc-950/90 text-blue-400',
     success: 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.25)] bg-zinc-950/90 text-emerald-400',
+    'success-with-warning': 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.25)] bg-zinc-950/90 text-amber-400',
     error: 'border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.25)] bg-zinc-950/90 text-rose-400',
-    skipped: 'border-zinc-900 bg-zinc-950/45 text-zinc-600 opacity-50',
+    skipped: 'border-zinc-900 bg-zinc-950/45 text-zinc-650 opacity-50',
   };
 
   return (
@@ -45,6 +46,9 @@ export const TextTransformNode = ({ data, selected }: { data: TextTransformNodeD
           )}
           {data.status === 'success' && (
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          )}
+          {data.status === 'success-with-warning' && (
+            <AlertTriangle className="w-4 h-4 text-amber-400" />
           )}
           {data.status === 'error' && (
             <AlertCircle className="w-4 h-4 text-rose-400" />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Terminal, AlertCircle, ChevronDown, ChevronUp, XCircle } from 'lucide-react';
+import { Terminal, AlertCircle, ChevronDown, ChevronUp, XCircle, AlertTriangle } from 'lucide-react';
 import { Node } from 'reactflow';
 
 interface OutputPanelProps {
@@ -7,9 +7,16 @@ interface OutputPanelProps {
   outputs: Record<string, any>;
   errors: Record<string, any>;
   selectedNodeId: string | null;
+  onRetryNode?: (nodeId: string) => void;
 }
 
-export const OutputPanel = ({ nodes, outputs, errors, selectedNodeId }: OutputPanelProps) => {
+export const OutputPanel = ({
+  nodes,
+  outputs,
+  errors,
+  selectedNodeId,
+  onRetryNode
+}: OutputPanelProps) => {
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
 
@@ -46,6 +53,7 @@ export const OutputPanel = ({ nodes, outputs, errors, selectedNodeId }: OutputPa
               idle: 'border-zinc-850 text-zinc-500 hover:text-zinc-300',
               running: 'border-blue-500/30 text-blue-400 bg-blue-500/5',
               success: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5',
+              'success-with-warning': 'border-amber-500/30 text-amber-400 bg-amber-500/5',
               error: 'border-rose-500/30 text-rose-400 bg-rose-500/5',
               skipped: 'border-zinc-900 text-zinc-600 bg-zinc-950/10',
             };
@@ -71,6 +79,7 @@ export const OutputPanel = ({ nodes, outputs, errors, selectedNodeId }: OutputPa
                 <span className={`w-1 h-1 rounded-full ${
                   nodeStatus === 'running' ? 'bg-blue-400 animate-pulse' :
                   nodeStatus === 'success' ? 'bg-emerald-400' :
+                  nodeStatus === 'success-with-warning' ? 'bg-amber-400' :
                   nodeStatus === 'error' ? 'bg-rose-400' :
                   nodeStatus === 'skipped' ? 'bg-zinc-650' : 'bg-zinc-550'
                 }`} />
@@ -91,6 +100,11 @@ export const OutputPanel = ({ nodes, outputs, errors, selectedNodeId }: OutputPa
             {activeStatus === 'success' && (
               <span className="text-[9px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                 Success
+              </span>
+            )}
+            {activeStatus === 'success-with-warning' && (
+              <span className="text-[9px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                Warning
               </span>
             )}
             {activeStatus === 'error' && (
@@ -151,17 +165,47 @@ export const OutputPanel = ({ nodes, outputs, errors, selectedNodeId }: OutputPa
               </div>
             )}
 
+            {activeStatus === 'success-with-warning' && activeOutput && (
+              <div className="space-y-4">
+                {/* Warning message */}
+                <div className="flex items-start gap-3 bg-amber-955/20 border border-amber-900/30 p-4 rounded-lg">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-semibold text-amber-200">Execution Warning</h4>
+                    <p className="text-[11px] text-amber-300 leading-relaxed">
+                      {activeOutput.warning || 'Output completed successfully but did not conform to the expected schema.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider block">Result Payload</span>
+                  <div className="text-xs text-zinc-300 whitespace-pre-wrap font-mono leading-relaxed bg-zinc-900/30 border border-zinc-900 p-4 rounded-lg overflow-x-auto max-w-full">
+                    {typeof activeOutput.data === 'string' ? activeOutput.data : JSON.stringify(activeOutput.data, null, 2)}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeStatus === 'error' && activeError && (
               <div className="space-y-4">
                 {/* Inline error description */}
                 <div className="flex items-start gap-3 bg-rose-950/20 border border-rose-900/30 p-4 rounded-lg">
                   <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
-                  <div className="space-y-1">
+                  <div className="space-y-1 flex-grow">
                     <h4 className="text-xs font-semibold text-rose-200">Execution Failed</h4>
                     <p className="text-[11px] text-rose-300 leading-relaxed">
                       {activeError.message || 'An unexpected error occurred during execution.'}
                     </p>
                   </div>
+                  {onRetryNode && (
+                    <button
+                      onClick={() => onRetryNode(activeTabId!)}
+                      className="ml-auto bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg shadow transition-colors duration-150 flex items-center gap-1 flex-shrink-0"
+                    >
+                      Retry Node
+                    </button>
+                  )}
                 </div>
 
                 {/* Click-to-expand error log */}

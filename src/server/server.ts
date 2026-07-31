@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { run as runLLMPrompt } from '../nodes/llm-prompt/run';
@@ -17,6 +18,61 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
+
+// Helper to validate node outputs against definition schemas
+function validateOutputSchema(nodeType: string, output: any): { isValid: boolean; warning?: string } {
+  try {
+    const definitionPath = path.resolve(process.cwd(), `src/nodes/${nodeType}/definition.json`);
+    if (!fs.existsSync(definitionPath)) {
+      return { isValid: true };
+    }
+    
+    const definition = JSON.parse(fs.readFileSync(definitionPath, 'utf8'));
+    const schema = definition.outputSchema;
+    if (!schema) {
+      return { isValid: true };
+    }
+
+    if (schema.type === 'object') {
+      const dataToValidate = output.data !== undefined ? output.data : output;
+      if (typeof dataToValidate !== 'object' || dataToValidate === null) {
+        return { 
+          isValid: false, 
+          warning: `Output payload type is not an object. Expected: ${schema.type}.` 
+        };
+      }
+
+      if (schema.properties) {
+        for (const key of Object.keys(schema.properties)) {
+          const propSchema = schema.properties[key];
+          const val = dataToValidate[key];
+          
+          if (val === undefined) {
+            continue; 
+          }
+
+          const valType = typeof val;
+          if (propSchema.type === 'string' && valType !== 'string') {
+            return { isValid: false, warning: `Property '${key}' type is '${valType}'. Expected: 'string'.` };
+          }
+          if (propSchema.type === 'number' && valType !== 'number') {
+            return { isValid: false, warning: `Property '${key}' type is '${valType}'. Expected: 'number'.` };
+          }
+          if (propSchema.type === 'boolean' && valType !== 'boolean') {
+            return { isValid: false, warning: `Property '${key}' type is '${valType}'. Expected: 'boolean'.` };
+          }
+          if (propSchema.type === 'object' && valType !== 'object') {
+            return { isValid: false, warning: `Property '${key}' type is '${valType}'. Expected: 'object'.` };
+          }
+        }
+      }
+    }
+    return { isValid: true };
+  } catch (error: any) {
+    console.error("Schema validation skipped due to internal error:", error);
+    return { isValid: true }; 
+  }
+}
 
 // GET API to retrieve tools from the local stdio MCP server
 app.get('/api/mcp/tools', async (_req, res) => {
@@ -53,21 +109,17 @@ app.post('/api/run-node', async (req, res) => {
   const { nodeType, config, input } = req.body;
 
   try {
+    let output: any;
     if (nodeType === 'llm-prompt') {
-      const output = await runLLMPrompt(input || {}, config || {});
-      return res.json({ success: true, output });
+      output = await runLLMPrompt(input || {}, config || {});
     } else if (nodeType === 'mcp-tool') {
-      const output = await runMCPTool(input || {}, config || {});
-      return res.json({ success: true, output });
+      output = await runMCPTool(input || {}, config || {});
     } else if (nodeType === 'http-webhook') {
-      const output = await runHTTPWebhook(input || {}, config || {});
-      return res.json({ success: true, output });
+      output = await runHTTPWebhook(input || {}, config || {});
     } else if (nodeType === 'sqlite-storage') {
-      const output = await runSQLiteStorage(input || {}, config || {});
-      return res.json({ success: true, output });
+      output = await runSQLiteStorage(input || {}, config || {});
     } else if (nodeType === 'text-transform') {
-      const output = await runTextTransform(input || {}, config || {});
-      return res.json({ success: true, output });
+      output = await runTextTransform(input || {}, config || {});
     } else {
       return res.status(400).json({
         success: false,
@@ -77,6 +129,14 @@ app.post('/api/run-node', async (req, res) => {
         }
       });
     }
+
+    // Run output schema validation checks
+    const validation = validateOutputSchema(nodeType, output);
+    if (!validation.isValid) {
+      return res.json({ success: true, output, warning: validation.warning });
+    }
+
+    return res.json({ success: true, output });
   } catch (error: any) {
     console.error(`Error executing node type ${nodeType}:`, error);
     return res.status(500).json({
