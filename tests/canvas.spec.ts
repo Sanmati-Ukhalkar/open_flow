@@ -15,15 +15,28 @@ test.describe('OpenFlow Visual Canvas E2E Tests', () => {
       await page.fill('input[type="email"]', randomEmail);
       await page.fill('input[type="password"]', 'password123');
       await page.click('button[type="submit"]');
-      
-      // Wait for navigation/redirection to complete
-      await page.waitForSelector('.react-flow', { timeout: 15000 });
     }
+
+    const runWorkflowButton = page.locator('#run-workflow-btn');
+    await page.waitForSelector('#run-workflow-btn, button:has-text("Create Workflow"), button:has-text("Create your first workflow")', { timeout: 15000 });
+
+    // Enter canvas view from dashboard when needed
+    if (!(await runWorkflowButton.isVisible())) {
+      const createWorkflowButton = page.getByRole('button', { name: 'Create Workflow' });
+      if (await createWorkflowButton.isVisible()) {
+        await createWorkflowButton.click();
+      } else {
+        await page.getByRole('button', { name: 'Create your first workflow' }).click();
+      }
+    }
+
+    // Wait for canvas workspace to render
+    await expect(runWorkflowButton).toBeVisible({ timeout: 15000 });
   });
 
   test('should render canvas and show sidebar node library', async ({ page }) => {
     // Assert canvas is loaded
-    await expect(page.locator('.react-flow')).toBeVisible();
+    await expect(page.locator('.react-flow__pane')).toBeVisible();
 
     // Assert Sidebar with node types is visible
     await expect(page.locator('#node-library-sidebar')).toBeVisible();
@@ -51,14 +64,15 @@ test.describe('OpenFlow Visual Canvas E2E Tests', () => {
   });
 
   test('should trigger run execution and verify output', async ({ page }) => {
+    // Add a node so run action is enabled
+    await page.locator('#node-library-sidebar').getByText('LLM Prompt').first().dragTo(page.locator('.react-flow__pane'));
+
     // Find Run button and execute
     const runButton = page.locator('button:has-text("Run Workflow")');
-    if (await runButton.isVisible()) {
-      await runButton.click();
-      
-      // Wait for output panel to show results
-      const outputPanel = page.locator('text=Output');
-      await expect(outputPanel).toBeVisible();
-    }
+    await expect(runButton).toBeEnabled();
+    await runButton.click();
+    
+    // Wait for output panel to show results
+    await expect(page.getByText('Execution Output')).toBeVisible();
   });
 });
