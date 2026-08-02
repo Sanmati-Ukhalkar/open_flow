@@ -6,6 +6,17 @@ Welcome! We appreciate your interest in contributing to OpenFlow.
 
 See `src/nodes/community/README.md` for details on how to build and submit a community node.
 
+## Testing Requirements
+
+Every Pull Request introducing a new node or updating execution logic must include corresponding tests:
+- **New Nodes**: Must include a `run.test.ts` file alongside `run.ts` containing unit tests covering normal and error execution paths. All external network requests (OpenAI API, MCP servers, HTTP requests) must be mocked.
+- **Engine Logic**: Updates to topological sorting, branch execution, loop subgraphs, or general workflow scheduling must include tests in `src/server/__tests__/engine.test.ts` or `src/engine/topoSort.test.ts`.
+
+Run the unit test suite locally to verify everything passes before submitting:
+```bash
+npm run test:unit
+```
+
 ## Submitting a Workflow Template
 
 Starting with v0.10, OpenFlow features a Template Gallery to help new users get started. If you've built a useful workflow, you can submit it to be included as a starter template!
