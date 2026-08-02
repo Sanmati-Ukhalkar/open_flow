@@ -35,7 +35,10 @@ export const OutputPanel = ({
   const activeStatus = activeNode ? activeNode.data.status : 'idle';
 
   return (
-    <div className="h-60 border-t border-zinc-800 bg-zinc-950/70 backdrop-blur-md flex flex-col flex-shrink-0">
+    <div 
+      id="execution-output-panel"
+      className="h-48 md:h-60 border-t border-zinc-800 bg-zinc-950/70 backdrop-blur-md flex flex-col flex-shrink-0 z-10"
+    >
       {/* Panel Header */}
       <div className="flex items-center gap-4 border-b border-zinc-850 px-6 py-2 flex-shrink-0">
         <div className="flex items-center gap-2">
@@ -68,13 +71,14 @@ export const OutputPanel = ({
                     : tabStatusColors[nodeStatus as keyof typeof tabStatusColors] || tabStatusColors.idle
                 }`}
               >
-                <span>
-                  {node.type === 'llm-prompt' ? 'LLM' :
-                   node.type === 'mcp-tool' ? 'MCP' :
-                   node.type === 'http-webhook' ? 'HTTP' :
-                   node.type === 'sqlite-storage' ? 'SQL' :
-                   node.type === 'text-transform' ? 'TXT' : 'NODE'}
-                  :{node.id}
+                <span className="truncate max-w-[120px]" title={node.data?.label || `${node.type}:${node.id}`}>
+                  {node.data?.label || `${
+                    node.type === 'llm-prompt' ? 'LLM' :
+                    node.type === 'mcp-tool' ? 'MCP' :
+                    node.type === 'http-webhook' ? 'HTTP' :
+                    node.type === 'sqlite-storage' ? 'SQL' :
+                    node.type === 'text-transform' ? 'TXT' : 'NODE'
+                  }:${node.id}`}
                 </span>
                 <span className={`w-1 h-1 rounded-full ${
                   nodeStatus === 'running' ? 'bg-blue-400 animate-pulse' :

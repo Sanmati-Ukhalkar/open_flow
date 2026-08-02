@@ -1,0 +1,42 @@
+{
+  "id": "loop",
+  "displayName": "Loop / Iterator",
+  "icon": "RefreshCcw",
+  "category": "Flow Control",
+  "description": "Execute a subgraph of nodes multiple times, once for each item in a list.",
+  "inputSchema": {
+    "type": "object",
+    "description": "Any input data containing an array to iterate over."
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "results": {
+        "type": "array"
+      }
+    }
+  },
+  "configFields": [
+    {
+      "name": "listPath",
+      "label": "Array Path to Iterate",
+      "type": "string",
+      "placeholder": "input.items",
+      "description": "Path to the array in the upstream input (e.g. input.pdfFiles)."
+    },
+    {
+      "name": "nodesInLoop",
+      "label": "Nodes to Include (Comma-separated IDs)",
+      "type": "string",
+      "placeholder": "node-1, node-2",
+      "description": "The nodes that should run for each item. Must form a valid subgraph."
+    },
+    {
+      "name": "resultNode",
+      "label": "Result Node ID",
+      "type": "string",
+      "placeholder": "node-2",
+      "description": "The node whose output will be collected into the final results array."
+    }
+  ]
+}

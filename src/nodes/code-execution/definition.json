@@ -1,0 +1,29 @@
+{
+  "id": "code-execution",
+  "displayName": "Code Execution",
+  "icon": "Code",
+  "category": "Data Processing",
+  "description": "Execute arbitrary JavaScript code in a secure sandbox.",
+  "inputSchema": {
+    "type": "object",
+    "description": "Any input data to be accessed via the `input` variable."
+  },
+  "outputSchema": {
+    "type": "object",
+    "description": "The value returned by the code snippet."
+  },
+  "configFields": [
+    {
+      "name": "code",
+      "label": "JavaScript Code",
+      "type": "string",
+      "multiline": true,
+      "placeholder": "return { message: 'Hello ' + input.name };",
+      "description": "Write JS code. The `input` variable contains upstream data. You must `return` a value."
+    }
+  ],
+  "capabilities": {
+    "network": false,
+    "filesystem": false
+  }
+}

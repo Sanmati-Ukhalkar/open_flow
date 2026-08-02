@@ -1,7 +1,8 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState } from 'react';
 import ReactFlow, {
   Background,
   Controls,
+  MiniMap,
   Node,
   Edge,
   OnNodesChange,
@@ -12,6 +13,7 @@ import ReactFlow, {
   useReactFlow,
   useViewport
 } from 'reactflow';
+import { Map } from 'lucide-react';
 import LLMPromptNode from './LLMPromptNode';
 import MCPToolNode from './MCPToolNode';
 import HTTPWebhookNode from './HTTPWebhookNode';
@@ -39,6 +41,8 @@ interface CanvasProps {
   awarenessUsers?: Map<number, any>;
   clientId?: number;
   setCursor?: (cursor: { x: number, y: number } | null) => void;
+  isMobile?: boolean;
+  theme?: 'light' | 'dark';
 }
 
 export const Canvas = ({
@@ -52,11 +56,14 @@ export const Canvas = ({
   onSelectionChange,
   awarenessUsers,
   clientId,
-  setCursor
+  setCursor,
+  isMobile = false,
+  theme = 'dark'
 }: CanvasProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const reactFlowInstance = useReactFlow();
   const { x, y, zoom } = useViewport();
+  const [showMiniMap, setShowMiniMap] = useState(true);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!setCursor || !reactFlowWrapper.current || !reactFlowInstance) return;
@@ -83,6 +90,7 @@ export const Canvas = ({
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
+      if (isMobile) return; // Prevent drag drops on mobile
 
       const type = event.dataTransfer.getData('application/reactflow');
 
@@ -101,8 +109,44 @@ export const Canvas = ({
         onDropNode(type, position);
       }
     },
-    [reactFlowInstance, onDropNode]
+    [reactFlowInstance, onDropNode, isMobile]
   );
+
+  const getNodeColor = useCallback((node: Node) => {
+    const status = node.data?.status;
+    switch (status) {
+      case 'running': return '#3b82f6';
+      case 'success': return '#10b981';
+      case 'success-with-warning': return '#f59e0b';
+      case 'error': return '#f43f5e';
+      case 'skipped': return '#6b7280';
+      default: return theme === 'dark' ? '#18181b' : '#d4d4d8';
+    }
+  }, [theme]);
+
+  // Custom MiniMap Node for hover Tooltips using standard SVG <title> elements
+  const MiniMapNode = useCallback((props: any) => {
+    const node = nodes.find(n => n.id === props.id);
+    const label = node?.data?.label || node?.type || 'Node';
+    const fill = getNodeColor(node as Node);
+    
+    return (
+      <rect
+        x={props.x}
+        y={props.y}
+        width={props.width}
+        height={props.height}
+        rx={props.borderRadius || 4}
+        ry={props.borderRadius || 4}
+        className={props.className}
+        fill={fill}
+        stroke={props.strokeColor || (theme === 'dark' ? '#27272a' : '#e4e4e7')}
+        strokeWidth={props.strokeWidth || 1.5}
+      >
+        <title>{label}</title>
+      </rect>
+    );
+  }, [nodes, theme, getNodeColor]);
 
   return (
     <div
@@ -132,6 +176,7 @@ export const Canvas = ({
           </div>
         );
       })}
+      
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -148,16 +193,43 @@ export const Canvas = ({
         // We handle Delete ourselves to guard against firing inside text inputs
         deleteKeyCode={null}
         fitView
+        nodesDraggable={!isMobile}
+        nodesConnectable={!isMobile}
+        elementsSelectable={true}
         className="w-full h-full"
       >
         <Background
           variant={BackgroundVariant.Dots}
           gap={16}
           size={1}
-          color="#27272a"
+          color={theme === 'dark' ? "#27272a" : "#d4d4d8"}
         />
         <Controls showInteractive={false} className="bg-zinc-950 border border-zinc-800 text-zinc-400" />
+        
+        {showMiniMap && (
+          <MiniMap
+            nodeComponent={MiniMapNode}
+            nodeStrokeWidth={2}
+            maskColor={theme === 'dark' ? "rgba(0, 0, 0, 0.4)" : "rgba(255, 255, 255, 0.4)"}
+            className="!bg-zinc-950/80 !border-zinc-800 !rounded-xl !shadow-2xl backdrop-blur-md transition-all duration-300"
+            style={{
+              width: 150,
+              height: 100,
+            }}
+          />
+        )}
       </ReactFlow>
+
+      {/* MiniMap Toggle Button */}
+      <button
+        onClick={() => setShowMiniMap(prev => !prev)}
+        className={`absolute z-20 p-2 rounded-lg bg-zinc-950/80 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 transition-all shadow-md backdrop-blur-md ${
+          showMiniMap ? 'bottom-[120px]' : 'bottom-4'
+        } right-4`}
+        title={showMiniMap ? "Hide Minimap" : "Show Minimap"}
+      >
+        <Map className="w-4 h-4" />
+      </button>
     </div>
   );
 };

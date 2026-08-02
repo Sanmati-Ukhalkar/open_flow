@@ -1,5 +1,6 @@
 import { Handle, Position } from 'reactflow';
-import { Globe, Loader2, CheckCircle2, AlertCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Globe } from 'lucide-react';
+import NodeHeader from './NodeHeader';
 
 export interface HTTPWebhookNodeData {
   label?: string;
@@ -11,13 +12,13 @@ export interface HTTPWebhookNodeData {
   error?: string;
 }
 
-export const HTTPWebhookNode = ({ data, selected }: { data: HTTPWebhookNodeData; selected: boolean }) => {
+export const HTTPWebhookNode = ({ id, data, selected }: { id: string; data: HTTPWebhookNodeData; selected: boolean }) => {
   const statusColors = {
     idle: 'border-zinc-800 bg-zinc-950/90 text-zinc-400 shadow-md',
-    running: 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.25)] bg-zinc-950/90 text-blue-400',
-    success: 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.25)] bg-zinc-950/90 text-emerald-400',
-    'success-with-warning': 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.25)] bg-zinc-950/90 text-amber-400',
-    error: 'border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.25)] bg-zinc-950/90 text-rose-400',
+    running: 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.25)] bg-zinc-950/90 text-status-running',
+    success: 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.25)] bg-zinc-950/90 text-status-success',
+    'success-with-warning': 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.25)] bg-zinc-950/90 text-status-warning',
+    error: 'border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.25)] bg-zinc-950/90 text-status-error',
     skipped: 'border-zinc-900 bg-zinc-950/45 text-zinc-650 opacity-50',
   };
 
@@ -34,38 +35,17 @@ export const HTTPWebhookNode = ({ data, selected }: { data: HTTPWebhookNodeData;
         className="w-2.5 h-2.5 !bg-zinc-800 !border-zinc-700"
       />
 
-      <div className="flex items-center justify-between border-b border-zinc-800 pb-2 mb-3">
-        <div className="flex items-center gap-2">
-          <Globe className="w-4 h-4 text-zinc-300" />
-          <span className="font-semibold text-sm text-zinc-100">HTTP Webhook</span>
-        </div>
-
-        {/* Status Indicator */}
-        <div className="flex items-center">
-          {data.status === 'running' && (
-            <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
-          )}
-          {data.status === 'success' && (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          )}
-          {data.status === 'success-with-warning' && (
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
-          )}
-          {data.status === 'error' && (
-            <AlertCircle className="w-4 h-4 text-rose-400" />
-          )}
-          {data.status === 'skipped' && (
-            <XCircle className="w-4 h-4 text-zinc-650" />
-          )}
-          {data.status === 'idle' && (
-            <div className="w-2 h-2 rounded-full bg-zinc-600" />
-          )}
-        </div>
-      </div>
+      <NodeHeader
+        id={id}
+        label={data.label}
+        defaultLabel="HTTP Webhook"
+        icon={Globe}
+        status={data.status}
+      />
 
       <div className="text-xs text-zinc-400 space-y-2">
         <div>
-          <span className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-0.5">Webhook URL</span>
+          <span className="text-[10px] text-zinc-550 uppercase tracking-wider block mb-0.5">Webhook URL</span>
           <div className="font-mono bg-zinc-900/80 p-1.5 rounded border border-zinc-800 truncate max-w-[200px] text-zinc-300">
             {data.config?.url || 'No URL configured'}
           </div>

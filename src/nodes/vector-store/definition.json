@@ -1,0 +1,34 @@
+{
+  "id": "vector-store",
+  "displayName": "Vector Store",
+  "icon": "Database",
+  "category": "Data Storage",
+  "description": "Generate an embedding for text and store it locally.",
+  "inputSchema": {
+    "type": "object",
+    "description": "Any input data containing text to embed."
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "success": { "type": "boolean" },
+      "id": { "type": "string" }
+    }
+  },
+  "configFields": [
+    {
+      "name": "text",
+      "label": "Text to Embed",
+      "type": "string",
+      "placeholder": "{{input.documentText}}",
+      "description": "Supports mustache-style templating (e.g. {{input.document}})"
+    },
+    {
+      "name": "metadata",
+      "label": "Metadata (JSON string)",
+      "type": "string",
+      "placeholder": "{\"source\": \"{{input.url}}\"}"
+    }
+  ],
+  "requiredCredentials": ["openai"]
+}

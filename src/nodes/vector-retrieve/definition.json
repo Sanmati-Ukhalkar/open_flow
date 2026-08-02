@@ -1,0 +1,36 @@
+{
+  "id": "vector-retrieve",
+  "displayName": "Vector Retrieve",
+  "icon": "Search",
+  "category": "Data Processing",
+  "description": "Retrieve the most similar texts from the local vector store.",
+  "inputSchema": {
+    "type": "object",
+    "description": "Any input data containing the query text."
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "results": {
+        "type": "array"
+      }
+    }
+  },
+  "configFields": [
+    {
+      "name": "query",
+      "label": "Search Query",
+      "type": "string",
+      "placeholder": "{{input.question}}",
+      "description": "Supports mustache-style templating (e.g. {{input.question}})"
+    },
+    {
+      "name": "topK",
+      "label": "Top K Results",
+      "type": "number",
+      "placeholder": "3",
+      "defaultValue": 3
+    }
+  ],
+  "requiredCredentials": ["openai"]
+}

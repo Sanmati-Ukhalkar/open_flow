@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Clock } from 'lucide-react';
+import { Node } from 'reactflow';
 
 export interface WorkflowRunLog {
   timestamp: string;
@@ -13,9 +14,10 @@ export interface WorkflowRunLog {
 interface RunLogPanelProps {
   logs: WorkflowRunLog[];
   onSelectNode: (nodeId: string) => void;
+  nodes: Node[];
 }
 
-export const RunLogPanel = ({ logs, onSelectNode }: RunLogPanelProps) => {
+export const RunLogPanel = ({ logs, onSelectNode, nodes }: RunLogPanelProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const getLogColor = (log: WorkflowRunLog) => {
@@ -28,7 +30,9 @@ export const RunLogPanel = ({ logs, onSelectNode }: RunLogPanelProps) => {
   };
 
   const getEventText = (log: WorkflowRunLog) => {
-    const nodeLabel = `${log.nodeType} [${log.nodeId}]`;
+    const node = nodes.find(n => n.id === log.nodeId);
+    const nodeLabel = node?.data?.label || `${log.nodeType} [${log.nodeId}]`;
+    
     if (log.event === 'start') {
       return `Node ${nodeLabel} started execution`;
     }
@@ -65,7 +69,7 @@ export const RunLogPanel = ({ logs, onSelectNode }: RunLogPanelProps) => {
 
       {/* Log list */}
       {isOpen && (
-        <div className="h-40 overflow-y-auto p-4 font-mono text-[10px] space-y-1.5 bg-zinc-950 select-text leading-relaxed">
+        <div className="h-32 md:h-40 overflow-y-auto p-4 font-mono text-[10px] space-y-1.5 bg-zinc-950 select-text leading-relaxed">
           {logs.length === 0 ? (
             <div className="text-zinc-600 text-center py-6">No logs. Click "Run Workflow" to execute your DAG graph.</div>
           ) : (

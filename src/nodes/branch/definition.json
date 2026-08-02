@@ -1,0 +1,26 @@
+{
+  "id": "branch",
+  "displayName": "Branch",
+  "icon": "GitBranch",
+  "category": "Flow Control",
+  "description": "Conditionally route the workflow to different paths based on a JavaScript expression.",
+  "inputSchema": {
+    "type": "object"
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "takenEdge": { "type": "string" },
+      "result": { "type": "boolean" }
+    }
+  },
+  "configFields": [
+    {
+      "name": "condition",
+      "label": "Condition (JS Expression)",
+      "type": "string",
+      "placeholder": "input.status === 'success'",
+      "description": "Must evaluate to true or false. Example: input.score > 50"
+    }
+  ]
+}

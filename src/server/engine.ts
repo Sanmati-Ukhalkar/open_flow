@@ -8,6 +8,13 @@ import { run as runSQLiteStorage } from '../nodes/sqlite-storage/run';
 import { run as runTextTransform } from '../nodes/text-transform/run';
 import { run as runCronTrigger } from '../nodes/cron-trigger/run';
 import { run as runWebhookTrigger } from '../nodes/webhook-trigger/run';
+import { run as runFileTrigger } from '../nodes/file-trigger/run';
+import { run as runEmail } from '../nodes/email/run';
+import { run as runOCR } from '../nodes/vision-ocr/run';
+import { run as runVectorStore } from '../nodes/vector-store/run';
+import { run as runVectorRetrieve } from '../nodes/vector-retrieve/run';
+import { run as runCodeExecution } from '../nodes/code-execution/run';
+import { run as runBranch } from '../nodes/branch/run';
 import { runInSandbox, getNodeCapabilities } from './sandbox';
 import path from 'path';
 import fs from 'fs';
@@ -125,6 +132,163 @@ function getDownstreamDescendants(nodeId: string, edges: any[]): string[] {
 }
 
 // Main server-side DAG execution engine
+
+export async function evaluateNode(node: any, nodeInput: any, orgId: string): Promise<any> {
+  let output: any;
+if (node.type === 'llm-prompt') {
+              const model = node.data.config?.model || 'llama-3.1-8b-instant';
+              const isGroqModel = model.startsWith('llama') || model.startsWith('mixtral') || model.startsWith('gemma');
+              const provider = isGroqModel ? 'groq' : 'openai';
+              
+              // Load user's credential from DB if configured
+              const credential = await dbGet(
+                'SELECT encrypted_key FROM credentials WHERE org_id = ? AND provider = ?',
+                [orgId, provider]
+              );
+              let apiKey = undefined;
+              if (credential) {
+                try {
+                  apiKey = decrypt(credential.encrypted_key);
+                } catch (e) {
+                  console.error('Failed to decrypt API key credential:', e);
+                }
+              }
+
+              // Pass decrypted key down inside node run config context
+              output = await runLLMPrompt(nodeInput, {
+                ...node.data.config,
+                apiKey
+              });
+            } else if (node.type === 'mcp-tool') {
+              output = await runMCPTool(nodeInput, node.data.config);
+            } else if (node.type === 'http-webhook') {
+              output = await runHTTPWebhook(nodeInput, node.data.config);
+            } else if (node.type === 'sqlite-storage') {
+              output = await runSQLiteStorage(nodeInput, node.data.config);
+            } else if (node.type === 'text-transform') {
+              output = await runTextTransform(nodeInput, node.data.config);
+            } else if (node.type === 'cron-trigger') {
+              output = await runCronTrigger(nodeInput, node.data.config);
+            } else if (node.type === 'webhook-trigger') {
+              output = await runWebhookTrigger(nodeInput, node.data.config);
+            } else if (node.type === 'file-trigger') {
+              output = await runFileTrigger(nodeInput, node.data.config);
+            } else if (node.type === 'email') {
+              const userCred = await dbGet('SELECT encrypted_key FROM credentials WHERE org_id = ? AND provider = ?', [orgId, 'smtp_user']);
+              const passCred = await dbGet('SELECT encrypted_key FROM credentials WHERE org_id = ? AND provider = ?', [orgId, 'smtp_pass']);
+              
+              let smtp_user = '';
+              let smtp_pass = '';
+              
+              try {
+                if (userCred) smtp_user = decrypt(userCred.encrypted_key);
+                if (passCred) smtp_pass = decrypt(passCred.encrypted_key);
+              } catch (e) {
+                console.error('Failed to decrypt SMTP credentials:', e);
+              }
+              
+              output = await runEmail(nodeInput, node.data.config, { smtp_user, smtp_pass });
+            } else if (node.type === 'vision-ocr') {
+              output = await runOCR(nodeInput, node.data.config);
+            } else if (node.type === 'vector-store' || node.type === 'vector-retrieve') {
+              const credential = await dbGet('SELECT encrypted_key FROM credentials WHERE org_id = ? AND provider = ?', [orgId, 'openai']);
+              let apiKey = '';
+              try {
+                if (credential) apiKey = decrypt(credential.encrypted_key);
+              } catch (e) {
+                console.error('Failed to decrypt OpenAI credentials:', e);
+              }
+              
+              if (node.type === 'vector-store') {
+                output = await runVectorStore(nodeInput, node.data.config, { openai: apiKey });
+              } else {
+                output = await runVectorRetrieve(nodeInput, node.data.config, { openai: apiKey });
+              }
+            } else if (node.type === 'code-execution') {
+              output = await runCodeExecution(nodeInput, node.data.config);
+            } else if (node.type === 'branch') {
+              output = await runBranch(nodeInput, node.data.config);
+            } else {
+              // Community node: execute in sandboxed Worker thread
+              // Only capabilities declared in definition.json are injected
+              const runPath = path.resolve(process.cwd(), 'src/nodes/community', node.type, 'run.ts');
+              if (fs.existsSync(runPath)) {
+                const capabilities = getNodeCapabilities(node.type, true);
+                output = await runInSandbox(node.type, runPath, nodeInput, node.data.config, capabilities);
+              } else {
+                throw {
+                  code: 'UNKNOWN_NODE_TYPE',
+                  message: `Unsupported node type: "${node.type}". No run.ts found in src/nodes/community/${node.type}/`
+                };
+              }
+            }
+
+
+  return output;
+}
+
+export async function executeLoopSubgraph(
+  loopNode: any,
+  loopInput: any,
+  orgId: string,
+  allNodes: any[],
+  allEdges: any[]
+): Promise<any> {
+  const { listPath, nodesInLoop, resultNode } = loopNode.data.config;
+  
+  const keys = (listPath || '').split('.').filter(Boolean);
+  let list = loopInput;
+  for (const k of keys) {
+    if (list) list = list[k];
+  }
+  
+  if (!Array.isArray(list)) {
+    throw new Error(`List path "${listPath}" does not resolve to an array`);
+  }
+
+  const nodeIds = (nodesInLoop || '').split(',').map((s: string) => s.trim());
+  const subgraphNodes = allNodes.filter((n: any) => nodeIds.includes(n.id));
+  const subgraphEdges = allEdges.filter((e: any) => nodeIds.includes(e.source) && nodeIds.includes(e.target));
+  
+  const results = [];
+  
+  for (const item of list) {
+    const sortedNodes = topoSort(subgraphNodes, subgraphEdges);
+    const nodeOutputs = new Map<string, any>();
+    
+    for (const node of sortedNodes) {
+      const incomingEdges = subgraphEdges.filter((e: any) => e.target === node.id);
+      let nodeInput: any = {};
+      
+      if (incomingEdges.length === 0) {
+        nodeInput = { ...loopInput, item };
+      } else if (incomingEdges.length === 1) {
+        nodeInput = nodeOutputs.get(incomingEdges[0].source) || {};
+      } else {
+        nodeInput = incomingEdges.reduce((acc: any, edge: any) => {
+          acc[edge.source] = nodeOutputs.get(edge.source) || {};
+          return acc;
+        }, {} as Record<string, any>);
+      }
+      
+      if (node.type === 'loop') {
+         // Prevent recursive loops for now
+         nodeOutputs.set(node.id, { results: [] });
+         continue;
+      }
+
+      const output = await evaluateNode(node, nodeInput, orgId);
+      nodeOutputs.set(node.id, output);
+    }
+    
+    if (resultNode && nodeOutputs.has(resultNode)) {
+      results.push(nodeOutputs.get(resultNode));
+    }
+  }
+  
+  return { results };
+}
+
 export async function executeRunBackend(
   runId: string,
   workflowId: string,
@@ -223,7 +387,8 @@ export async function executeRunBackend(
             pStatus === 'success' ||
             pStatus === 'success-with-warning' ||
             pStatus === 'error' ||
-            pStatus === 'skipped'
+            pStatus === 'skipped' ||
+            pStatus === 'skipped-by-branch'
           );
         });
       });
@@ -263,16 +428,39 @@ export async function executeRunBackend(
           const parents = incomingEdges.map((e: any) => e.source);
 
           // Check if any upstream parent failed or was skipped
-          const parentFailedOrSkipped = parents.some((pId: string) => {
+          let shouldSkip = false;
+          let skipReason = 'skipped';
+          
+          for (const edge of incomingEdges) {
+            const pId = edge.source;
             const pStatus = nodeStatuses.get(pId);
-            return pStatus === 'error' || pStatus === 'skipped';
-          });
+            
+            if (pStatus === 'error' || pStatus === 'skipped') {
+              shouldSkip = true;
+              break;
+            }
+            if (pStatus === 'skipped-by-branch') {
+              shouldSkip = true;
+              skipReason = 'skipped-by-branch';
+              break;
+            }
+            
+            // Check branch edges
+            const pOutput = nodeOutputs.get(pId);
+            if (pOutput && pOutput.takenEdge !== undefined) {
+              if (edge.sourceHandle && edge.sourceHandle !== pOutput.takenEdge) {
+                shouldSkip = true;
+                skipReason = 'skipped-by-branch';
+                break;
+              }
+            }
+          }
 
-          if (parentFailedOrSkipped) {
-            nodeStatuses.set(node.id, 'skipped');
+          if (shouldSkip) {
+            nodeStatuses.set(node.id, skipReason);
             await dbRun(
               'UPDATE run_node_results SET status = ? WHERE run_id = ? AND node_id = ?',
-              ['skipped', runId, node.id]
+              [skipReason, runId, node.id]
             );
             await schedulerStep();
             return;
@@ -305,57 +493,12 @@ export async function executeRunBackend(
           try {
             let output: any;
 
-            if (node.type === 'llm-prompt') {
-              const model = node.data.config?.model || 'llama-3.1-8b-instant';
-              const isGroqModel = model.startsWith('llama') || model.startsWith('mixtral') || model.startsWith('gemma');
-              const provider = isGroqModel ? 'groq' : 'openai';
-              
-              // Load user's credential from DB if configured
-              const credential = await dbGet(
-                'SELECT encrypted_key FROM credentials WHERE org_id = ? AND provider = ?',
-                [orgId, provider]
-              );
-              let apiKey = undefined;
-              if (credential) {
-                try {
-                  apiKey = decrypt(credential.encrypted_key);
-                } catch (e) {
-                  console.error('Failed to decrypt API key credential:', e);
-                }
-              }
 
-              // Pass decrypted key down inside node run config context
-              output = await runLLMPrompt(nodeInput, {
-                ...node.data.config,
-                apiKey
-              });
-            } else if (node.type === 'mcp-tool') {
-              output = await runMCPTool(nodeInput, node.data.config);
-            } else if (node.type === 'http-webhook') {
-              output = await runHTTPWebhook(nodeInput, node.data.config);
-            } else if (node.type === 'sqlite-storage') {
-              output = await runSQLiteStorage(nodeInput, node.data.config);
-            } else if (node.type === 'text-transform') {
-              output = await runTextTransform(nodeInput, node.data.config);
-            } else if (node.type === 'cron-trigger') {
-              output = await runCronTrigger(nodeInput, node.data.config);
-            } else if (node.type === 'webhook-trigger') {
-              output = await runWebhookTrigger(nodeInput, node.data.config);
+            if (node.type === 'loop') {
+              output = await executeLoopSubgraph(node, nodeInput, orgId, nodes, edges);
             } else {
-              // Community node: execute in sandboxed Worker thread
-              // Only capabilities declared in definition.json are injected
-              const runPath = path.resolve(process.cwd(), 'src/nodes/community', node.type, 'run.ts');
-              if (fs.existsSync(runPath)) {
-                const capabilities = getNodeCapabilities(node.type, true);
-                output = await runInSandbox(node.type, runPath, nodeInput, node.data.config, capabilities);
-              } else {
-                throw {
-                  code: 'UNKNOWN_NODE_TYPE',
-                  message: `Unsupported node type: "${node.type}". No run.ts found in src/nodes/community/${node.type}/`
-                };
-              }
+              output = await evaluateNode(node, nodeInput, orgId);
             }
-
             // Output Validation
             const validation = checkOutputSchema(node.type, output);
             const status = validation.isValid ? 'success' : 'success-with-warning';

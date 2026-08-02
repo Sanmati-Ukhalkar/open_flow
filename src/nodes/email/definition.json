@@ -1,0 +1,66 @@
+{
+  "id": "email",
+  "displayName": "Email",
+  "icon": "Mail",
+  "category": "Communication",
+  "description": "Send an email via SMTP or generic provider.",
+  "inputSchema": {
+    "type": "object",
+    "description": "Any input data to be templated into the email."
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "messageId": { "type": "string" },
+      "status": { "type": "string" }
+    }
+  },
+  "configFields": [
+    {
+      "name": "host",
+      "label": "SMTP Host",
+      "type": "string",
+      "placeholder": "smtp.gmail.com"
+    },
+    {
+      "name": "port",
+      "label": "SMTP Port",
+      "type": "number",
+      "placeholder": "587",
+      "defaultValue": 587
+    },
+    {
+      "name": "secure",
+      "label": "Use Secure (SSL/TLS)",
+      "type": "boolean",
+      "defaultValue": false
+    },
+    {
+      "name": "to",
+      "label": "To Address",
+      "type": "string",
+      "placeholder": "{{input.userEmail}}",
+      "description": "Supports mustache-style templating (e.g. {{input.email}})"
+    },
+    {
+      "name": "from",
+      "label": "From Address",
+      "type": "string",
+      "placeholder": "noreply@example.com"
+    },
+    {
+      "name": "subject",
+      "label": "Subject",
+      "type": "string",
+      "placeholder": "Hello {{input.name}}"
+    },
+    {
+      "name": "body",
+      "label": "Body (Text/HTML)",
+      "type": "string",
+      "multiline": true,
+      "placeholder": "Hello {{input.name}},\n\nYour processing is complete!"
+    }
+  ],
+  "requiredCredentials": ["smtp_user", "smtp_pass"]
+}

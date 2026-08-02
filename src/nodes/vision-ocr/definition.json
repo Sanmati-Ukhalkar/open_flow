@@ -1,0 +1,34 @@
+{
+  "id": "vision-ocr",
+  "displayName": "Vision/OCR",
+  "icon": "ScanText",
+  "category": "Data Processing",
+  "description": "Extract text from an image using local OCR (Tesseract).",
+  "inputSchema": {
+    "type": "object",
+    "description": "Data containing the image path or URL."
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "text": { "type": "string" },
+      "confidence": { "type": "number" }
+    }
+  },
+  "configFields": [
+    {
+      "name": "imageUrl",
+      "label": "Image URL or Path",
+      "type": "string",
+      "placeholder": "{{input.fileUrl}}",
+      "description": "Supports mustache-style templating (e.g. {{input.fileUrl}})"
+    },
+    {
+      "name": "language",
+      "label": "Language",
+      "type": "string",
+      "placeholder": "eng",
+      "defaultValue": "eng"
+    }
+  ]
+}

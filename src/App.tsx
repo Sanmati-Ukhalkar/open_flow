@@ -18,7 +18,7 @@ import Dashboard from './canvas/Dashboard';
 import CredentialsManager from './canvas/CredentialsManager';
 import ShortcutsOverlay from './canvas/ShortcutsOverlay';
 import { topoSort } from './engine/topoSort';
-import { Play, AlertTriangle, Save, FolderOpen, ShieldCheck, Key, Undo2, Redo2, Keyboard } from 'lucide-react';
+import { Play, AlertTriangle, Save, FolderOpen, ShieldCheck, Key, Undo2, Redo2, Keyboard, Sun, Moon, HelpCircle } from 'lucide-react';
 import DeployModal from './canvas/DeployModal';
 import OrgSettingsModal from './canvas/OrgSettingsModal';
 import { useYjsSync } from './canvas/hooks/useYjsSync';
@@ -76,6 +76,165 @@ function AppContent() {
 
   // UI overlay state
   const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Theme management state
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('openflow_theme');
+    if (saved === 'light' || saved === 'dark') return saved;
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+      return 'light';
+    }
+    return 'dark';
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'light') {
+      root.classList.add('light');
+    } else {
+      root.classList.remove('light');
+    }
+    localStorage.setItem('openflow_theme', theme);
+  }, [theme]);
+
+  // Mobile viewport detection
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Onboarding Tour state
+  const [runTour, setRunTour] = useState(false);
+  const [currentTourStep, setCurrentTourStep] = useState(0);
+  const [tourCoords, setTourCoords] = useState<{
+    targetTop: number;
+    targetLeft: number;
+    targetWidth: number;
+    targetHeight: number;
+    popupTop: number;
+    popupLeft: number;
+  } | null>(null);
+
+  const tourSteps = [
+    {
+      title: "Node Library",
+      description: "Drag nodes from the sidebar onto the canvas to start building your custom workflow DAG.",
+      selector: "#node-library-sidebar",
+      placement: "right"
+    },
+    {
+      title: "Search Nodes",
+      description: "Quickly find nodes by name or description using the search bar when you have 10+ node types.",
+      selector: "#node-search-input",
+      placement: "right"
+    },
+    {
+      title: "Configure Node",
+      description: "Select any node on the canvas to configure its settings, prompt templates, and variables in the settings panel.",
+      selector: "#config-panel",
+      placement: "left"
+    },
+    {
+      title: "Run Workflow",
+      description: "Execute your workflow. Downstream nodes automatically resolve and execute in topological order.",
+      selector: "#run-workflow-btn",
+      placement: "bottom"
+    },
+    {
+      title: "Execution Output",
+      description: "See live execution statuses, LLM text outputs, and a chronological run log timeline at the bottom.",
+      selector: "#execution-output-panel",
+      placement: "top"
+    }
+  ];
+
+  useEffect(() => {
+    if (view === 'canvas' && currentWorkflowId) {
+      const hasVisited = localStorage.getItem('openflow_onboarding_completed');
+      if (!hasVisited && nodes.length === 0) {
+        setRunTour(true);
+      }
+    }
+  }, [view, currentWorkflowId, nodes.length]);
+
+  useEffect(() => {
+    if (!runTour) {
+      setTourCoords(null);
+      return;
+    }
+    const step = tourSteps[currentTourStep];
+    const updateCoords = () => {
+      const el = document.querySelector(step.selector);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        let popupLeft = rect.left;
+        let popupTop = rect.top;
+
+        if (step.placement === 'right') {
+          popupLeft = rect.right + 16;
+          popupTop = rect.top + rect.height / 2 - 80;
+        } else if (step.placement === 'left') {
+          popupLeft = rect.left - 280 - 16;
+          popupTop = rect.top + rect.height / 2 - 80;
+        } else if (step.placement === 'top') {
+          popupLeft = rect.left + rect.width / 2 - 140;
+          popupTop = rect.top - 150 - 16;
+        } else if (step.placement === 'bottom') {
+          popupLeft = rect.left + rect.width / 2 - 140;
+          popupTop = rect.bottom + 16;
+        }
+
+        // Adjust to screen bounds
+        popupLeft = Math.max(16, Math.min(window.innerWidth - 280 - 16, popupLeft));
+        popupTop = Math.max(16, Math.min(window.innerHeight - 180 - 16, popupTop));
+
+        setTourCoords({
+          targetTop: rect.top,
+          targetLeft: rect.left,
+          targetWidth: rect.width,
+          targetHeight: rect.height,
+          popupTop,
+          popupLeft
+        });
+      } else {
+        setTourCoords({
+          targetTop: 0,
+          targetLeft: 0,
+          targetWidth: 0,
+          targetHeight: 0,
+          popupTop: window.innerHeight / 2 - 90,
+          popupLeft: window.innerWidth / 2 - 140
+        });
+      }
+    };
+
+    updateCoords();
+    window.addEventListener('resize', updateCoords);
+    const interval = setInterval(updateCoords, 500);
+
+    return () => {
+      window.removeEventListener('resize', updateCoords);
+      clearInterval(interval);
+    };
+  }, [runTour, currentTourStep]);
+
+  const handleNextTour = () => {
+    if (currentTourStep < tourSteps.length - 1) {
+      setCurrentTourStep(prev => prev + 1);
+    } else {
+      handleSkipTour();
+    }
+  };
+
+  const handleSkipTour = () => {
+    setRunTour(false);
+    setCurrentTourStep(0);
+    localStorage.setItem('openflow_onboarding_completed', 'true');
+  };
 
   // Undo/Redo history — delegated to Yjs UndoManager
   const canUndo = true;
@@ -991,6 +1150,7 @@ function AppContent() {
 
           {/* Global Run Workflow Button */}
           <button
+            id="run-workflow-btn"
             onClick={handleRunWorkflow}
             disabled={isWorkflowRunning || nodes.length === 0}
             className={`flex items-center gap-2 py-1.5 px-4 rounded-lg font-semibold text-xs transition-all duration-200 ${
@@ -1011,6 +1171,27 @@ function AppContent() {
           >
             <Keyboard className="w-3.5 h-3.5" />
           </button>
+
+          {/* Theme Toggle Button */}
+          <button
+            onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            className="p-1.5 rounded-lg border border-zinc-850 bg-zinc-900/40 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 transition-all flex items-center justify-center"
+          >
+            {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+          </button>
+
+          {/* Onboarding Help Button */}
+          <button
+            onClick={() => {
+              setCurrentTourStep(0);
+              setRunTour(true);
+            }}
+            title="Take onboarding tour"
+            className="p-1.5 rounded-lg border border-zinc-850 bg-zinc-900/40 text-zinc-500 hover:text-zinc-350 hover:bg-zinc-900 transition-all flex items-center justify-center"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+          </button>
         </div>
 
         <div className="text-[9px] text-zinc-550 font-mono uppercase tracking-wider flex items-center gap-1">
@@ -1020,7 +1201,7 @@ function AppContent() {
       </header>
 
       {/* Main Workspace */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         {/* Left-hand Node Library Sidebar */}
         <Sidebar />
 
@@ -1040,6 +1221,8 @@ function AppContent() {
               awarenessUsers={awarenessUsers}
               clientId={clientId}
               setCursor={setCursor}
+              isMobile={isMobile}
+              theme={theme}
             />
           </div>
 
@@ -1056,23 +1239,110 @@ function AppContent() {
           <RunLogPanel
             logs={runLogs}
             onSelectNode={handleSelectNodeById}
+            nodes={nodes}
           />
         </div>
 
         {/* Right Configuration Panel — shows multi-select summary when >1 node selected */}
-        <ConfigPanel
-          selectedNode={selectedNodeIds.length > 1 ? null : selectedNode}
-          selectedCount={selectedNodeIds.length}
-          onChangeConfig={handleChangeConfig}
-          onRunNode={handleRunWorkflow}
-          onDeleteNode={handleDeleteNode}
-          onDeleteSelected={handleDeleteSelected}
-          workflowId={currentWorkflowId}
-          awarenessUsers={awarenessUsers}
-          clientId={clientId}
-          setEditingNode={setEditingNode}
-        />
+        {!isMobile && (
+          <ConfigPanel
+            selectedNode={selectedNodeIds.length > 1 ? null : selectedNode}
+            selectedCount={selectedNodeIds.length}
+            onChangeConfig={handleChangeConfig}
+            onRunNode={handleRunWorkflow}
+            onDeleteNode={handleDeleteNode}
+            onDeleteSelected={handleDeleteSelected}
+            workflowId={currentWorkflowId}
+            awarenessUsers={awarenessUsers}
+            clientId={clientId}
+            setEditingNode={setEditingNode}
+          />
+        )}
       </div>
+
+      {/* Mobile Config Sheet Backdrop */}
+      {isMobile && selectedNodeId && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-30 transition-opacity" 
+          onClick={() => handleSelectNode(null)}
+        />
+      )}
+
+      {/* Mobile Config Sheet */}
+      {isMobile && selectedNodeId && (
+        <div className="fixed inset-x-0 bottom-0 bg-zinc-950 border-t border-zinc-800 rounded-t-2xl shadow-2xl z-40 max-h-[60vh] flex flex-col transition-all duration-350">
+          <div 
+            className="w-full flex justify-center py-3 flex-shrink-0 cursor-pointer"
+            onClick={() => handleSelectNode(null)}
+          >
+            <div className="w-12 h-1 bg-zinc-800 rounded-full hover:bg-zinc-700" />
+          </div>
+          <div className="flex-1 overflow-y-auto pb-6">
+            <ConfigPanel
+              selectedNode={selectedNode}
+              selectedCount={selectedNodeIds.length}
+              onChangeConfig={handleChangeConfig}
+              onRunNode={handleRunWorkflow}
+              onDeleteNode={handleDeleteNode}
+              onDeleteSelected={handleDeleteSelected}
+              workflowId={currentWorkflowId}
+              readOnly={true}
+              isBottomSheet={true}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Onboarding Tour Spotlight Ring */}
+      {runTour && tourCoords && (
+        <div
+          className="absolute border-2 border-purple-500 rounded-lg pointer-events-none animate-pulse z-[9999]"
+          style={{
+            top: tourCoords.targetTop - 4,
+            left: tourCoords.targetLeft - 4,
+            width: tourCoords.targetWidth + 8,
+            height: tourCoords.targetHeight + 8,
+            boxShadow: '0 0 15px rgba(168, 85, 247, 0.5)'
+          }}
+        />
+      )}
+
+      {/* Onboarding Tour Dialog Popover */}
+      {runTour && tourCoords && (
+        <div
+          className="absolute bg-zinc-900 border border-zinc-800 text-zinc-100 p-4 rounded-xl shadow-xl w-[280px] z-[9999] flex flex-col gap-3 transition-all duration-350"
+          style={{
+            top: tourCoords.popupTop,
+            left: tourCoords.popupLeft,
+          }}
+        >
+          <div>
+            <div className="flex justify-between items-start">
+              <h4 className="text-xs font-bold text-zinc-200">{tourSteps[currentTourStep].title}</h4>
+              <span className="text-[9px] font-mono text-zinc-550">
+                {currentTourStep + 1} / {tourSteps.length}
+              </span>
+            </div>
+            <p className="text-[10px] text-zinc-400 mt-1.5 leading-relaxed">
+              {tourSteps[currentTourStep].description}
+            </p>
+          </div>
+          <div className="flex justify-between items-center mt-1">
+            <button
+              onClick={handleSkipTour}
+              className="text-[10px] text-zinc-550 hover:text-zinc-400 transition-colors font-semibold"
+            >
+              Skip Tour
+            </button>
+            <button
+              onClick={handleNextTour}
+              className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-[10px] font-bold transition-all"
+            >
+              {currentTourStep === tourSteps.length - 1 ? "Finish" : "Next"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {deployModalOpen && (
         <DeployModal

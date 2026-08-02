@@ -1,0 +1,24 @@
+{
+  "id": "file-trigger",
+  "displayName": "File Trigger",
+  "icon": "FolderOpen",
+  "category": "Trigger",
+  "description": "Trigger the workflow when a file is added to a watched directory.",
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "filePath": { "type": "string" },
+      "fileName": { "type": "string" },
+      "eventType": { "type": "string" }
+    }
+  },
+  "configFields": [
+    {
+      "name": "watchDirectory",
+      "label": "Directory to Watch",
+      "type": "string",
+      "placeholder": "/path/to/watch",
+      "description": "The absolute path to the local directory to watch for file changes."
+    }
+  ]
+}

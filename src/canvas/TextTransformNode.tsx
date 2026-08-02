@@ -1,5 +1,6 @@
 import { Handle, Position } from 'reactflow';
-import { Combine, Loader2, CheckCircle2, AlertCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Combine } from 'lucide-react';
+import NodeHeader from './NodeHeader';
 
 export interface TextTransformNodeData {
   label?: string;
@@ -10,13 +11,13 @@ export interface TextTransformNodeData {
   error?: string;
 }
 
-export const TextTransformNode = ({ data, selected }: { data: TextTransformNodeData; selected: boolean }) => {
+export const TextTransformNode = ({ id, data, selected }: { id: string; data: TextTransformNodeData; selected: boolean }) => {
   const statusColors = {
     idle: 'border-zinc-800 bg-zinc-950/90 text-zinc-400 shadow-md',
-    running: 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.25)] bg-zinc-950/90 text-blue-400',
-    success: 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.25)] bg-zinc-950/90 text-emerald-400',
-    'success-with-warning': 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.25)] bg-zinc-950/90 text-amber-400',
-    error: 'border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.25)] bg-zinc-950/90 text-rose-400',
+    running: 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.25)] bg-zinc-950/90 text-status-running',
+    success: 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.25)] bg-zinc-950/90 text-status-success',
+    'success-with-warning': 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.25)] bg-zinc-950/90 text-status-warning',
+    error: 'border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.25)] bg-zinc-950/90 text-status-error',
     skipped: 'border-zinc-900 bg-zinc-950/45 text-zinc-650 opacity-50',
   };
 
@@ -33,34 +34,13 @@ export const TextTransformNode = ({ data, selected }: { data: TextTransformNodeD
         className="w-2.5 h-2.5 !bg-zinc-800 !border-zinc-700"
       />
 
-      <div className="flex items-center justify-between border-b border-zinc-800 pb-2 mb-3">
-        <div className="flex items-center gap-2">
-          <Combine className="w-4 h-4 text-zinc-300" />
-          <span className="font-semibold text-sm text-zinc-100">Text Transform</span>
-        </div>
-
-        {/* Status Indicator */}
-        <div className="flex items-center">
-          {data.status === 'running' && (
-            <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
-          )}
-          {data.status === 'success' && (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          )}
-          {data.status === 'success-with-warning' && (
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
-          )}
-          {data.status === 'error' && (
-            <AlertCircle className="w-4 h-4 text-rose-400" />
-          )}
-          {data.status === 'skipped' && (
-            <XCircle className="w-4 h-4 text-zinc-650" />
-          )}
-          {data.status === 'idle' && (
-            <div className="w-2 h-2 rounded-full bg-zinc-600" />
-          )}
-        </div>
-      </div>
+      <NodeHeader
+        id={id}
+        label={data.label}
+        defaultLabel="Text Transform"
+        icon={Combine}
+        status={data.status}
+      />
 
       <div className="text-xs text-zinc-400 space-y-2">
         <div>

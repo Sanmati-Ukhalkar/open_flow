@@ -2,34 +2,83 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Dark mode (default) */
+  --zinc-50: #fafafa;
+  --zinc-100: #f4f4f5;
+  --zinc-200: #e4e4e7;
+  --zinc-300: #d4d4d8;
+  --zinc-400: #a1a1aa;
+  --zinc-450: #888890;
+  --zinc-500: #71717a;
+  --zinc-550: #5f5f67;
+  --zinc-600: #52525b;
+  --zinc-650: #424249;
+  --zinc-700: #3f3f46;
+  --zinc-800: #27272a;
+  --zinc-850: #1f1f23;
+  --zinc-900: #18181b;
+  --zinc-950: #09090b;
+
+  --status-running-text: #3b82f6;
+  --status-success-text: #10b981;
+  --status-warning-text: #f59e0b;
+  --status-error-text: #f43f5e;
+}
+
+:root.light {
+  /* Light mode (inverted / high contrast) */
+  --zinc-50: #09090b;
+  --zinc-100: #18181b;
+  --zinc-200: #27272a;
+  --zinc-300: #3f3f46;
+  --zinc-400: #52525b;
+  --zinc-450: #5f5f67;
+  --zinc-550: #888890;
+  --zinc-500: #71717a;
+  --zinc-600: #a1a1aa;
+  --zinc-650: #b8b8be;
+  --zinc-700: #d4d4d8;
+  --zinc-800: #e4e4e7;
+  --zinc-850: #f1f1f2;
+  --zinc-900: #f4f4f5;
+  --zinc-950: #fafafa;
+
+  --status-running-text: #1d4ed8;
+  --status-success-text: #047857;
+  --status-warning-text: #b45309;
+  --status-error-text: #b91c1c;
+}
+
 html, body, #root {
   width: 100%;
   height: 100%;
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background-color: #09090b;
-  color: #f4f4f5;
+  background-color: var(--zinc-950);
+  color: var(--zinc-100);
   font-family: ui-sans-serif, system-ui, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* React Flow custom dark styles */
+/* React Flow custom variable styles */
 .react-flow__background {
-  background-color: #09090b;
+  background-color: var(--zinc-950) !important;
 }
 
 .react-flow__controls {
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  border: 1px solid #1f1f23;
+  border: 1px solid var(--zinc-800) !important;
   border-radius: 4px;
   overflow: hidden;
 }
 
 .react-flow__controls-button {
-  background: #121214 !important;
-  color: #a1a1aa !important;
+  background: var(--zinc-900) !important;
+  color: var(--zinc-400) !important;
   border: none !important;
-  border-bottom: 1px solid #1f1f23 !important;
+  border-bottom: 1px solid var(--zinc-800) !important;
   fill: currentColor !important;
 }
 
@@ -38,10 +87,29 @@ html, body, #root {
 }
 
 .react-flow__controls-button:hover {
-  background: #1c1c21 !important;
-  color: #ffffff !important;
+  background: var(--zinc-800) !important;
+  color: var(--zinc-100) !important;
 }
 
 .react-flow__controls-button svg {
   fill: currentColor !important;
+}
+
+/* Custom scrollbar adjustments for variables */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--zinc-950);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--zinc-800);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--zinc-700);
 }
