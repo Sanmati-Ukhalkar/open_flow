@@ -18,6 +18,16 @@ import { run as runBranch } from '../nodes/branch/run';
 import { runInSandbox, getNodeCapabilities } from './sandbox';
 import path from 'path';
 import fs from 'fs';
+import { log } from './logger';
+
+// Error tracking integration placeholder
+function reportToErrorTracker(error: any, context: Record<string, any>) {
+  log.error(
+    { runId: context.runId, workflowId: context.workflowId, nodeId: context.nodeId },
+    `[ERROR_TRACKER] Unhandled exception in engine: ${error.message || error}`,
+    { errorStack: error.stack, ...context }
+  );
+}
 
 // Promise wrapper utilities for SQLite callbacks
 const dbRun = (sql: string, params: any[] = []): Promise<any> => {
@@ -148,9 +158,9 @@ if (node.type === 'llm-prompt') {
               let apiKey = undefined;
               if (credential) {
                 try {
-                  apiKey = decrypt(credential.encrypted_key);
+                   apiKey = decrypt(credential.encrypted_key);
                 } catch (e) {
-                  console.error('Failed to decrypt API key credential:', e);
+                  log.error({ nodeId: node.id }, 'Failed to decrypt API key credential:', e);
                 }
               }
 
@@ -184,7 +194,7 @@ if (node.type === 'llm-prompt') {
                 if (userCred) smtp_user = decrypt(userCred.encrypted_key);
                 if (passCred) smtp_pass = decrypt(passCred.encrypted_key);
               } catch (e) {
-                console.error('Failed to decrypt SMTP credentials:', e);
+                log.error({ nodeId: node.id }, 'Failed to decrypt SMTP credentials:', e);
               }
               
               output = await runEmail(nodeInput, node.data.config, { smtp_user, smtp_pass });
@@ -196,7 +206,7 @@ if (node.type === 'llm-prompt') {
               try {
                 if (credential) apiKey = decrypt(credential.encrypted_key);
               } catch (e) {
-                console.error('Failed to decrypt OpenAI credentials:', e);
+                log.error({ nodeId: node.id }, 'Failed to decrypt OpenAI credentials:', e);
               }
               
               if (node.type === 'vector-store') {
@@ -298,11 +308,13 @@ export async function executeRunBackend(
   initialInput?: any
 ) {
   const runStartTime = Date.now();
+  log.info({ workflowId, runId }, `Starting workflow execution run...`);
   try {
     let graphJson: string;
     if (versionId) {
       const version = await dbGet('SELECT * FROM workflow_versions WHERE id = ?', [versionId]);
       if (!version) {
+        log.error({ workflowId, runId }, `Failed to fetch workflow version: ${versionId}`);
         await dbRun('UPDATE runs SET status = ?, finished_at = CURRENT_TIMESTAMP WHERE id = ?', ['failed', runId]);
         return;
       }
@@ -310,6 +322,7 @@ export async function executeRunBackend(
     } else {
       const workflow = await dbGet('SELECT * FROM workflows WHERE id = ?', [workflowId]);
       if (!workflow) {
+        log.error({ workflowId, runId }, `Failed to fetch workflow: ${workflowId}`);
         await dbRun('UPDATE runs SET status = ?, finished_at = CURRENT_TIMESTAMP WHERE id = ?', ['failed', runId]);
         return;
       }
@@ -323,6 +336,7 @@ export async function executeRunBackend(
     try {
       topoSort(nodes, edges);
     } catch (err: any) {
+      log.warn({ workflowId, runId }, `Cycle detected in workflow execution, aborting run.`, err);
       await dbRun('UPDATE runs SET status = ?, finished_at = CURRENT_TIMESTAMP WHERE id = ?', ['failed', runId]);
       return;
     }
@@ -335,6 +349,7 @@ export async function executeRunBackend(
 
     let resetNodeIds: string[] = [];
     if (startNodeId) {
+      log.info({ workflowId, runId, nodeId: startNodeId }, `Retrying workflow execution starting from node: ${startNodeId}`);
       const descendants = getDownstreamDescendants(startNodeId, edges);
       resetNodeIds = [startNodeId, ...descendants];
     }
@@ -408,6 +423,7 @@ export async function executeRunBackend(
           }
 
           const runDurationMs = Date.now() - runStartTime;
+          log.info({ workflowId, runId }, `Workflow run completed with status "${finalStatus}" in ${runDurationMs}ms`);
           await dbRun(
             'UPDATE runs SET status = ?, finished_at = CURRENT_TIMESTAMP, duration_ms = ? WHERE id = ?',
             [finalStatus, runDurationMs, runId]
@@ -415,7 +431,7 @@ export async function executeRunBackend(
           
           // Fire deployment alerts if necessary (in background)
           if (finalStatus === 'failed') {
-            checkDeploymentAlerts(workflowId).catch(err => console.error('Alert check failed:', err));
+            checkDeploymentAlerts(workflowId).catch(err => log.error({ workflowId, runId }, 'Alert check failed:', err));
           }
         }
         return;
@@ -457,6 +473,7 @@ export async function executeRunBackend(
           }
 
           if (shouldSkip) {
+            log.info({ workflowId, runId, nodeId: node.id }, `Skipping node execution: reason=${skipReason}`);
             nodeStatuses.set(node.id, skipReason);
             await dbRun(
               'UPDATE run_node_results SET status = ? WHERE run_id = ? AND node_id = ?',
@@ -480,6 +497,7 @@ export async function executeRunBackend(
           }
 
           // Transition to running
+          log.info({ workflowId, runId, nodeId: node.id }, `Executing node: type=${node.type}`);
           nodeStatuses.set(node.id, 'running');
           await dbRun(
             'UPDATE run_node_results SET status = ? WHERE run_id = ? AND node_id = ?',
@@ -513,6 +531,12 @@ export async function executeRunBackend(
             const durationMs = Date.now() - nodeStartTime;
             const { costCents, metadata } = calculateNodeCost(node.type, output, node.data.config);
 
+            log.info({ workflowId, runId, nodeId: node.id }, `Node execution succeeded: status=${status}, duration=${durationMs}ms`);
+            const slowThreshold = Number(process.env.SLOW_NODE_THRESHOLD_MS) || 5000;
+            if (durationMs > slowThreshold) {
+              log.warn({ workflowId, runId, nodeId: node.id }, `Slow node execution detected: ${durationMs}ms (threshold: ${slowThreshold}ms)`);
+            }
+
             await dbRun(
               'UPDATE run_node_results SET status = ?, output_json = ?, duration_ms = ?, cost_cents = ?, metadata_json = ? WHERE run_id = ? AND node_id = ?',
               [status, JSON.stringify(outputToSave), durationMs, costCents, JSON.stringify(metadata), runId, node.id]
@@ -523,6 +547,8 @@ export async function executeRunBackend(
               code: err.code || 'EXECUTION_ERROR',
               message: err.message || 'An error occurred during execution.'
             };
+
+            log.error({ workflowId, runId, nodeId: node.id }, `Node execution failed: code=${errorPayload.code}, message="${errorPayload.message}"`, err);
 
             nodeStatuses.set(node.id, 'error');
             nodeErrors.set(node.id, errorPayload);
@@ -536,6 +562,7 @@ export async function executeRunBackend(
             // Propagate cascade skips immediately to descendants
             const descendants = getDownstreamDescendants(node.id, edges);
             for (const descId of descendants) {
+              log.info({ workflowId, runId, nodeId: descId }, `Skipping downstream node due to parent execution failure`);
               nodeStatuses.set(descId, 'skipped');
               await dbRun(
                 'UPDATE run_node_results SET status = ? WHERE run_id = ? AND node_id = ?',
@@ -552,7 +579,7 @@ export async function executeRunBackend(
 
     await schedulerStep();
   } catch (error) {
-    console.error('Fatal engine failure inside backend scheduler:', error);
+    reportToErrorTracker(error, { workflowId, runId });
     await dbRun('UPDATE runs SET status = ?, finished_at = CURRENT_TIMESTAMP WHERE id = ?', ['failed', runId]);
   }
 }
