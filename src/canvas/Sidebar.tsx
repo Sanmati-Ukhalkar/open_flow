@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Wrench, Globe, Database, Combine, Calendar, Package, ShieldAlert, Search, X } from 'lucide-react';
+import { Bot, Wrench, Globe, Database, Combine, Calendar, Package, ShieldAlert, Search, X, Mail, FileUp, Code, GitBranch, RefreshCcw } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
   'llm-prompt': Bot,
@@ -8,7 +8,15 @@ const ICON_MAP: Record<string, any> = {
   'sqlite-storage': Database,
   'text-transform': Combine,
   'cron-trigger': Calendar,
-  'webhook-trigger': Globe
+  'webhook-trigger': Globe,
+  'email': Mail,
+  'vision-ocr': Search,
+  'file-trigger': FileUp,
+  'vector-store': Database,
+  'vector-retrieve': Database,
+  'code-execution': Code,
+  'branch': GitBranch,
+  'loop': RefreshCcw
 };
 
 const COLOR_MAP: Record<string, string> = {
@@ -18,7 +26,15 @@ const COLOR_MAP: Record<string, string> = {
   'sqlite-storage': 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5',
   'text-transform': 'text-yellow-400 border-yellow-500/20 bg-yellow-500/5',
   'cron-trigger': 'text-purple-300 border-purple-500/20 bg-purple-500/5',
-  'webhook-trigger': 'text-blue-300 border-blue-500/20 bg-blue-500/5'
+  'webhook-trigger': 'text-blue-300 border-blue-500/20 bg-blue-500/5',
+  'email': 'text-orange-400 border-orange-500/20 bg-orange-500/5',
+  'vision-ocr': 'text-indigo-400 border-indigo-500/20 bg-indigo-500/5',
+  'file-trigger': 'text-cyan-400 border-cyan-500/20 bg-cyan-500/5',
+  'vector-store': 'text-teal-400 border-teal-500/20 bg-teal-500/5',
+  'vector-retrieve': 'text-teal-400 border-teal-500/20 bg-teal-500/5',
+  'code-execution': 'text-gray-400 border-gray-500/20 bg-gray-500/5',
+  'branch': 'text-pink-400 border-pink-500/20 bg-pink-500/5',
+  'loop': 'text-lime-400 border-lime-500/20 bg-lime-500/5'
 };
 
 export const Sidebar = () => {

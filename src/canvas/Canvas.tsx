@@ -19,6 +19,7 @@ import MCPToolNode from './MCPToolNode';
 import HTTPWebhookNode from './HTTPWebhookNode';
 import SQLiteStorageNode from './SQLiteStorageNode';
 import TextTransformNode from './TextTransformNode';
+import GenericNode from './GenericNode';
 
 // Map custom node types
 const nodeTypes = {
@@ -27,6 +28,14 @@ const nodeTypes = {
   'http-webhook': HTTPWebhookNode,
   'sqlite-storage': SQLiteStorageNode,
   'text-transform': TextTransformNode,
+  'email': GenericNode,
+  'vision-ocr': GenericNode,
+  'file-trigger': GenericNode,
+  'vector-store': GenericNode,
+  'vector-retrieve': GenericNode,
+  'code-execution': GenericNode,
+  'branch': GenericNode,
+  'loop': GenericNode,
 };
 
 interface CanvasProps {
