@@ -4,9 +4,10 @@
 
 > Think "n8n for MCP": a canvas where you chain AI tool-calls, MCP servers, and everyday automation steps together, without writing code.
 
-![status](https://img.shields.io/badge/status-active--development-purple)
+[![Build Status](https://github.com/Sanmati-Ukhalkar/open_flow/workflows/OpenFlow%20CI/badge.svg)](https://github.com/Sanmati-Ukhalkar/open_flow/actions)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 ![version](https://img.shields.io/badge/version-v1.0-orange)
+[![Video Walkthrough](https://img.shields.io/badge/Video-Walkthrough-red?style=flat&logo=youtube)](docs/VIDEO_WALKTHROUGH.md)
 
 ---
 
@@ -110,6 +111,7 @@ More node types are planned — see [`CONTRIBUTING.md`](./CONTRIBUTING.md) for h
 
 ## 📦 Quick Start
 
+### Option A: Local Node Development
 ```bash
 git clone https://github.com/Sanmati-Ukhalkar/open_flow.git
 cd open_flow
@@ -117,8 +119,14 @@ npm install
 cp .env.example .env   # add your OpenAI API key
 npm run dev
 ```
-
 Visit `http://localhost:5173`, create a Team, drag a node onto the canvas (or clone a starter template!), and hit **Run Workflow**.
+
+### Option B: Self-Hosting with Docker Compose
+If you have Docker installed, you can launch a local OpenFlow instance in the background with a single command:
+```bash
+docker compose up --build
+```
+This builds and starts both the frontend and backend containers, persisting your local SQLite database data.
 
 ---
 
@@ -126,10 +134,11 @@ Visit `http://localhost:5173`, create a Team, drag a node onto the canvas (or cl
 
 Open Flow is actively evolving — contributions, bug reports, and node ideas are welcome. Start here:
 
-1. Read [`ARCHITECTURE.md`](./ARCHITECTURE.md) to understand the current scope.
-2. Read [`AGENTS.md`](./AGENTS.md) if you're using an AI coding assistant (Claude Code, Cursor, etc.) to contribute.
-3. Check issues labeled `good first issue`.
-4. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for how to run the project locally and submit a node or a PR.
+1. Read [`ARCHITECTURE.md`](./docs/ARCHITECTURE.md) to understand the project architecture.
+2. Read the [Node-Authoring Guide](./docs/NODE_AUTHORING_GUIDE.md) to learn how to implement custom nodes.
+3. Check the [API Reference Docs](./docs/API_REFERENCE.md) to integrate deployed workflows with your external applications.
+4. Read [`AGENTS.md`](./AGENTS.md) if you're using an AI coding assistant (Claude Code, Cursor, etc.) to contribute.
+5. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for local dev guidelines and PR checklists.
 
 ## 📄 License
 
