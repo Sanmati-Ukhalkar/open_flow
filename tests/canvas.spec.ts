@@ -5,11 +5,19 @@ test.describe('OpenFlow Visual Canvas E2E Tests', () => {
     // Navigate to local OpenFlow instance
     await page.goto('/');
     
-    // Check if redirect to login/auth occurs and handle it (mock user bypass or log in)
+    // Check if redirect to login/auth occurs and handle it (mock user bypass or register/log in)
     if (await page.locator('input[type="email"]').isVisible()) {
-      await page.fill('input[type="email"]', 'test@example.com');
+      // Click "Don't have an account? Sign up" to switch to register mode
+      await page.click('text=Don\'t have an account? Sign up');
+      
+      // Register a fresh random user to avoid conflicts
+      const randomEmail = `test-${Math.random().toString(36).substr(2, 5)}@example.com`;
+      await page.fill('input[type="email"]', randomEmail);
       await page.fill('input[type="password"]', 'password123');
       await page.click('button[type="submit"]');
+      
+      // Wait for navigation/redirection to complete
+      await page.waitForSelector('.react-flow__renderer', { timeout: 15000 });
     }
   });
 
