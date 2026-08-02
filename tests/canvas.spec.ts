@@ -17,22 +17,23 @@ test.describe('OpenFlow Visual Canvas E2E Tests', () => {
       await page.click('button[type="submit"]');
       
       // Wait for navigation/redirection to complete
-      await page.waitForSelector('.react-flow__renderer', { timeout: 15000 });
+      await page.waitForSelector('.react-flow', { timeout: 15000 });
     }
   });
 
   test('should render canvas and show sidebar node library', async ({ page }) => {
     // Assert canvas is loaded
-    await expect(page.locator('.react-flow__renderer')).toBeVisible();
+    await expect(page.locator('.react-flow')).toBeVisible();
 
     // Assert Sidebar with node types is visible
-    await expect(page.locator('text=Nodes')).toBeVisible();
-    await expect(page.locator('text=LLM Prompt')).toBeVisible();
+    await expect(page.locator('#node-library-sidebar')).toBeVisible();
+    await expect(page.locator('#node-library-sidebar').getByText('Node Library')).toBeVisible();
+    await expect(page.locator('#node-library-sidebar').getByText('LLM Prompt').first()).toBeVisible();
   });
 
   test('should allow dragging node and editing configuration', async ({ page }) => {
     // Locate node in library
-    const llmNodeButton = page.locator('text=LLM Prompt').first();
+    const llmNodeButton = page.locator('#node-library-sidebar').getByText('LLM Prompt').first();
     
     // Select the target canvas area
     const canvas = page.locator('.react-flow__pane');
@@ -46,7 +47,7 @@ test.describe('OpenFlow Visual Canvas E2E Tests', () => {
 
     // Click on node to open config panel
     await addedNode.click();
-    await expect(page.locator('text=Configuration')).toBeVisible();
+    await expect(page.locator('#config-panel').getByText('Prompt Template')).toBeVisible();
   });
 
   test('should trigger run execution and verify output', async ({ page }) => {
