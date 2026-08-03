@@ -21,7 +21,7 @@ const TYPE_CONFIGS: Record<string, { label: string; icon: any }> = {
   'loop': { label: 'Loop', icon: RefreshCcw },
 };
 
-export const GenericNode = ({ id, data, selected }: { id: string; data: GenericNodeData; selected: boolean }) => {
+export const GenericNode = ({ id, type, data, selected }: { id: string; type: string; data: GenericNodeData; selected: boolean }) => {
   const statusColors = {
     idle: 'border-zinc-800 bg-zinc-950 text-zinc-400 shadow-md',
     running: 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.25)] bg-zinc-950 text-status-running',
@@ -31,7 +31,8 @@ export const GenericNode = ({ id, data, selected }: { id: string; data: GenericN
     skipped: 'border-zinc-900 bg-zinc-900 text-zinc-650 opacity-50',
   };
 
-  const typeConfig = TYPE_CONFIGS[data.type] || { label: 'Generic Node', icon: Layout };
+  const nodeType = type || data.type;
+  const typeConfig = TYPE_CONFIGS[nodeType] || { label: 'Generic Node', icon: Layout };
   const IconComponent = typeConfig.icon;
 
   return (
