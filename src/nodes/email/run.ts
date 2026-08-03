@@ -24,11 +24,11 @@ export async function run(
     throw new Error('Missing required fields: host, to, from, subject, or body');
   }
 
-  const smtpUser = credentials['smtp_user'];
-  const smtpPass = credentials['smtp_pass'];
+  const smtpUser = credentials['smtp_user'] || process.env.SMTP_USER;
+  const smtpPass = credentials['smtp_pass'] || process.env.SMTP_PASS;
 
   if (!smtpUser || !smtpPass) {
-    throw new Error('SMTP credentials (smtp_user, smtp_pass) are required');
+    throw new Error('SMTP credentials (smtp_user, smtp_pass) are required. Please configure them in your .env file or your organization credentials.');
   }
 
   // Template the fields
