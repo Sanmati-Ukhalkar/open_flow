@@ -5,7 +5,7 @@ test.describe('OpenFlow Visual Canvas E2E Tests', () => {
     await page.goto('/');
 
     const emailInput = page.locator('input[type="email"]');
-    const canvas = page.locator('.react-flow__renderer');
+    const canvas = page.locator('.react-flow');
 
     // Wait until either auth UI or canvas appears
     await Promise.race([
@@ -32,7 +32,7 @@ test.describe('OpenFlow Visual Canvas E2E Tests', () => {
 
   test('should render canvas and show sidebar node library', async ({ page }) => {
     // Assert canvas is loaded
-    await expect(page.locator('.react-flow__renderer')).toBeVisible();
+    await expect(page.locator('.react-flow')).toBeVisible();
 
     // Assert Sidebar with node types is visible
     await expect(page.locator('text=Nodes')).toBeVisible();
