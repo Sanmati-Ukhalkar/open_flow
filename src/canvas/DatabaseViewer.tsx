@@ -75,6 +75,34 @@ function JsonCell({ value }: { value: any }) {
   );
 }
 
+// Helper to format UTC database timestamps into local browser timezone
+function formatCellValue(colName: string, value: any): any {
+  if (value === null || value === undefined) return value;
+
+  // Parse and convert UTC timestamp strings to local timezone
+  if (colName.toLowerCase().includes('timestamp') || colName.toLowerCase().includes('time')) {
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)) {
+      try {
+        const utcIsoStr = value.replace(' ', 'T') + 'Z';
+        const date = new Date(utcIsoStr);
+        if (!isNaN(date.getTime())) {
+          const pad = (num: number) => String(num).padStart(2, '0');
+          const yyyy = date.getFullYear();
+          const mm = pad(date.getMonth() + 1);
+          const dd = pad(date.getDate());
+          const hh = pad(date.getHours());
+          const min = pad(date.getMinutes());
+          const ss = pad(date.getSeconds());
+          return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+        }
+      } catch {
+        // Fall back to original value if parsing fails
+      }
+    }
+  }
+  return value;
+}
+
 // ---------------------------------------------------------------------------
 // Main DatabaseViewer component
 // ---------------------------------------------------------------------------
@@ -328,12 +356,12 @@ export const DatabaseViewer = ({ token }: DatabaseViewerProps) => {
                       key={i}
                       className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors"
                     >
-                      {columns.map((col) => (
+                       {columns.map((col) => (
                         <td
                           key={col}
                           className="px-4 py-3 align-top max-w-[320px]"
                         >
-                          <JsonCell value={row[col]} />
+                          <JsonCell value={formatCellValue(col, row[col])} />
                         </td>
                       ))}
                     </tr>
