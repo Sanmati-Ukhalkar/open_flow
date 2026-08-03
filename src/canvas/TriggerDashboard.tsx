@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ToggleLeft, ToggleRight, Loader2, Play, Calendar, Globe, AlertCircle, Clock } from 'lucide-react';
+import { parseSqliteDate } from './dateHelper';
 
 interface TriggerDashboardProps {
   token: string;
@@ -84,7 +85,7 @@ export const TriggerDashboard = ({ token }: TriggerDashboardProps) => {
 
             const webhookUrl = `${window.location.protocol}//${window.location.host}/api/webhooks/${t.workflow_id}`;
             const lastTriggered = t.last_triggered_at
-              ? new Date(t.last_triggered_at).toLocaleDateString(undefined, {
+              ? parseSqliteDate(t.last_triggered_at).toLocaleDateString(undefined, {
                   month: 'short',
                   day: 'numeric',
                   hour: '2-digit',

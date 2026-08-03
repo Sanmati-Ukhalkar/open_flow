@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Key, Copy, Check, ToggleLeft, ToggleRight, Loader2, RefreshCw, Bell } from 'lucide-react';
 import { DeploymentAlertModal } from './DeploymentAlertModal';
+import { parseSqliteDate } from './dateHelper';
 
 interface DeploymentDashboardProps {
   token: string;
@@ -108,7 +109,7 @@ export const DeploymentDashboard = ({ token }: DeploymentDashboardProps) => {
           {deployments.map(d => {
             const executeUrl = `${window.location.protocol}//${window.location.host}/api/deployments/${d.id}/execute`;
             const lastCalled = d.last_called_at
-              ? new Date(d.last_called_at).toLocaleDateString(undefined, {
+              ? parseSqliteDate(d.last_called_at).toLocaleDateString(undefined, {
                   month: 'short',
                   day: 'numeric',
                   hour: '2-digit',

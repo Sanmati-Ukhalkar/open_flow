@@ -6,6 +6,7 @@ import Marketplace from './Marketplace';
 import Templates from '../pages/Templates';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import DatabaseViewer from './DatabaseViewer';
+import { parseSqliteDate } from './dateHelper';
 
 import { Users } from 'lucide-react';
 
@@ -293,7 +294,7 @@ export const Dashboard = ({
               workflows.map(wf => {
                 const nodeCount = wf.graph?.nodes?.length || 0;
                   const edgeCount = wf.graph?.edges?.length || 0;
-                  const date = new Date(wf.updated_at).toLocaleDateString(undefined, {
+                  const date = parseSqliteDate(wf.updated_at).toLocaleDateString(undefined, {
                     month: 'short',
                     day: 'numeric',
                     hour: '2-digit',
