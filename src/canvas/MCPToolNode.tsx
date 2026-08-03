@@ -14,12 +14,12 @@ export interface MCPToolNodeData {
 
 export const MCPToolNode = ({ id, data, selected }: { id: string; data: MCPToolNodeData; selected: boolean }) => {
   const statusColors = {
-    idle: 'border-zinc-800 bg-zinc-950/90 text-zinc-400 shadow-md',
-    running: 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.25)] bg-zinc-950/90 text-status-running',
-    success: 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.25)] bg-zinc-950/90 text-status-success',
-    'success-with-warning': 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.25)] bg-zinc-950/90 text-status-warning',
-    error: 'border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.25)] bg-zinc-950/90 text-status-error',
-    skipped: 'border-zinc-900 bg-zinc-950/45 text-zinc-650 opacity-50',
+    idle: 'border-zinc-800 bg-zinc-950 text-zinc-400 shadow-md',
+    running: 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.25)] bg-zinc-950 text-status-running',
+    success: 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.25)] bg-zinc-950 text-status-success',
+    'success-with-warning': 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.25)] bg-zinc-950 text-status-warning',
+    error: 'border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.25)] bg-zinc-950 text-status-error',
+    skipped: 'border-zinc-900 bg-zinc-900 text-zinc-650 opacity-50',
   };
 
   return (

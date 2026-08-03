@@ -81,7 +81,7 @@ export const Sidebar = () => {
   return (
     <div 
       id="node-library-sidebar" 
-      className="hidden md:flex w-64 border-r border-zinc-800 bg-zinc-950/70 backdrop-blur-md p-5 flex-col h-full overflow-hidden flex-shrink-0 select-none"
+      className="hidden md:flex w-64 border-r border-zinc-800 bg-zinc-950 p-5 flex-col h-full overflow-hidden flex-shrink-0 select-none"
     >
       <div className="mb-4 flex-shrink-0">
         <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Node Library</h3>

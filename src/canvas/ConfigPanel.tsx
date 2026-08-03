@@ -76,7 +76,7 @@ export const ConfigPanel = ({
 
   const containerClasses = isBottomSheet
     ? "w-full flex flex-col justify-between relative bg-zinc-950 p-4 h-full"
-    : "w-80 border-l border-zinc-800 bg-zinc-950/50 backdrop-blur-md p-6 flex flex-col justify-between h-full overflow-y-auto flex-shrink-0 relative hidden md:flex";
+    : "w-80 border-l border-zinc-800 bg-zinc-950 p-6 flex flex-col justify-between h-full overflow-y-auto flex-shrink-0 relative hidden md:flex";
 
   // Multi-select summary panel
   if (!selectedNode) {

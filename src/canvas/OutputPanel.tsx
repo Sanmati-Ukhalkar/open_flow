@@ -37,7 +37,7 @@ export const OutputPanel = ({
   return (
     <div 
       id="execution-output-panel"
-      className="h-48 md:h-60 border-t border-zinc-800 bg-zinc-950/70 backdrop-blur-md flex flex-col flex-shrink-0 z-10"
+      className="h-48 md:h-60 border-t border-zinc-800 bg-zinc-950 flex flex-col flex-shrink-0 z-10"
     >
       {/* Panel Header */}
       <div className="flex items-center gap-4 border-b border-zinc-850 px-6 py-2 flex-shrink-0">

@@ -1045,12 +1045,12 @@ function AppContent() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-[#09090b]">
+    <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100">
       {/* Shortcuts Overlay */}
       {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
 
       {/* Top Header */}
-      <header className="h-12 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md px-6 flex items-center justify-between z-10 flex-shrink-0">
+      <header className="h-12 border-b border-zinc-800 bg-zinc-950 px-6 flex items-center justify-between z-10 flex-shrink-0">
         <div className="flex items-center gap-4">
           <button
             onClick={() => setView('dashboard')}

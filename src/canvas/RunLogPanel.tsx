@@ -52,7 +52,7 @@ export const RunLogPanel = ({ logs, onSelectNode, nodes }: RunLogPanelProps) => 
   };
 
   return (
-    <div className="border-t border-zinc-800 bg-zinc-950/80 backdrop-blur-md flex flex-col flex-shrink-0 z-10">
+    <div className="border-t border-zinc-800 bg-zinc-950 flex flex-col flex-shrink-0 z-10">
       {/* Header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
