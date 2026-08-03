@@ -27,10 +27,26 @@ function templateString(template: string, data: any): string {
     let value = data;
     for (const key of keys) {
       if (value === undefined || value === null) return '';
-      if (value === data && value[key] === undefined && value.input !== undefined) {
-        value = value.input[key];
+      
+      let resolvedKey = key;
+      if (value[resolvedKey] === undefined) {
+        const dashedKey = key.replace(/\s+/g, '-');
+        if (value[dashedKey] !== undefined) {
+          resolvedKey = dashedKey;
+        }
+      }
+
+      if (value === data && value[resolvedKey] === undefined && value.input !== undefined) {
+        let resolvedInputKey = key;
+        if (value.input[resolvedInputKey] === undefined) {
+          const dashedKey = key.replace(/\s+/g, '-');
+          if (value.input[dashedKey] !== undefined) {
+            resolvedInputKey = dashedKey;
+          }
+        }
+        value = value.input[resolvedInputKey];
       } else {
-        value = value[key];
+        value = value[resolvedKey];
       }
     }
     return value !== undefined ? String(value) : '';
@@ -77,6 +93,10 @@ export async function run(
   }
 
   const finalPromptText = templateString(config.promptText, { input });
+  console.log("-----------------------------------------");
+  console.log("FINAL PROMPT SENT TO LLM:\n", finalPromptText);
+  console.log("INPUT DATA RECEIVED IN LLM:\n", JSON.stringify(input, null, 2));
+  console.log("-----------------------------------------");
 
   try {
     const openai = new OpenAI({ apiKey, baseURL });

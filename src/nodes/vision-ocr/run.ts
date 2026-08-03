@@ -7,10 +7,26 @@ function templateString(template: string, data: any): string {
     let value = data;
     for (const key of keys) {
       if (value === undefined || value === null) return '';
-      if (value === data && value[key] === undefined && value.input !== undefined) {
-        value = value.input[key];
+      
+      let resolvedKey = key;
+      if (value[resolvedKey] === undefined) {
+        const dashedKey = key.replace(/\s+/g, '-');
+        if (value[dashedKey] !== undefined) {
+          resolvedKey = dashedKey;
+        }
+      }
+
+      if (value === data && value[resolvedKey] === undefined && value.input !== undefined) {
+        let resolvedInputKey = key;
+        if (value.input[resolvedInputKey] === undefined) {
+          const dashedKey = key.replace(/\s+/g, '-');
+          if (value.input[dashedKey] !== undefined) {
+            resolvedInputKey = dashedKey;
+          }
+        }
+        value = value.input[resolvedInputKey];
       } else {
-        value = value[key];
+        value = value[resolvedKey];
       }
     }
     return value !== undefined ? String(value) : '';
