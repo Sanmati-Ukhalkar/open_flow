@@ -174,12 +174,16 @@ export const Canvas = ({
     // Connecting a status-only source to these makes no semantic sense.
     const templateConsumingTargets = new Set(['llm-prompt', 'http-webhook', 'mcp-tool', 'text-transform']);
 
-    if (statusOnlyOutputSources.has(sourceNode.type) && templateConsumingTargets.has(targetNode.type)) {
+    const sourceType = sourceNode.type;
+    const targetType = targetNode.type;
+    if (!sourceType || !targetType) return true;
+
+    if (statusOnlyOutputSources.has(sourceType) && templateConsumingTargets.has(targetType)) {
       return false;
     }
 
-    const sourceDef = definitions.find(d => d.id === sourceNode.type);
-    const targetDef = definitions.find(d => d.id === targetNode.type);
+    const sourceDef = definitions.find(d => d.id === sourceType);
+    const targetDef = definitions.find(d => d.id === targetType);
     if (!sourceDef || !targetDef) return true;
 
     // Dynamic input schema for MCP tool (uses live fetched schema for selected tool)

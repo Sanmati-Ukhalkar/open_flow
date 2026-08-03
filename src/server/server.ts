@@ -1278,6 +1278,81 @@ wss.on('connection', (ws, request) => {
 });
 
 // -------------------------------------------------------------
+// DATABASE VIEWER ROUTES (reads from database.sqlite — node data store)
+// -------------------------------------------------------------
+
+const DATA_DB_PATH = path.resolve(process.cwd(), 'database.sqlite');
+
+// GET /api/db/tables — list all user-created tables in database.sqlite
+app.get('/api/db/tables', authenticateToken, (_req: AuthenticatedRequest, res) => {
+  const dataDb = new (require('sqlite3').Database)(DATA_DB_PATH, (err: Error | null) => {
+    if (err) {
+      return res.status(500).json({ success: false, error: { message: `Cannot open database: ${err.message}` } });
+    }
+  });
+
+  dataDb.all(
+    `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name`,
+    [],
+    (err: Error | null, rows: any[]) => {
+      dataDb.close();
+      if (err) {
+        return res.status(500).json({ success: false, error: { message: err.message } });
+      }
+      return res.json({ success: true, tables: rows.map((r: any) => r.name) });
+    }
+  );
+});
+
+// GET /api/db/tables/:name/rows?page=1&limit=50 — paginated rows from a table
+app.get('/api/db/tables/:name/rows', authenticateToken, (req: AuthenticatedRequest, res) => {
+  const { name } = req.params;
+
+  // Validate table name to prevent SQL injection
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
+    return res.status(400).json({ success: false, error: { message: 'Invalid table name.' } });
+  }
+
+  const page = Math.max(1, parseInt((req.query.page as string) || '1', 10));
+  const limit = Math.min(200, Math.max(1, parseInt((req.query.limit as string) || '50', 10)));
+  const offset = (page - 1) * limit;
+
+  const dataDb = new (require('sqlite3').Database)(DATA_DB_PATH, (err: Error | null) => {
+    if (err) {
+      return res.status(500).json({ success: false, error: { message: `Cannot open database: ${err.message}` } });
+    }
+  });
+
+  dataDb.get(`SELECT COUNT(*) as total FROM ${name}`, [], (countErr: Error | null, countRow: any) => {
+    if (countErr) {
+      dataDb.close();
+      return res.status(500).json({ success: false, error: { message: countErr.message } });
+    }
+
+    const total = countRow?.total || 0;
+
+    dataDb.all(
+      `SELECT * FROM ${name} ORDER BY rowid DESC LIMIT ? OFFSET ?`,
+      [limit, offset],
+      (err: Error | null, rows: any[]) => {
+        dataDb.close();
+        if (err) {
+          return res.status(500).json({ success: false, error: { message: err.message } });
+        }
+        return res.json({
+          success: true,
+          rows: rows || [],
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        });
+      }
+    );
+  });
+});
+
+// -------------------------------------------------------------
 // CRON TRIGGER SCHEDULER ENGINE
 // -------------------------------------------------------------
 

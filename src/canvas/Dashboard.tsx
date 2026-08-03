@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Waves, Folder, Plus, Trash2, Key, LogOut, Clock, Globe, Play, Package } from 'lucide-react';
+import { Waves, Folder, Plus, Trash2, Key, LogOut, Clock, Globe, Play, Package, Database } from 'lucide-react';
 import DeploymentDashboard from './DeploymentDashboard';
 import TriggerDashboard from './TriggerDashboard';
 import Marketplace from './Marketplace';
 import Templates from '../pages/Templates';
 import AnalyticsDashboard from './AnalyticsDashboard';
+import DatabaseViewer from './DatabaseViewer';
 
 import { Users } from 'lucide-react';
 
@@ -36,7 +37,7 @@ export const Dashboard = ({
   const [workflows, setWorkflows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [activeTab, setActiveTab] = useState<'workflows' | 'templates' | 'deployments' | 'triggers' | 'marketplace' | 'analytics'>('workflows');
+  const [activeTab, setActiveTab] = useState<'workflows' | 'templates' | 'deployments' | 'triggers' | 'marketplace' | 'analytics' | 'database'>('workflows');
 
   const fetchWorkflows = async () => {
     setLoading(true);
@@ -213,6 +214,17 @@ export const Dashboard = ({
             <Clock className="w-3.5 h-3.5" />
             Analytics
           </button>
+          <button
+            onClick={() => setActiveTab('database')}
+            className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all flex-shrink-0 ${
+              activeTab === 'database'
+                ? 'text-purple-400 border-purple-500'
+                : 'text-zinc-505 border-transparent hover:text-zinc-300'
+            }`}
+          >
+            <Database className="w-3.5 h-3.5" />
+            Database
+          </button>
         </div>
 
         {activeTab === 'deployments' ? (
@@ -225,6 +237,8 @@ export const Dashboard = ({
           <Templates token={token} activeOrg={activeOrg} onSelectWorkflow={onSelectWorkflow} />
         ) : activeTab === 'analytics' ? (
           <AnalyticsDashboard token={token} orgId={activeOrg?.id} />
+        ) : activeTab === 'database' ? (
+          <DatabaseViewer token={token} />
         ) : (
           <>
             {/* Directory & Create button */}

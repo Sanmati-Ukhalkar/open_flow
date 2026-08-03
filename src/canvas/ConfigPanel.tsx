@@ -17,6 +17,19 @@ interface ConfigPanelProps {
   isBottomSheet?: boolean;
 }
 
+type RFNodeData = {
+  config?: Record<string, any>;
+  [key: string]: any;
+};
+
+type MCPTool = {
+  name: string;
+  description: string;
+  inputSchema?: {
+    properties?: Record<string, any>;
+  };
+};
+
 export const ConfigPanel = ({
   selectedNode,
   selectedCount = 0,
@@ -30,7 +43,7 @@ export const ConfigPanel = ({
   readOnly = false,
   isBottomSheet = false
 }: ConfigPanelProps) => {
-  const [availableTools, setAvailableTools] = useState<{ name: string; description: string }[]>([]);
+  const [availableTools, setAvailableTools] = useState<MCPTool[]>([]);
   const [loadingTools, setLoadingTools] = useState(false);
   const [definitions, setDefinitions] = useState<any[]>([]);
   const nodes = useNodes();
@@ -39,7 +52,9 @@ export const ConfigPanel = ({
   const getParentVariables = () => {
     if (!selectedNode) return [];
     const parentEdges = edges.filter(e => e.target === selectedNode.id);
-    const parentNodes = parentEdges.map(e => nodes.find(n => n.id === e.source)).filter(Boolean);
+    const parentNodes = parentEdges
+      .map(e => nodes.find(n => n.id === e.source))
+      .filter((n): n is Node<RFNodeData> => n != null);
     
     const vars: string[] = [];
     parentNodes.forEach(pNode => {
@@ -86,7 +101,7 @@ export const ConfigPanel = ({
     return vars;
   };
 
-  const renderVariableSuggestions = (fieldName: string, currentVal: string, onUpdate: (newVal: string) => void) => {
+  const renderVariableSuggestions = (currentVal: string, onUpdate: (newVal: string) => void) => {
     const parentVars = getParentVariables();
     if (parentVars.length === 0) return null;
 
@@ -246,7 +261,7 @@ export const ConfigPanel = ({
                 rows={isBottomSheet ? 5 : 8}
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-sans leading-relaxed"
               />
-              {renderVariableSuggestions('promptText', config.promptText, (newVal) => onChangeConfig(id, { ...config, promptText: newVal }))}
+              {renderVariableSuggestions(config.promptText, (newVal) => onChangeConfig(id, { ...config, promptText: newVal }))}
             </div>
           </div>
         );
@@ -351,7 +366,7 @@ export const ConfigPanel = ({
                 rows={isBottomSheet ? 5 : 8}
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-mono leading-relaxed"
               />
-              {renderVariableSuggestions('bodyTemplate', config.bodyTemplate, (newVal) => onChangeConfig(id, { ...config, bodyTemplate: newVal }))}
+              {renderVariableSuggestions(config.bodyTemplate, (newVal) => onChangeConfig(id, { ...config, bodyTemplate: newVal }))}
               <p className="text-[10px] text-zinc-550 leading-normal">
                 Replaces `{"{{input}}"}` with the string resolved from your upstream connection.
               </p>
@@ -407,7 +422,7 @@ export const ConfigPanel = ({
                 rows={isBottomSheet ? 5 : 10}
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-mono leading-relaxed"
               />
-              {renderVariableSuggestions('template', config.template, (newVal) => onChangeConfig(id, { ...config, template: newVal }))}
+              {renderVariableSuggestions(config.template, (newVal) => onChangeConfig(id, { ...config, template: newVal }))}
               <p className="text-[10px] text-zinc-550 leading-normal">
                 Reference parent nodes like `{"{{llm-node-1}}"}` or property indices like `{"{{mcp-node-1.uppercaseText}}"}`.
               </p>
@@ -560,7 +575,7 @@ export const ConfigPanel = ({
                       className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 font-mono"
                     />
                   )}
-                  {renderVariableSuggestions(fieldName, currentVal, (newVal) => onChangeConfig(id, { ...config, [fieldName]: newVal }))}
+                  {renderVariableSuggestions(currentVal, (newVal) => onChangeConfig(id, { ...config, [fieldName]: newVal }))}
                 </div>
               );
             })}
@@ -573,7 +588,7 @@ export const ConfigPanel = ({
         const schema = definitions.find(d => d.id === type);
         const fields = schema?.configFields || [];
 
-        const isBuiltinNode = ['email', 'vision-ocr', 'file-trigger', 'vector-store', 'vector-retrieve', 'code-execution', 'branch', 'loop'].includes(type);
+        const isBuiltinNode = !!type && ['email', 'vision-ocr', 'file-trigger', 'vector-store', 'vector-retrieve', 'code-execution', 'branch', 'loop'].includes(type);
 
         return (
           <div className="space-y-4">
@@ -636,7 +651,7 @@ export const ConfigPanel = ({
                       className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
                     />
                   )}
-                  {isTemplatedField && renderVariableSuggestions(f.name, currentVal, (newVal) => onChangeConfig(id, { ...(data.config || {}), [f.name]: newVal }))}
+                  {isTemplatedField && renderVariableSuggestions(currentVal, (newVal) => onChangeConfig(id, { ...(data.config || {}), [f.name]: newVal }))}
                 </div>
               );
             })}
