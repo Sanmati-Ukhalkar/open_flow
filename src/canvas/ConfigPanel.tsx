@@ -412,18 +412,46 @@ export const ConfigPanel = ({
               </p>
             </div>
             
-            {fields.map((f: any) => (
-              <div key={f.name} className="space-y-1">
-                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">{f.displayName}</label>
-                <input
-                  type="text"
-                  value={data.config?.[f.name] ?? f.defaultValue ?? ''}
-                  onChange={(e) => onChangeConfig(id, { ...(data.config || {}), [f.name]: e.target.value })}
-                  disabled={isRunning || readOnly}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
-                />
-              </div>
-            ))}
+            {fields.map((f: any) => {
+              const isFileField = f.name.toLowerCase().includes('image') || f.name.toLowerCase().includes('file');
+              return (
+                <div key={f.name} className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">
+                      {f.displayName}
+                    </label>
+                    {isFileField && (
+                      <label className="text-[9px] text-purple-400 hover:text-purple-350 cursor-pointer font-semibold uppercase tracking-wider select-none">
+                        Upload File
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                const base64 = event.target?.result as string;
+                                onChangeConfig(id, { ...(data.config || {}), [f.name]: base64 });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={data.config?.[f.name] ?? f.defaultValue ?? ''}
+                    onChange={(e) => onChangeConfig(id, { ...(data.config || {}), [f.name]: e.target.value })}
+                    disabled={isRunning || readOnly}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+                  />
+                </div>
+              );
+            })}
           </div>
         );
       }
