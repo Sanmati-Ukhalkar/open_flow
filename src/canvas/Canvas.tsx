@@ -121,7 +121,8 @@ export const Canvas = ({
     [reactFlowInstance, onDropNode, isMobile]
   );
 
-  const getNodeColor = useCallback((node: Node) => {
+  const getNodeColor = useCallback((node?: Node) => {
+    if (!node) return theme === 'dark' ? '#18181b' : '#d4d4d8';
     const status = node.data?.status;
     switch (status) {
       case 'running': return '#3b82f6';
@@ -137,7 +138,7 @@ export const Canvas = ({
   const MiniMapNode = useCallback((props: any) => {
     const node = nodes.find(n => n.id === props.id);
     const label = node?.data?.label || node?.type || 'Node';
-    const fill = getNodeColor(node as Node);
+    const fill = getNodeColor(node);
     
     return (
       <rect
