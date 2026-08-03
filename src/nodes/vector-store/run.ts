@@ -9,7 +9,11 @@ function templateString(template: string, data: any): string {
     let value = data;
     for (const key of keys) {
       if (value === undefined || value === null) return '';
-      value = value[key];
+      if (value === data && value[key] === undefined && value.input !== undefined) {
+        value = value.input[key];
+      } else {
+        value = value[key];
+      }
     }
     return value !== undefined ? String(value) : '';
   });
