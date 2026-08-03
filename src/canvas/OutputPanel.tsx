@@ -164,7 +164,10 @@ export const OutputPanel = ({
               <div className="space-y-2">
                 <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider block">Result Payload</span>
                 <div className="text-xs text-zinc-300 whitespace-pre-wrap font-mono leading-relaxed bg-zinc-900/30 border border-zinc-900 p-4 rounded-lg overflow-x-auto max-w-full">
-                  {typeof activeOutput.data === 'string' ? activeOutput.data : JSON.stringify(activeOutput.data, null, 2)}
+                  {(() => {
+                    const displayVal = activeOutput.data !== undefined ? activeOutput.data : activeOutput;
+                    return typeof displayVal === 'string' ? displayVal : JSON.stringify(displayVal, null, 2);
+                  })()}
                 </div>
               </div>
             )}
@@ -185,7 +188,10 @@ export const OutputPanel = ({
                 <div className="space-y-2">
                   <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider block">Result Payload</span>
                   <div className="text-xs text-zinc-300 whitespace-pre-wrap font-mono leading-relaxed bg-zinc-900/30 border border-zinc-900 p-4 rounded-lg overflow-x-auto max-w-full">
-                    {typeof activeOutput.data === 'string' ? activeOutput.data : JSON.stringify(activeOutput.data, null, 2)}
+                    {(() => {
+                      const displayVal = activeOutput.data !== undefined ? activeOutput.data : activeOutput;
+                      return typeof displayVal === 'string' ? displayVal : JSON.stringify(displayVal, null, 2);
+                    })()}
                   </div>
                 </div>
               </div>
