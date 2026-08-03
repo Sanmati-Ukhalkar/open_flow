@@ -55,6 +55,10 @@ function AppContent() {
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string | null>(null);
   const [workflowName, setWorkflowName] = useState('My Workspace Graph');
 
+  // Autosave states & refs
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('saved');
+  const lastSavedStateRef = useRef<string>('');
+
   // React Flow canvas states (Synced with Yjs)
   const { nodes, setNodes, onNodesChange, edges, setEdges, onEdgesChange, undo, redo, awarenessUsers, setEditingNode, clientId, setCursor } = useYjsSync(currentWorkflowId, token, activeOrg?.id, user);
 
@@ -700,6 +704,12 @@ function AppContent() {
         if (!currentWorkflowId) {
           setCurrentWorkflowId(result.workflow.id);
         }
+        lastSavedStateRef.current = JSON.stringify({
+          name: workflowName,
+          nodes,
+          edges
+        });
+        setSaveStatus('saved');
         alert('Workflow definition successfully saved to metadata database.');
       } else {
         alert(result.error?.message || 'Failed to save workflow.');
@@ -708,6 +718,49 @@ function AppContent() {
       alert('Error connecting to backend database.');
     }
   };
+
+  // Autosave useEffect hook
+  useEffect(() => {
+    if (!currentWorkflowId || !token) return;
+
+    const currentStateStr = JSON.stringify({ name: workflowName, nodes, edges });
+    if (currentStateStr === lastSavedStateRef.current) {
+      setSaveStatus('saved');
+      return;
+    }
+
+    setSaveStatus('idle'); // Changes pending
+
+    const timer = setTimeout(async () => {
+      setSaveStatus('saving');
+      const payload = {
+        name: workflowName,
+        graph: { nodes, edges }
+      };
+
+      try {
+        const res = await fetch(`/api/workflows/${currentWorkflowId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (res.ok && result.success) {
+          lastSavedStateRef.current = currentStateStr;
+          setSaveStatus('saved');
+        } else {
+          setSaveStatus('error');
+        }
+      } catch (err) {
+        setSaveStatus('error');
+      }
+    }, 1500); // 1.5s debounce
+
+    return () => clearTimeout(timer);
+  }, [nodes, edges, workflowName, currentWorkflowId, token]);
 
   const handleDeployWorkflow = async () => {
     if (!currentWorkflowId) {
@@ -755,6 +808,12 @@ function AppContent() {
         setNodes(wf.graph.nodes || []);
         setEdges(wf.graph.edges || []);
         clearHistory();
+        lastSavedStateRef.current = JSON.stringify({
+          name: wf.name,
+          nodes: wf.graph.nodes || [],
+          edges: wf.graph.edges || []
+        });
+        setSaveStatus('saved');
         
         // Reset execution states
         setExecutionOutputs({});
@@ -1094,6 +1153,36 @@ function AppContent() {
 
         {/* Global Action Bar */}
         <div className="flex items-center gap-3">
+          {/* Autosave Status Indicator */}
+          {currentWorkflowId && (
+            <div className="flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded border bg-zinc-950/80 border-zinc-850 select-none">
+              {saveStatus === 'saving' && (
+                <>
+                  <div className="w-2 h-2 border border-purple-500 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-zinc-400 font-mono text-[9px] font-medium">Autosaving...</span>
+                </>
+              )}
+              {saveStatus === 'saved' && (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span className="text-zinc-500 font-mono text-[9px] font-medium">Saved</span>
+                </>
+              )}
+              {saveStatus === 'idle' && (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                  <span className="text-zinc-400 font-mono text-[9px] font-medium">Unsaved</span>
+                </>
+              )}
+              {saveStatus === 'error' && (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+                  <span className="text-rose-400 font-mono text-[9px] font-medium">Save failed</span>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Save Button */}
           <button
             onClick={handleSaveWorkflow}
