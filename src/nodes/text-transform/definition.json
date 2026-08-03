@@ -5,7 +5,14 @@
   "category": "Storage",
   "inputSchema": {
     "type": "object",
-    "properties": {}
+    "description": "Accepts any number of upstream node outputs keyed by node ID. Each value must have a { data } field. No specific shape is enforced — the node is a flexible string formatter.",
+    "properties": {},
+    "additionalProperties": {
+      "type": "object",
+      "properties": {
+        "data": { "type": ["object", "string", "number", "boolean", "null"] }
+      }
+    }
   },
   "outputSchema": {
     "type": "object",

@@ -25,9 +25,7 @@ export async function run(
       data: {
         takenEdge,
         result
-      },
-      takenEdge,
-      result
+      }
     };
   } catch (error: any) {
     throw { code: 'BRANCH_EVAL_ERROR', message: error.message };

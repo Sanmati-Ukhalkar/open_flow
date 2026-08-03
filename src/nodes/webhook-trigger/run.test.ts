@@ -14,9 +14,7 @@ describe('Webhook Trigger Node', () => {
       data: {
         body: { message: 'hello' },
         headers: { 'content-type': 'application/json' },
-      },
-      body: { message: 'hello' },
-      headers: { 'content-type': 'application/json' },
+      }
     });
   });
 
@@ -27,9 +25,7 @@ describe('Webhook Trigger Node', () => {
       data: {
         body: {},
         headers: {},
-      },
-      body: {},
-      headers: {},
+      }
     });
   });
 });

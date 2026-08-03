@@ -6,8 +6,6 @@ describe('Cron Trigger Node', () => {
     const config = { cronExpression: '*/10 * * * *' };
     const result = await run({}, config);
 
-    expect(result.cronPattern).toBe('*/10 * * * *');
-    expect(result.triggeredAt).toBeDefined();
     expect(result.data.cronPattern).toBe('*/10 * * * *');
     expect(result.data.triggeredAt).toBeDefined();
   });

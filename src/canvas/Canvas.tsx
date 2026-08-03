@@ -74,6 +74,7 @@ export const Canvas = ({
   const { x, y, zoom } = useViewport();
   const [showMiniMap, setShowMiniMap] = useState(true);
   const [definitions, setDefinitions] = useState<any[]>([]);
+  const [mcpTools, setMcpTools] = useState<any[]>([]);
 
   useEffect(() => {
     fetch('/api/node-definitions')
@@ -84,6 +85,15 @@ export const Canvas = ({
         }
       })
       .catch(err => console.error("Canvas: Failed to load definitions", err));
+
+    fetch('/api/mcp/tools')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.tools) {
+          setMcpTools(data.tools);
+        }
+      })
+      .catch(err => console.error("Canvas: Failed to load MCP tools", err));
   }, []);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
@@ -155,8 +165,34 @@ export const Canvas = ({
     const targetDef = definitions.find(d => d.id === targetNode.type);
     if (!sourceDef || !targetDef) return true;
 
-    const outputSchema = sourceDef.outputSchema;
-    const inputSchema = targetDef.inputSchema;
+    let inputSchema = targetDef.inputSchema;
+    if (targetNode.type === 'mcp-tool') {
+      const toolName = targetNode.data.config?.toolName || 'text_analyzer';
+      const tool = mcpTools.find(t => t.name === toolName);
+      if (tool?.inputSchema) {
+        inputSchema = tool.inputSchema;
+      }
+    }
+
+    let outputSchema = sourceDef.outputSchema;
+    if (sourceNode.type === 'mcp-tool') {
+      const toolName = sourceNode.data.config?.toolName || 'text_analyzer';
+      if (toolName === 'text_analyzer') {
+        outputSchema = {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'object',
+              properties: {
+                wordCount: { type: 'number' },
+                characterCount: { type: 'number' },
+                uppercaseText: { type: 'string' }
+              }
+            }
+          }
+        };
+      }
+    }
 
     if (!inputSchema || !inputSchema.properties || Object.keys(inputSchema.properties).length === 0) {
       return true;
@@ -181,7 +217,7 @@ export const Canvas = ({
     }
 
     return true;
-  }, [nodes, definitions]);
+  }, [nodes, definitions, mcpTools]);
 
   // Custom MiniMap Node for hover Tooltips using standard SVG <title> elements
   const MiniMapNode = useCallback((props: any) => {

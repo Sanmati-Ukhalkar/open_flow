@@ -461,10 +461,10 @@ export async function executeRunBackend(
               break;
             }
             
-            // Check branch edges
             const pOutput = nodeOutputs.get(pId);
-            if (pOutput && pOutput.takenEdge !== undefined) {
-              if (edge.sourceHandle && edge.sourceHandle !== pOutput.takenEdge) {
+            const takenEdge = pOutput?.data?.takenEdge;
+            if (takenEdge !== undefined) {
+              if (edge.sourceHandle && edge.sourceHandle !== takenEdge) {
                 shouldSkip = true;
                 skipReason = 'skipped-by-branch';
                 break;

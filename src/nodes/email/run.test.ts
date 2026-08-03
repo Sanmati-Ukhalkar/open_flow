@@ -43,9 +43,7 @@ describe('Email Node', () => {
       data: {
         messageId: 'msg-123',
         status: 'sent',
-      },
-      messageId: 'msg-123',
-      status: 'sent',
+      }
     });
 
     expect(mockSendMail).toHaveBeenCalledWith({

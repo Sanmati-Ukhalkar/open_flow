@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Node } from 'reactflow';
+import { Node, useNodes, useEdges } from 'reactflow';
 import { Play, Settings, Wrench, Globe, Database, Combine, Trash2, Bot, Calendar, Package, ShieldAlert } from 'lucide-react';
 
 interface ConfigPanelProps {
@@ -33,6 +33,85 @@ export const ConfigPanel = ({
   const [availableTools, setAvailableTools] = useState<{ name: string; description: string }[]>([]);
   const [loadingTools, setLoadingTools] = useState(false);
   const [definitions, setDefinitions] = useState<any[]>([]);
+  const nodes = useNodes();
+  const edges = useEdges();
+
+  const getParentVariables = () => {
+    if (!selectedNode) return [];
+    const parentEdges = edges.filter(e => e.target === selectedNode.id);
+    const parentNodes = parentEdges.map(e => nodes.find(n => n.id === e.source)).filter(Boolean);
+    
+    const vars: string[] = [];
+    parentNodes.forEach(pNode => {
+      const def = definitions.find(d => d.id === pNode.type);
+      if (pNode.type === 'mcp-tool') {
+        const toolName = pNode.data.config?.toolName || 'text_analyzer';
+        if (toolName === 'text_analyzer') {
+          vars.push(`${pNode.id}.data.wordCount`);
+          vars.push(`${pNode.id}.data.characterCount`);
+          vars.push(`${pNode.id}.data.uppercaseText`);
+        } else {
+          vars.push(`${pNode.id}.data`);
+        }
+      } else if (pNode.type === 'branch') {
+        vars.push(`${pNode.id}.data.takenEdge`);
+        vars.push(`${pNode.id}.data.result`);
+      } else if (pNode.type === 'cron-trigger') {
+        vars.push(`${pNode.id}.data.triggeredAt`);
+        vars.push(`${pNode.id}.data.cronPattern`);
+      } else if (pNode.type === 'webhook-trigger') {
+        vars.push(`${pNode.id}.data.body`);
+        vars.push(`${pNode.id}.data.headers`);
+      } else if (pNode.type === 'email') {
+        vars.push(`${pNode.id}.data.messageId`);
+        vars.push(`${pNode.id}.data.status`);
+      } else if (def && def.outputSchema?.properties?.data?.properties) {
+        const props = Object.keys(def.outputSchema.properties.data.properties);
+        props.forEach(prop => {
+          vars.push(`${pNode.id}.data.${prop}`);
+        });
+      } else if (def && def.outputSchema?.properties) {
+        const props = Object.keys(def.outputSchema.properties);
+        props.forEach(prop => {
+          if (prop === 'data') {
+            vars.push(`${pNode.id}.data`);
+          } else {
+            vars.push(`${pNode.id}.${prop}`);
+          }
+        });
+      } else {
+        vars.push(pNode.id);
+      }
+    });
+    return vars;
+  };
+
+  const renderVariableSuggestions = (fieldName: string, currentVal: string, onUpdate: (newVal: string) => void) => {
+    const parentVars = getParentVariables();
+    if (parentVars.length === 0) return null;
+
+    return (
+      <div className="mt-1 space-y-1">
+        <span className="text-[9px] text-zinc-550 block font-medium uppercase tracking-wider">Click to Insert Upstream Reference:</span>
+        <div className="flex flex-wrap gap-1">
+          {parentVars.map(v => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => {
+                const insertVal = `{{${v}}}`;
+                onUpdate(currentVal + insertVal);
+              }}
+              className="text-[9px] bg-zinc-900 border border-zinc-800 hover:border-purple-500 text-zinc-300 hover:text-purple-400 font-mono px-1.5 py-0.5 rounded transition-all select-none"
+              title={`Click to insert {{${v}}}`}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => {
     fetch('/api/node-definitions')
@@ -167,6 +246,7 @@ export const ConfigPanel = ({
                 rows={isBottomSheet ? 5 : 8}
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-sans leading-relaxed"
               />
+              {renderVariableSuggestions('promptText', config.promptText, (newVal) => onChangeConfig(id, { ...config, promptText: newVal }))}
             </div>
           </div>
         );
@@ -174,7 +254,9 @@ export const ConfigPanel = ({
 
       case 'mcp-tool': {
         const config = data.config || { toolName: 'text_analyzer', inputParamName: 'text' };
-        const selectedToolDescription = availableTools.find(t => t.name === config.toolName)?.description || '';
+        const selectedTool = availableTools.find(t => t.name === config.toolName);
+        const selectedToolDescription = selectedTool?.description || '';
+        const params = Object.keys(selectedTool?.inputSchema?.properties || {});
         return (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -187,7 +269,13 @@ export const ConfigPanel = ({
               ) : (
                 <select
                   value={config.toolName}
-                  onChange={(e) => onChangeConfig(id, { ...config, toolName: e.target.value })}
+                  onChange={(e) => {
+                    const nextToolName = e.target.value;
+                    const nextTool = availableTools.find(t => t.name === nextToolName);
+                    const nextParams = Object.keys(nextTool?.inputSchema?.properties || {});
+                    const nextParamName = nextParams[0] || 'text';
+                    onChangeConfig(id, { ...config, toolName: nextToolName, inputParamName: nextParamName });
+                  }}
                   disabled={isRunning || readOnly}
                   className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
                 >
@@ -207,16 +295,31 @@ export const ConfigPanel = ({
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">Parameter Mapping</label>
-              <input
-                type="text"
-                value={config.inputParamName}
-                onChange={(e) => onChangeConfig(id, { ...config, inputParamName: e.target.value })}
-                disabled={isRunning || readOnly}
-                placeholder="text"
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
-              />
+              {params.length > 0 ? (
+                <select
+                  value={config.inputParamName}
+                  onChange={(e) => onChangeConfig(id, { ...config, inputParamName: e.target.value })}
+                  disabled={isRunning || readOnly}
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
+                >
+                  {params.map(p => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={config.inputParamName}
+                  onChange={(e) => onChangeConfig(id, { ...config, inputParamName: e.target.value })}
+                  disabled={isRunning || readOnly}
+                  placeholder="text"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
+                />
+              )}
               <p className="text-[10px] text-zinc-550 leading-normal">
-                Maps the upstream incoming connection string to this parameter name.
+                Maps the upstream incoming connection string to this parameter name (loaded dynamically from MCP server).
               </p>
             </div>
           </div>
@@ -248,6 +351,7 @@ export const ConfigPanel = ({
                 rows={isBottomSheet ? 5 : 8}
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-mono leading-relaxed"
               />
+              {renderVariableSuggestions('bodyTemplate', config.bodyTemplate, (newVal) => onChangeConfig(id, { ...config, bodyTemplate: newVal }))}
               <p className="text-[10px] text-zinc-550 leading-normal">
                 Replaces `{"{{input}}"}` with the string resolved from your upstream connection.
               </p>
@@ -303,6 +407,7 @@ export const ConfigPanel = ({
                 rows={isBottomSheet ? 5 : 10}
                 className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-mono leading-relaxed"
               />
+              {renderVariableSuggestions('template', config.template, (newVal) => onChangeConfig(id, { ...config, template: newVal }))}
               <p className="text-[10px] text-zinc-550 leading-normal">
                 Reference parent nodes like `{"{{llm-node-1}}"}` or property indices like `{"{{mcp-node-1.uppercaseText}}"}`.
               </p>

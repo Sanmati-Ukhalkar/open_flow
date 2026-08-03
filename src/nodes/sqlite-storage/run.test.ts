@@ -90,4 +90,36 @@ describe('SQLite Storage Node', () => {
 
     await expect(run({}, config)).rejects.toThrow('Column name must contain only alphanumeric characters');
   });
+
+  it('should handle arbitrary object input gracefully (serializes to JSON)', async () => {
+    mockDbRun.mockResolvedValue({});
+
+    const input = { data: { user: 'Alice', score: 99 } };
+    const config = {
+      tableName: 'workflow_data',
+      columnName: 'payload',
+    };
+
+    const result = await run(input, config);
+    expect(result.data.success).toBe(true);
+    // Verifies arbitrary objects are JSON-stringified (not silently dropped)
+    expect(mockDbRun).toHaveBeenCalledWith(
+      'INSERT INTO workflow_data (payload) VALUES (?)',
+      [JSON.stringify({ user: 'Alice', score: 99 })]
+    );
+  });
+
+  it('should reject with INSERT_ROW_ERROR if database insert fails', async () => {
+    // First call (CREATE TABLE) succeeds, second (INSERT) fails
+    mockDbRun
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new Error('disk full'));
+
+    const config = {
+      tableName: 'logs',
+      columnName: 'payload',
+    };
+
+    await expect(run({ data: 'test' }, config)).rejects.toThrow('Failed to insert record');
+  });
 });

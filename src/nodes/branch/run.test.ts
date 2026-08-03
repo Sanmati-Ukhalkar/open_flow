@@ -12,9 +12,7 @@ describe('Branch Node', () => {
       data: {
         takenEdge: 'true',
         result: true,
-      },
-      takenEdge: 'true',
-      result: true,
+      }
     });
   });
 
@@ -28,9 +26,7 @@ describe('Branch Node', () => {
       data: {
         takenEdge: 'false',
         result: false,
-      },
-      takenEdge: 'false',
-      result: false,
+      }
     });
   });
 

@@ -59,9 +59,7 @@ export async function run(
       data: {
         messageId: info.messageId,
         status: 'sent',
-      },
-      messageId: info.messageId,
-      status: 'sent',
+      }
     };
   } catch (error: any) {
     throw { code: 'SMTP_ERROR', message: error.message };

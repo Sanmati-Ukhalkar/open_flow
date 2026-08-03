@@ -61,7 +61,17 @@ export async function run(
 
   try {
     await client.connect(transport);
-    
+  } catch (connectError: any) {
+    try {
+      await transport.close();
+    } catch {}
+    throw new NodeExecutionError(
+      'MCP_CONNECTION_ERROR',
+      `Failed to connect to the MCP server: ${connectError.message}`
+    );
+  }
+
+  try {
     // Call the tool
     const result = await client.callTool({
       name: config.toolName,

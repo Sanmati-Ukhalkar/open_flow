@@ -74,4 +74,18 @@ describe('Text Transform Node', () => {
 
     await expect(run({}, config)).rejects.toThrow('Template text is required');
   });
+
+  it('should handle partial upstream input (one missing parent collapses to empty string)', async () => {
+    // Two parents connected; one output is missing (upstream skipped)
+    const input = {
+      'node-a': { data: { text: 'present' } },
+      // 'node-b' is absent (simulates upstream skip)
+    };
+    const config = { template: '{{node-a}} + {{node-b}}' };
+
+    const result = await run(input, config);
+
+    // Missing reference resolves to '' — documented behavior, not error
+    expect(result).toEqual({ data: { text: 'present + ' } });
+  });
 });
