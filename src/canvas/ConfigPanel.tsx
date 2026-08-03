@@ -146,7 +146,7 @@ export const ConfigPanel = ({
                 value={config.model}
                 onChange={(e) => onChangeConfig(id, { ...config, model: e.target.value })}
                 disabled={isRunning || readOnly}
-                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
               >
                 <option value="llama-3.1-8b-instant">Llama 3.1 8B (Groq - Recommended)</option>
                 <option value="llama3-8b-8192">Llama 3 8B (Groq)</option>
@@ -165,7 +165,7 @@ export const ConfigPanel = ({
                 disabled={isRunning || readOnly}
                 placeholder="e.g. Write a tagline for Open Flow..."
                 rows={isBottomSheet ? 5 : 8}
-                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-sans leading-relaxed"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-sans leading-relaxed"
               />
             </div>
           </div>
@@ -189,7 +189,7 @@ export const ConfigPanel = ({
                   value={config.toolName}
                   onChange={(e) => onChangeConfig(id, { ...config, toolName: e.target.value })}
                   disabled={isRunning || readOnly}
-                  className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
                 >
                   {availableTools.map(tool => (
                     <option key={tool.name} value={tool.name}>
@@ -213,7 +213,7 @@ export const ConfigPanel = ({
                 onChange={(e) => onChangeConfig(id, { ...config, inputParamName: e.target.value })}
                 disabled={isRunning || readOnly}
                 placeholder="text"
-                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
               />
               <p className="text-[10px] text-zinc-550 leading-normal">
                 Maps the upstream incoming connection string to this parameter name.
@@ -235,7 +235,7 @@ export const ConfigPanel = ({
                 onChange={(e) => onChangeConfig(id, { ...config, url: e.target.value })}
                 disabled={isRunning || readOnly}
                 placeholder="https://hooks.slack.com/services/..."
-                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
               />
             </div>
             <div className="space-y-2">
@@ -246,7 +246,7 @@ export const ConfigPanel = ({
                 disabled={isRunning || readOnly}
                 placeholder="{\n  &quot;text&quot;: &quot;{{input}}&quot;\n}"
                 rows={isBottomSheet ? 5 : 8}
-                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-mono leading-relaxed"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-mono leading-relaxed"
               />
               <p className="text-[10px] text-zinc-550 leading-normal">
                 Replaces `{"{{input}}"}` with the string resolved from your upstream connection.
@@ -268,7 +268,7 @@ export const ConfigPanel = ({
                 onChange={(e) => onChangeConfig(id, { ...config, tableName: e.target.value })}
                 disabled={isRunning || readOnly}
                 placeholder="workflow_data"
-                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
               />
             </div>
             <div className="space-y-2">
@@ -279,7 +279,7 @@ export const ConfigPanel = ({
                 onChange={(e) => onChangeConfig(id, { ...config, columnName: e.target.value })}
                 disabled={isRunning || readOnly}
                 placeholder="payload"
-                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
               />
               <p className="text-[10px] text-zinc-550 leading-normal">
                 Appends the upstream data under this SQL column name.
@@ -301,7 +301,7 @@ export const ConfigPanel = ({
                 disabled={isRunning || readOnly}
                 placeholder="Result: {{llm-node-1}} and {{mcp-node-1.uppercaseText}}"
                 rows={isBottomSheet ? 5 : 10}
-                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-mono leading-relaxed"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-mono leading-relaxed"
               />
               <p className="text-[10px] text-zinc-550 leading-normal">
                 Reference parent nodes like `{"{{llm-node-1}}"}` or property indices like `{"{{mcp-node-1.uppercaseText}}"}`.
@@ -344,7 +344,7 @@ export const ConfigPanel = ({
                   onChange={(e) => onChangeConfig(id, { ...config, cronExpression: e.target.value })}
                   disabled={isRunning || readOnly}
                   placeholder="*/5 * * * *"
-                  className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
                 />
                 <p className="text-[10px] text-zinc-550 leading-normal">
                   Standard crontab format representing execution frequency.
@@ -420,7 +420,7 @@ export const ConfigPanel = ({
                   value={data.config?.[f.name] ?? f.defaultValue ?? ''}
                   onChange={(e) => onChangeConfig(id, { ...(data.config || {}), [f.name]: e.target.value })}
                   disabled={isRunning || readOnly}
-                  className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
                 />
               </div>
             ))}
@@ -460,7 +460,7 @@ export const ConfigPanel = ({
       className={containerClasses}
     >
       {isLocked && (
-        <div className="absolute inset-0 bg-zinc-950/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="absolute inset-0 bg-black/65 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center p-6 text-center">
           <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mb-4">
             <ShieldAlert className="w-6 h-6" />
           </div>
