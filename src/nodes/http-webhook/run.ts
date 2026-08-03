@@ -57,6 +57,9 @@ export async function run(
     );
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
   try {
     const response = await fetch(config.url, {
       method: 'POST',
@@ -64,8 +67,10 @@ export async function run(
         'Content-Type': 'application/json',
       },
       body: bodyText,
+      signal: controller.signal,
     });
 
+    clearTimeout(timeoutId);
     const responseText = await response.text();
 
     if (!response.ok) {
@@ -82,8 +87,15 @@ export async function run(
 
     return { data: parsedResponse };
   } catch (error: any) {
+    clearTimeout(timeoutId);
     if (error instanceof NodeExecutionError) {
       throw error;
+    }
+    if (error.name === 'AbortError') {
+      throw new NodeExecutionError(
+        'TIMEOUT_ERROR',
+        'The Webhook request timed out after 10 seconds.'
+      );
     }
     throw new NodeExecutionError(
       'FETCH_ERROR',

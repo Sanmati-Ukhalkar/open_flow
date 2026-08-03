@@ -54,4 +54,20 @@ describe('HTTP Webhook Node', () => {
   it('should throw an error if URL is missing', async () => {
     await expect(run({}, { url: '', bodyTemplate: '' })).rejects.toThrow('Webhook URL is required');
   });
+
+  it('should throw an error on request timeout', async () => {
+    const mockFetch = vi.fn().mockImplementation(() => {
+      const err = new Error('The user aborted a request.');
+      err.name = 'AbortError';
+      return Promise.reject(err);
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const config = {
+      url: 'https://example.com/api',
+      bodyTemplate: '{"payload": "{{input}}"}',
+    };
+
+    await expect(run({ text: 'test' }, config)).rejects.toThrow('The Webhook request timed out');
+  });
 });
