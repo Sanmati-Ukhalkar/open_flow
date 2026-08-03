@@ -32,6 +32,7 @@ export const LLMPromptNode = ({ id, data, selected }: { id: string; data: LLMPro
       <Handle
         type="target"
         position={Position.Left}
+        title="Input: Accepts templated references (e.g. {{parent-node-id.property}})"
         className="w-2.5 h-2.5 !bg-zinc-800 !border-zinc-700"
       />
 
@@ -62,6 +63,7 @@ export const LLMPromptNode = ({ id, data, selected }: { id: string; data: LLMPro
       <Handle
         type="source"
         position={Position.Right}
+        title="Output: Produces data.text (string)"
         className="w-2.5 h-2.5 !bg-zinc-800 !border-zinc-700"
       />
     </div>

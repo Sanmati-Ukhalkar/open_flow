@@ -8,5 +8,7 @@ describe('Cron Trigger Node', () => {
 
     expect(result.cronPattern).toBe('*/10 * * * *');
     expect(result.triggeredAt).toBeDefined();
+    expect(result.data.cronPattern).toBe('*/10 * * * *');
+    expect(result.data.triggeredAt).toBeDefined();
   });
 });

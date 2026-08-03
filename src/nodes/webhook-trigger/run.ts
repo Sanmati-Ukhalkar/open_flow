@@ -1,6 +1,12 @@
 export async function run(input: any, _config: any) {
+  const body = input.body || {};
+  const headers = input.headers || {};
   return {
-    body: input.body || {},
-    headers: input.headers || {}
+    data: {
+      body,
+      headers
+    },
+    body,
+    headers
   };
 }

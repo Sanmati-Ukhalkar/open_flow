@@ -11,8 +11,13 @@
   "outputSchema": {
     "type": "object",
     "properties": {
-      "messageId": { "type": "string" },
-      "status": { "type": "string" }
+      "data": {
+        "type": "object",
+        "properties": {
+          "messageId": { "type": "string" },
+          "status": { "type": "string" }
+        }
+      }
     }
   },
   "configFields": [

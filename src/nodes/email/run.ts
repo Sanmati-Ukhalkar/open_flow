@@ -56,6 +56,10 @@ export async function run(
     });
 
     return {
+      data: {
+        messageId: info.messageId,
+        status: 'sent',
+      },
       messageId: info.messageId,
       status: 'sent',
     };

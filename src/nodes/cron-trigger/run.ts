@@ -1,6 +1,12 @@
 export async function run(_input: any, config: { cronExpression: string }) {
+  const triggeredAt = new Date().toISOString();
+  const cronPattern = config.cronExpression || '*/5 * * * *';
   return {
-    triggeredAt: new Date().toISOString(),
-    cronPattern: config.cronExpression || '*/5 * * * *'
+    data: {
+      triggeredAt,
+      cronPattern
+    },
+    triggeredAt,
+    cronPattern
   };
 }

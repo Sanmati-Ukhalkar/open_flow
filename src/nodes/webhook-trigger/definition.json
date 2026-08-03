@@ -17,8 +17,13 @@
   "outputSchema": {
     "type": "object",
     "properties": {
-      "body": { "type": "object" },
-      "headers": { "type": "object" }
+      "data": {
+        "type": "object",
+        "properties": {
+          "body": { "type": "object" },
+          "headers": { "type": "object" }
+        }
+      }
     }
   }
 }

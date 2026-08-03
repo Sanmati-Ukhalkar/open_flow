@@ -17,8 +17,13 @@
   "outputSchema": {
     "type": "object",
     "properties": {
-      "triggeredAt": { "type": "string" },
-      "cronPattern": { "type": "string" }
+      "data": {
+        "type": "object",
+        "properties": {
+          "triggeredAt": { "type": "string" },
+          "cronPattern": { "type": "string" }
+        }
+      }
     }
   }
 }

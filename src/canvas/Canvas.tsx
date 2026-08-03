@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -73,6 +73,18 @@ export const Canvas = ({
   const reactFlowInstance = useReactFlow();
   const { x, y, zoom } = useViewport();
   const [showMiniMap, setShowMiniMap] = useState(true);
+  const [definitions, setDefinitions] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('/api/node-definitions')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.nodes) {
+          setDefinitions(data.nodes);
+        }
+      })
+      .catch(err => console.error("Canvas: Failed to load definitions", err));
+  }, []);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!setCursor || !reactFlowWrapper.current || !reactFlowInstance) return;
@@ -134,6 +146,43 @@ export const Canvas = ({
     }
   }, [theme]);
 
+  const isValidConnection = useCallback((connection: any) => {
+    const sourceNode = nodes.find(n => n.id === connection.source);
+    const targetNode = nodes.find(n => n.id === connection.target);
+    if (!sourceNode || !targetNode) return false;
+
+    const sourceDef = definitions.find(d => d.id === sourceNode.type);
+    const targetDef = definitions.find(d => d.id === targetNode.type);
+    if (!sourceDef || !targetDef) return true;
+
+    const outputSchema = sourceDef.outputSchema;
+    const inputSchema = targetDef.inputSchema;
+
+    if (!inputSchema || !inputSchema.properties || Object.keys(inputSchema.properties).length === 0) {
+      return true;
+    }
+
+    if (!outputSchema || !outputSchema.properties) {
+      return true;
+    }
+
+    const outputProperties = outputSchema.properties.data?.properties || outputSchema.properties;
+    if (!outputProperties) return true;
+
+    const targetHasText = inputSchema.properties.text !== undefined;
+    const sourceHasText = outputProperties.text !== undefined;
+
+    if (targetHasText && !sourceHasText) {
+      const isSqlite = sourceNode.type === 'sqlite-storage';
+      const isCron = sourceNode.type === 'cron-trigger';
+      if (isSqlite || isCron) {
+        return false;
+      }
+    }
+
+    return true;
+  }, [nodes, definitions]);
+
   // Custom MiniMap Node for hover Tooltips using standard SVG <title> elements
   const MiniMapNode = useCallback((props: any) => {
     const node = nodes.find(n => n.id === props.id);
@@ -194,6 +243,7 @@ export const Canvas = ({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        isValidConnection={isValidConnection}
         onNodeClick={(_event, node) => onSelectNode(node)}
         onPaneClick={() => onSelectNode(null)}
         onSelectionChange={onSelectionChange}

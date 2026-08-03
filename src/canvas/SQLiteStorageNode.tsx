@@ -32,6 +32,7 @@ export const SQLiteStorageNode = ({ id, data, selected }: { id: string; data: SQ
       <Handle
         type="target"
         position={Position.Left}
+        title="Input: Data object to insert (object)"
         className="w-2.5 h-2.5 !bg-zinc-800 !border-zinc-700"
       />
 
@@ -56,6 +57,7 @@ export const SQLiteStorageNode = ({ id, data, selected }: { id: string; data: SQ
       <Handle
         type="source"
         position={Position.Right}
+        title="Output: Produces success status and rowId (object)"
         className="w-2.5 h-2.5 !bg-zinc-800 !border-zinc-700"
       />
     </div>

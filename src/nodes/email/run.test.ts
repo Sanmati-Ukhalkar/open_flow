@@ -40,6 +40,10 @@ describe('Email Node', () => {
     const result = await run({}, config, credentials);
 
     expect(result).toEqual({
+      data: {
+        messageId: 'msg-123',
+        status: 'sent',
+      },
       messageId: 'msg-123',
       status: 'sent',
     });

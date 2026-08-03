@@ -43,6 +43,7 @@ export const GenericNode = ({ id, data, selected }: { id: string; data: GenericN
       <Handle
         type="target"
         position={Position.Left}
+        title="Input: Accepts incoming data properties (object)"
         className="w-2.5 h-2.5 !bg-zinc-800 !border-zinc-700"
       />
 
@@ -66,6 +67,7 @@ export const GenericNode = ({ id, data, selected }: { id: string; data: GenericN
       <Handle
         type="source"
         position={Position.Right}
+        title="Output: Produces node output payload (object)"
         className="w-2.5 h-2.5 !bg-zinc-800 !border-zinc-700"
       />
     </div>

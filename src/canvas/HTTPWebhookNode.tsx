@@ -32,6 +32,7 @@ export const HTTPWebhookNode = ({ id, data, selected }: { id: string; data: HTTP
       <Handle
         type="target"
         position={Position.Left}
+        title="Input: Map to JSON body template (string)"
         className="w-2.5 h-2.5 !bg-zinc-800 !border-zinc-700"
       />
 
@@ -45,7 +46,7 @@ export const HTTPWebhookNode = ({ id, data, selected }: { id: string; data: HTTP
 
       <div className="text-xs text-zinc-400 space-y-2">
         <div>
-          <span className="text-[10px] text-zinc-550 uppercase tracking-wider block mb-0.5">Webhook URL</span>
+          <span className="text-[10px] text-zinc-555 uppercase tracking-wider block mb-0.5">Webhook URL</span>
           <div className="font-mono bg-zinc-900/80 p-1.5 rounded border border-zinc-800 truncate max-w-[200px] text-zinc-300">
             {data.config?.url || 'No URL configured'}
           </div>
@@ -56,6 +57,7 @@ export const HTTPWebhookNode = ({ id, data, selected }: { id: string; data: HTTP
       <Handle
         type="source"
         position={Position.Right}
+        title="Output: Produces webhook response payload (object)"
         className="w-2.5 h-2.5 !bg-zinc-800 !border-zinc-700"
       />
     </div>

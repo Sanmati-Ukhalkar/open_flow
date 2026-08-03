@@ -31,6 +31,7 @@ export const TextTransformNode = ({ id, data, selected }: { id: string; data: Te
       <Handle
         type="target"
         position={Position.Left}
+        title="Input: Combined templated placeholders (union/object)"
         className="w-2.5 h-2.5 !bg-zinc-800 !border-zinc-700"
       />
 
@@ -55,6 +56,7 @@ export const TextTransformNode = ({ id, data, selected }: { id: string; data: Te
       <Handle
         type="source"
         position={Position.Right}
+        title="Output: Produces formatted text string (string)"
         className="w-2.5 h-2.5 !bg-zinc-800 !border-zinc-700"
       />
     </div>
