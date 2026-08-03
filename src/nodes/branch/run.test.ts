@@ -9,6 +9,10 @@ describe('Branch Node', () => {
     const result = await run(input, config);
 
     expect(result).toEqual({
+      data: {
+        takenEdge: 'true',
+        result: true,
+      },
       takenEdge: 'true',
       result: true,
     });
@@ -21,6 +25,10 @@ describe('Branch Node', () => {
     const result = await run(input, config);
 
     expect(result).toEqual({
+      data: {
+        takenEdge: 'false',
+        result: false,
+      },
       takenEdge: 'false',
       result: false,
     });

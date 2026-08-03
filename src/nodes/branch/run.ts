@@ -20,8 +20,13 @@ export async function run(
     
     const result = script.runInContext(context, { timeout: 500 });
     
+    const takenEdge = result ? 'true' : 'false';
     return {
-      takenEdge: result ? 'true' : 'false',
+      data: {
+        takenEdge,
+        result
+      },
+      takenEdge,
       result
     };
   } catch (error: any) {
