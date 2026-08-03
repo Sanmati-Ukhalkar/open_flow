@@ -2,23 +2,32 @@ import { test, expect } from '@playwright/test';
 
 test.describe('OpenFlow Visual Canvas E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to local OpenFlow instance
     await page.goto('/');
-    
-    // Check if redirect to login/auth occurs and handle it (mock user bypass or register/log in)
-    if (await page.locator('input[type="email"]').isVisible()) {
-      // Click "Don't have an account? Sign up" to switch to register mode
-      await page.click('text=Don\'t have an account? Sign up');
-      
-      // Register a fresh random user to avoid conflicts
-      const randomEmail = `test-${Math.random().toString(36).substr(2, 5)}@example.com`;
+
+    const emailInput = page.locator('input[type="email"]');
+    const canvas = page.locator('.react-flow__renderer');
+
+    // Wait until either auth UI or canvas appears
+    await Promise.race([
+      emailInput.waitFor({ state: 'visible', timeout: 20000 }),
+      canvas.waitFor({ state: 'visible', timeout: 20000 }),
+    ]).catch(() => {});
+
+    // If auth is shown, complete signup/login flow
+    if (await emailInput.isVisible().catch(() => false)) {
+      const signUpToggle = page.locator(`text=Don't have an account? Sign up`);
+      if (await signUpToggle.isVisible().catch(() => false)) {
+        await signUpToggle.click();
+      }
+
+      const randomEmail = `test-${Math.random().toString(36).slice(2, 8)}@example.com`;
       await page.fill('input[type="email"]', randomEmail);
       await page.fill('input[type="password"]', 'password123');
       await page.click('button[type="submit"]');
-      
-      // Wait for navigation/redirection to complete
-      await page.waitForSelector('.react-flow__renderer', { timeout: 15000 });
     }
+
+    // Always enforce final readiness gate
+    await expect(canvas).toBeVisible({ timeout: 30000 });
   });
 
   test('should render canvas and show sidebar node library', async ({ page }) => {
@@ -31,6 +40,9 @@ test.describe('OpenFlow Visual Canvas E2E Tests', () => {
   });
 
   test('should allow dragging node and editing configuration', async ({ page }) => {
+    // Stricter check: wait for canvas pane first
+    await expect(page.locator('.react-flow__pane')).toBeVisible();
+
     // Locate node in library
     const llmNodeButton = page.locator('text=LLM Prompt').first();
     
