@@ -20,8 +20,21 @@ class NodeExecutionError extends Error {
   }
 }
 
+function templateString(template: string, data: any): string {
+  if (!template) return '';
+  return template.replace(/\{\{([^}]+)\}\}/g, (_, path) => {
+    const keys = path.trim().split('.');
+    let value = data;
+    for (const key of keys) {
+      if (value === undefined || value === null) return '';
+      value = value[key];
+    }
+    return value !== undefined ? String(value) : '';
+  });
+}
+
 export async function run(
-  _input: Record<string, any>,
+  input: Record<string, any>,
   config: LLMPromptConfig
 ): Promise<LLMPromptOutput> {
   const model = config.model || 'llama-3.1-8b-instant';
@@ -59,12 +72,14 @@ export async function run(
     );
   }
 
+  const finalPromptText = templateString(config.promptText, { input });
+
   try {
     const openai = new OpenAI({ apiKey, baseURL });
     const response = await openai.chat.completions.create({
       model: model,
       messages: [
-        { role: 'user', content: config.promptText }
+        { role: 'user', content: finalPromptText }
       ],
       temperature: 0.7,
     });

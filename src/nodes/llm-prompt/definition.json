@@ -10,8 +10,13 @@
   "outputSchema": {
     "type": "object",
     "properties": {
-      "text": {
-        "type": "string"
+      "data": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        }
       }
     }
   },

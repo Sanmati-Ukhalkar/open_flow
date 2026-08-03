@@ -55,6 +55,43 @@ describe('LLM Prompt Node', () => {
     );
   });
 
+  it('should resolve prompt templates using upstream connection inputs', async () => {
+    mockCreate.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: 'Template response',
+          },
+        },
+      ],
+    });
+
+    const config = {
+      promptText: 'Hello {{input.userName}}, your score is {{input.score}}',
+      model: 'gpt-4o-mini',
+    };
+
+    const mockInput = {
+      userName: 'Alice',
+      score: 95,
+    };
+
+    const result = await run(mockInput, config);
+
+    expect(result).toEqual({
+      data: {
+        text: 'Template response',
+      },
+    });
+
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: 'Hello Alice, your score is 95' }],
+      })
+    );
+  });
+
   it('should throw an error if promptText is missing', async () => {
     const config = {
       promptText: '',
