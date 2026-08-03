@@ -33,4 +33,10 @@ describe('Branch Node', () => {
   it('should throw an error if condition is missing', async () => {
     await expect(run({}, {})).rejects.toThrow('Missing required field: condition');
   });
+
+  it('should throw an error if condition has syntax errors (malformed condition/input)', async () => {
+    const input = { val: 10 };
+    const config = { condition: 'input.val >>>> 5' };
+    await expect(run(input, config)).rejects.toThrow();
+  });
 });

@@ -504,26 +504,96 @@ export const ConfigPanel = ({
         );
       }
 
-      default: {
-        // Fallback for custom community nodes using dynamic form fields
-        const schema = definitions.find(d => d.id === type);
-        const fields = schema?.configFields || [];
+      case 'email': {
+        const config = data.config || {};
+        const templateFields = ['to', 'subject', 'body'];
+        const staticFields = ['host', 'port', 'from'];
 
         return (
           <div className="space-y-4">
-            <div className="p-3 border border-zinc-800 rounded-xl bg-orange-500/5 text-orange-400 text-[10px] space-y-1">
-              <p>
-                <b>Third-Party Node Warning:</b> This node executes code directly on your host machine. Make sure you trust this code before running.
-              </p>
-            </div>
+            {/* Static fields: host, port, from */}
+            {staticFields.map(fieldName => {
+              const fieldDef = { host: { label: 'SMTP Host', placeholder: 'smtp.gmail.com' }, port: { label: 'SMTP Port', placeholder: '587' }, from: { label: 'From Address', placeholder: 'noreply@example.com' } }[fieldName];
+              return (
+                <div key={fieldName} className="space-y-1">
+                  <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">{fieldDef?.label}</label>
+                  <input
+                    type="text"
+                    value={config[fieldName] ?? ''}
+                    onChange={(e) => onChangeConfig(id, { ...config, [fieldName]: e.target.value })}
+                    disabled={isRunning || readOnly}
+                    placeholder={fieldDef?.placeholder}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
+                  />
+                </div>
+              );
+            })}
+
+            {/* Templated fields: to, subject, body — with autocomplete chips */}
+            {templateFields.map(fieldName => {
+              const fieldMeta = {
+                to: { label: 'To Address', placeholder: '{{input.userEmail}}', multiline: false },
+                subject: { label: 'Subject', placeholder: 'Hello {{input.name}}', multiline: false },
+                body: { label: 'Body (Text/HTML)', placeholder: 'Hello {{input.name}},\n\nYour processing is complete!', multiline: true }
+              }[fieldName]!;
+
+              const currentVal = config[fieldName] ?? '';
+              return (
+                <div key={fieldName} className="space-y-1">
+                  <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">{fieldMeta.label}</label>
+                  {fieldMeta.multiline ? (
+                    <textarea
+                      value={currentVal}
+                      onChange={(e) => onChangeConfig(id, { ...config, [fieldName]: e.target.value })}
+                      disabled={isRunning || readOnly}
+                      placeholder={fieldMeta.placeholder}
+                      rows={isBottomSheet ? 3 : 5}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-sans leading-relaxed"
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={currentVal}
+                      onChange={(e) => onChangeConfig(id, { ...config, [fieldName]: e.target.value })}
+                      disabled={isRunning || readOnly}
+                      placeholder={fieldMeta.placeholder}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 font-mono"
+                    />
+                  )}
+                  {renderVariableSuggestions(fieldName, currentVal, (newVal) => onChangeConfig(id, { ...config, [fieldName]: newVal }))}
+                </div>
+              );
+            })}
+          </div>
+        );
+      }
+
+      default: {
+        // Fallback for community / generic nodes with dynamic configFields
+        const schema = definitions.find(d => d.id === type);
+        const fields = schema?.configFields || [];
+
+        const isBuiltinNode = ['email', 'vision-ocr', 'file-trigger', 'vector-store', 'vector-retrieve', 'code-execution', 'branch', 'loop'].includes(type);
+
+        return (
+          <div className="space-y-4">
+            {!isBuiltinNode && (
+              <div className="p-3 border border-zinc-800 rounded-xl bg-orange-500/5 text-orange-400 text-[10px] space-y-1">
+                <p>
+                  <b>Third-Party Node Warning:</b> This node executes code directly on your host machine. Make sure you trust this code before running.
+                </p>
+              </div>
+            )}
             
             {fields.map((f: any) => {
               const isFileField = f.name.toLowerCase().includes('image') || f.name.toLowerCase().includes('file');
+              const isTemplatedField = f.description?.toLowerCase().includes('templat') || f.placeholder?.includes('{{');
+              const currentVal = data.config?.[f.name] ?? f.defaultValue ?? '';
               return (
                 <div key={f.name} className="space-y-1">
                   <div className="flex justify-between items-center">
                     <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">
-                      {f.displayName}
+                      {f.displayName || f.label || f.name}
                     </label>
                     {isFileField && (
                       <label className="text-[9px] text-purple-400 hover:text-purple-350 cursor-pointer font-semibold uppercase tracking-wider select-none">
@@ -547,13 +617,26 @@ export const ConfigPanel = ({
                       </label>
                     )}
                   </div>
-                  <input
-                    type="text"
-                    value={data.config?.[f.name] ?? f.defaultValue ?? ''}
-                    onChange={(e) => onChangeConfig(id, { ...(data.config || {}), [f.name]: e.target.value })}
-                    disabled={isRunning || readOnly}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
-                  />
+                  {f.multiline ? (
+                    <textarea
+                      value={currentVal}
+                      onChange={(e) => onChangeConfig(id, { ...(data.config || {}), [f.name]: e.target.value })}
+                      disabled={isRunning || readOnly}
+                      placeholder={f.placeholder}
+                      rows={isBottomSheet ? 3 : 5}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-sans leading-relaxed"
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={currentVal}
+                      onChange={(e) => onChangeConfig(id, { ...(data.config || {}), [f.name]: e.target.value })}
+                      disabled={isRunning || readOnly}
+                      placeholder={f.placeholder}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+                    />
+                  )}
+                  {isTemplatedField && renderVariableSuggestions(f.name, currentVal, (newVal) => onChangeConfig(id, { ...(data.config || {}), [f.name]: newVal }))}
                 </div>
               );
             })}

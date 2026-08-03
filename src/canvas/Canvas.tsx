@@ -161,10 +161,28 @@ export const Canvas = ({
     const targetNode = nodes.find(n => n.id === connection.target);
     if (!sourceNode || !targetNode) return false;
 
+    // Prevent self-connections
+    if (sourceNode.id === targetNode.id) return false;
+
+    // === Source output classification ===
+    // These node types produce only status/metadata outputs — they do NOT
+    // produce a "text" or content field that template-consuming nodes need.
+    const statusOnlyOutputSources = new Set(['sqlite-storage', 'cron-trigger']);
+
+    // === Target input classification ===
+    // These node types consume upstream data as prompt/template content.
+    // Connecting a status-only source to these makes no semantic sense.
+    const templateConsumingTargets = new Set(['llm-prompt', 'http-webhook', 'mcp-tool', 'text-transform']);
+
+    if (statusOnlyOutputSources.has(sourceNode.type) && templateConsumingTargets.has(targetNode.type)) {
+      return false;
+    }
+
     const sourceDef = definitions.find(d => d.id === sourceNode.type);
     const targetDef = definitions.find(d => d.id === targetNode.type);
     if (!sourceDef || !targetDef) return true;
 
+    // Dynamic input schema for MCP tool (uses live fetched schema for selected tool)
     let inputSchema = targetDef.inputSchema;
     if (targetNode.type === 'mcp-tool') {
       const toolName = targetNode.data.config?.toolName || 'text_analyzer';
@@ -174,6 +192,7 @@ export const Canvas = ({
       }
     }
 
+    // Dynamic output schema for MCP source (uses known text_analyzer schema)
     let outputSchema = sourceDef.outputSchema;
     if (sourceNode.type === 'mcp-tool') {
       const toolName = sourceNode.data.config?.toolName || 'text_analyzer';
@@ -194,6 +213,7 @@ export const Canvas = ({
       }
     }
 
+    // If target has no declared input properties, allow (it accepts anything)
     if (!inputSchema || !inputSchema.properties || Object.keys(inputSchema.properties).length === 0) {
       return true;
     }
@@ -202,6 +222,7 @@ export const Canvas = ({
       return true;
     }
 
+    // Check declared type compatibility between source output and target input
     const outputProperties = outputSchema.properties.data?.properties || outputSchema.properties;
     if (!outputProperties) return true;
 
@@ -209,11 +230,7 @@ export const Canvas = ({
     const sourceHasText = outputProperties.text !== undefined;
 
     if (targetHasText && !sourceHasText) {
-      const isSqlite = sourceNode.type === 'sqlite-storage';
-      const isCron = sourceNode.type === 'cron-trigger';
-      if (isSqlite || isCron) {
-        return false;
-      }
+      return false;
     }
 
     return true;
