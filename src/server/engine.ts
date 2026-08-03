@@ -487,13 +487,21 @@ export async function executeRunBackend(
           let nodeInput: any = {};
           if (parents.length === 0) {
             nodeInput = initialInput || {};
-          } else if (parents.length === 1) {
-            nodeInput = nodeOutputs.get(parents[0]) || {};
-          } else if (parents.length > 1) {
+          } else {
+            // Always map by parent ID so that {{parent-id.property}} resolves!
             nodeInput = parents.reduce((acc: any, pId: string) => {
               acc[pId] = nodeOutputs.get(pId) || {};
               return acc;
             }, {} as Record<string, any>);
+
+            // If there's only one parent, mix in its properties to the root of nodeInput
+            // so that flat keys (like {{text}} or {{input.text}}) also work.
+            if (parents.length === 1) {
+              const singleParentOutput = nodeOutputs.get(parents[0]) || {};
+              if (typeof singleParentOutput === 'object' && singleParentOutput !== null) {
+                Object.assign(nodeInput, singleParentOutput);
+              }
+            }
           }
 
           // Transition to running
