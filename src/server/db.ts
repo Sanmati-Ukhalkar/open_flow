@@ -268,4 +268,10 @@ db.serialize(() => {
       WHERE org_id IS NULL AND workflow_id IN (SELECT id FROM workflows WHERE owner_id = ?)
     `, [orgId, userId]);
   }
+
+  // Create unique index on credentials(org_id, provider) to support upsert/ON CONFLICT
+  db.run(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_credentials_org_provider 
+    ON credentials(org_id, provider)
+  `);
 });
