@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { navigateToCanvas } from './helpers/navigateToCanvas';
 
 /**
  * Adversarial Connection Tests — Round 2 Audit
@@ -11,41 +12,6 @@ import { test, expect } from '@playwright/test';
  * 2. Attempts to drag a connection from source output → target input
  * 3. Checks whether an edge was actually created (it should NOT be for incompatible pairs)
  */
-
-async function navigateToCanvas(page: any) {
-  await page.goto('/');
-  const emailInput = page.locator('input[type="email"]');
-  const createWorkflowButton = page.locator('button:has-text("Create Workflow")');
-  const canvas = page.locator('.react-flow');
-
-  await Promise.race([
-    emailInput.waitFor({ state: 'visible', timeout: 20000 }),
-    createWorkflowButton.waitFor({ state: 'visible', timeout: 20000 }),
-    canvas.waitFor({ state: 'visible', timeout: 20000 }),
-  ]).catch(() => {});
-
-  if (await emailInput.isVisible().catch(() => false)) {
-    const signUpToggle = page.locator(`text=Don't have an account? Sign up`);
-    if (await signUpToggle.isVisible().catch(() => false)) {
-      await signUpToggle.click();
-    }
-    const randomEmail = `test-${Math.random().toString(36).slice(2, 8)}@example.com`;
-    await page.fill('input[type="email"]', randomEmail);
-    await page.fill('input[type="password"]', 'password123');
-    await page.click('button[type="submit"]');
-  }
-
-  await Promise.race([
-    createWorkflowButton.waitFor({ state: 'visible', timeout: 20000 }),
-    canvas.waitFor({ state: 'visible', timeout: 20000 }),
-  ]).catch(() => {});
-
-  if (await createWorkflowButton.isVisible().catch(() => false)) {
-    await createWorkflowButton.click();
-  }
-
-  await expect(canvas).toBeVisible({ timeout: 30000 });
-}
 
 test.describe('Adversarial Connection Blocking Tests', () => {
   test('Pair 1: SQLite Storage → LLM Prompt should be BLOCKED', async ({ page }) => {
