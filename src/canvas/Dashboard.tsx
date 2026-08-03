@@ -81,7 +81,7 @@ export const Dashboard = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] flex flex-col items-center py-12 px-4 relative overflow-hidden select-none">
+    <div className="min-h-screen bg-[#09090b] flex flex-col items-center py-12 px-4 relative overflow-y-auto select-none">
       {/* Background decoration */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-purple-600/5 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-blue-600/5 blur-[120px] pointer-events-none" />
