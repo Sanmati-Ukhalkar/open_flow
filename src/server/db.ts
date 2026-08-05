@@ -77,7 +77,11 @@ export class DatabaseWrapper {
   }
 
   serialize(callback: () => void) {
-    callback();
+    if (this.isPg) {
+      callback();
+    } else {
+      this.sqliteDb!.serialize(callback);
+    }
   }
 
   run(sql: string, params: any[] | any = [], callback?: (this: any, err: Error | null) => void) {
