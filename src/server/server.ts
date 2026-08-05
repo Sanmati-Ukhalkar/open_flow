@@ -1175,35 +1175,137 @@ app.get('/api/node-definitions', (_req, res) => {
 });
 
 // -------------------------------------------------------------
-// LEGACY ROUTE (dev fallback)
+// DYNAMIC MCP ROUTE & REGISTRY (v0.5)
 // -------------------------------------------------------------
 app.get('/api/mcp/tools', async (_req, res) => {
-  const serverPath = path.resolve(process.cwd(), 'src/server/mcp-server.ts');
-  const transport = new StdioClientTransport({
-    command: process.platform === 'win32' ? 'npx.cmd' : 'npx',
-    args: ["tsx", serverPath]
-  });
+  db.all('SELECT * FROM mcp_servers', [], async (err, servers: any[]) => {
+    if (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
 
-  const client = new Client({
-    name: "open-flow-express-client",
-    version: "0.1.0"
-  }, {
-    capabilities: {}
-  });
+    const allTools: any[] = [];
 
-  try {
-    await client.connect(transport);
-    const toolsResult = await client.listTools();
-    await transport.close();
-    
-    return res.json({ success: true, tools: toolsResult.tools });
-  } catch (error: any) {
-    console.error("Error listing MCP tools:", error);
+    // Always fetch legacy local server tools
     try {
-      await transport.close();
-    } catch {}
-    return res.status(500).json({ success: false, error: error.message });
+      const serverPath = path.resolve(process.cwd(), 'src/server/mcp-server.ts');
+      const localTransport = new StdioClientTransport({
+        command: process.platform === 'win32' ? 'npx.cmd' : 'npx',
+        args: ["tsx", serverPath]
+      });
+      const localClient = new Client({
+        name: "open-flow-express-client",
+        version: "0.1.0"
+      }, { capabilities: {} });
+
+      await localClient.connect(localTransport);
+      const localToolsResult = await localClient.listTools();
+      await localTransport.close();
+
+      if (localToolsResult.tools) {
+        allTools.push(...localToolsResult.tools);
+      }
+    } catch (localErr: any) {
+      console.error("Error listing local tools:", localErr);
+    }
+
+    // Query dynamic registered servers
+    for (const server of (servers || [])) {
+      if (server.type === 'stdio') {
+        const transport = new StdioClientTransport({
+          command: server.command,
+          args: JSON.parse(server.args || '[]'),
+          env: { ...process.env, ...JSON.parse(server.env || '{}') }
+        });
+
+        const client = new Client({
+          name: "open-flow-express-client",
+          version: "0.1.0"
+        }, { capabilities: {} });
+
+        try {
+          await client.connect(transport);
+          const toolsResult = await client.listTools();
+          await transport.close();
+
+          if (toolsResult.tools) {
+            const prefixed = toolsResult.tools.map((t: any) => ({
+              ...t,
+              name: `${server.name}:${t.name}`
+            }));
+            allTools.push(...prefixed);
+          }
+        } catch (serverErr: any) {
+          console.error(`Error connecting to dynamic MCP server ${server.name}:`, serverErr);
+          try {
+            await transport.close();
+          } catch {}
+        }
+      }
+    }
+
+    return res.json({ success: true, tools: allTools });
+  });
+});
+
+app.get('/api/mcp/servers', authenticateToken, (_req: AuthenticatedRequest, res) => {
+  db.all('SELECT * FROM mcp_servers ORDER BY created_at DESC', [], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ success: false, error: { message: err.message } });
+    }
+    return res.json({ success: true, servers: rows || [] });
+  });
+});
+
+app.post('/api/mcp/servers', authenticateToken, (req: AuthenticatedRequest, res) => {
+  if (req.org?.role === 'viewer') {
+    return res.status(403).json({ success: false, error: { message: 'Viewers cannot add servers.' } });
   }
+  const { name, type, command, args, env, url } = req.body;
+  if (!name || !type) {
+    return res.status(400).json({ success: false, error: { message: 'Server name and type are required.' } });
+  }
+  const id = `mcp-${Math.random().toString(36).substr(2, 9)}`;
+  db.run(
+    'INSERT INTO mcp_servers (id, name, type, command, args, env, url) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [id, name, type, command || null, args || '[]', env || '{}', url || null],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ success: false, error: { message: err.message } });
+      }
+      return res.json({ success: true, server: { id, name, type, command, args, env, url } });
+    }
+  );
+});
+
+app.put('/api/mcp/servers/:id', authenticateToken, (req: AuthenticatedRequest, res) => {
+  if (req.org?.role === 'viewer') {
+    return res.status(403).json({ success: false, error: { message: 'Viewers cannot modify servers.' } });
+  }
+  const { id } = req.params;
+  const { name, type, command, args, env, url } = req.body;
+  db.run(
+    'UPDATE mcp_servers SET name = ?, type = ?, command = ?, args = ?, env = ?, url = ? WHERE id = ?',
+    [name, type, command, args, env, url, id],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ success: false, error: { message: err.message } });
+      }
+      return res.json({ success: true });
+    }
+  );
+});
+
+app.delete('/api/mcp/servers/:id', authenticateToken, (req: AuthenticatedRequest, res) => {
+  if (req.org?.role === 'viewer') {
+    return res.status(403).json({ success: false, error: { message: 'Viewers cannot delete servers.' } });
+  }
+  const { id } = req.params;
+  db.run('DELETE FROM mcp_servers WHERE id = ?', [id], function(err) {
+    if (err) {
+      return res.status(500).json({ success: false, error: { message: err.message } });
+    }
+    return res.json({ success: true });
+  });
 });
 
 app.post('/api/run-node', async (req, res) => {

@@ -1,6 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import path from "path";
+import { db } from "../../server/db";
 
 interface MCPToolConfig {
   toolName: string;
@@ -46,11 +47,49 @@ export async function run(
     [paramName]: rawValue
   };
 
-  const serverPath = path.resolve(process.cwd(), 'src/server/mcp-server.ts');
-  const transport = new StdioClientTransport({
-    command: process.platform === 'win32' ? 'npx.cmd' : 'npx',
-    args: ["tsx", serverPath]
-  });
+  let transport: StdioClientTransport;
+  let toolToCall = config.toolName;
+
+  if (config.toolName.includes(':')) {
+    const parts = config.toolName.split(':');
+    const serverName = parts[0];
+    toolToCall = parts.slice(1).join(':');
+
+    // Query database for the server configuration
+    const server: any = await new Promise((resolve) => {
+      db.get('SELECT * FROM mcp_servers WHERE name = ?', [serverName], (_err: any, row: any) => {
+        resolve(row || null);
+      });
+    });
+
+    if (!server) {
+      throw new NodeExecutionError(
+        'MCP_SERVER_NOT_FOUND',
+        `MCP server "${serverName}" is not registered.`
+      );
+    }
+
+    if (server.type === 'stdio') {
+      const parsedArgs = JSON.parse(server.args || '[]');
+      const parsedEnv = { ...process.env, ...JSON.parse(server.env || '{}') };
+      transport = new StdioClientTransport({
+        command: server.command,
+        args: parsedArgs,
+        env: parsedEnv
+      });
+    } else {
+      throw new NodeExecutionError(
+        'UNSUPPORTED_MCP_TYPE',
+        `Unsupported MCP server type: ${server.type}`
+      );
+    }
+  } else {
+    const serverPath = path.resolve(process.cwd(), 'src/server/mcp-server.ts');
+    transport = new StdioClientTransport({
+      command: process.platform === 'win32' ? 'npx.cmd' : 'npx',
+      args: ["tsx", serverPath]
+    });
+  }
 
   const client = new Client({
     name: "open-flow-mcp-runner",
@@ -74,7 +113,7 @@ export async function run(
   try {
     // Call the tool
     const result = await client.callTool({
-      name: config.toolName,
+      name: toolToCall,
       arguments: toolArguments
     }) as any;
 
@@ -85,7 +124,7 @@ export async function run(
     if (!result.content || result.content.length === 0) {
       throw new NodeExecutionError(
         'EMPTY_TOOL_RESPONSE',
-        `The tool ${config.toolName} returned an empty response.`
+        `The tool ${toolToCall} returned an empty response.`
       );
     }
 
@@ -118,7 +157,7 @@ export async function run(
 
     throw new NodeExecutionError(
       'MCP_EXECUTION_ERROR',
-      error.message || `An error occurred while executing the MCP tool ${config.toolName}.`
+      error.message || `An error occurred while executing the MCP tool ${toolToCall}.`
     );
   }
 }

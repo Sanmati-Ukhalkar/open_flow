@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Waves, Folder, Plus, Trash2, Key, LogOut, Clock, Globe, Play, Package, Database } from 'lucide-react';
+import { Waves, Folder, Plus, Trash2, Key, LogOut, Clock, Globe, Play, Package, Database, Server } from 'lucide-react';
 import DeploymentDashboard from './DeploymentDashboard';
 import TriggerDashboard from './TriggerDashboard';
 import Marketplace from './Marketplace';
 import Templates from '../pages/Templates';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import DatabaseViewer from './DatabaseViewer';
+import { McpRegistry } from './McpRegistry';
 import { parseSqliteDate } from './dateHelper';
 
 import { Users } from 'lucide-react';
@@ -38,7 +39,7 @@ export const Dashboard = ({
   const [workflows, setWorkflows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [activeTab, setActiveTab] = useState<'workflows' | 'templates' | 'deployments' | 'triggers' | 'marketplace' | 'analytics' | 'database'>('workflows');
+  const [activeTab, setActiveTab] = useState<'workflows' | 'templates' | 'deployments' | 'triggers' | 'marketplace' | 'analytics' | 'database' | 'mcp'>('workflows');
 
   const fetchWorkflows = async () => {
     setLoading(true);
@@ -226,6 +227,17 @@ export const Dashboard = ({
             <Database className="w-3.5 h-3.5" />
             Database
           </button>
+          <button
+            onClick={() => setActiveTab('mcp')}
+            className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all flex-shrink-0 ${
+              activeTab === 'mcp'
+                ? 'text-purple-400 border-purple-500'
+                : 'text-zinc-505 border-transparent hover:text-zinc-300'
+            }`}
+          >
+            <Server className="w-3.5 h-3.5" />
+            MCP Servers
+          </button>
         </div>
 
         {activeTab === 'deployments' ? (
@@ -238,6 +250,8 @@ export const Dashboard = ({
           <Templates token={token} activeOrg={activeOrg} onSelectWorkflow={onSelectWorkflow} />
         ) : activeTab === 'analytics' ? (
           <AnalyticsDashboard token={token} orgId={activeOrg?.id} />
+        ) : activeTab === 'mcp' ? (
+          <McpRegistry token={token} activeOrg={activeOrg} />
         ) : activeTab === 'database' ? (
           <DatabaseViewer token={token} />
         ) : (
