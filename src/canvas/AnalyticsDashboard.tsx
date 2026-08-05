@@ -69,7 +69,7 @@ export const AnalyticsDashboard = ({ token, orgId }: AnalyticsDashboardProps) =>
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-zinc-100 flex items-center gap-3">
-            <Activity className="w-6 h-6 text-purple-400" />
+            <Activity className="w-6 h-6 text-sky-400" />
             Observability & Analytics
           </h1>
           <p className="text-zinc-400 text-sm mt-1">
@@ -100,7 +100,7 @@ export const AnalyticsDashboard = ({ token, orgId }: AnalyticsDashboardProps) =>
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium text-zinc-400">Success Rate</h3>
-              <BarChart3 className="w-4 h-4 text-purple-400" />
+              <BarChart3 className="w-4 h-4 text-sky-400" />
             </div>
             <div className="text-3xl font-bold text-zinc-100">{successRate}%</div>
             <p className="text-xs text-zinc-500 mt-2">Overall pass rate</p>

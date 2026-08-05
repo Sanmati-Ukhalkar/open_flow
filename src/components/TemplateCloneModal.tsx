@@ -65,7 +65,7 @@ export const TemplateCloneModal = ({ template, token, onClose, onClone }: Templa
       <div className="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-zinc-800">
           <div className="flex items-center gap-2">
-            <Copy className="w-4 h-4 text-purple-400" />
+            <Copy className="w-4 h-4 text-sky-400" />
             <h2 className="text-sm font-bold text-zinc-200">Use Template</h2>
           </div>
           <button onClick={onClose} className="p-1 text-zinc-500 hover:text-zinc-200 rounded-lg hover:bg-zinc-800">
@@ -120,7 +120,7 @@ export const TemplateCloneModal = ({ template, token, onClose, onClone }: Templa
           <button
             onClick={() => onClone(template.id)}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-purple-900/20"
+            className="flex items-center gap-2 px-4 py-2 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-sky-900/20"
           >
             <Copy className="w-3.5 h-3.5" />
             Clone to My Workflows

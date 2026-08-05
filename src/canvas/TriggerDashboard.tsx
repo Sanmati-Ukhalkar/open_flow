@@ -62,7 +62,7 @@ export const TriggerDashboard = ({ token }: TriggerDashboardProps) => {
     <div className="space-y-6">
       {loading ? (
         <div className="text-xs text-zinc-550 py-16 text-center flex flex-col items-center justify-center gap-2">
-          <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-sky-400" />
           <span>Fetching automated trigger rules...</span>
         </div>
       ) : triggers.length === 0 ? (
@@ -102,7 +102,7 @@ export const TriggerDashboard = ({ token }: TriggerDashboardProps) => {
                 <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
                   <div className="flex items-center gap-2.5">
                     {t.trigger_type === 'cron' ? (
-                      <div className="p-2 bg-purple-500/10 border border-purple-500/20 text-purple-400 rounded-xl">
+                      <div className="p-2 bg-sky-500/10 border border-sky-500/20 text-sky-400 rounded-xl">
                         <Calendar className="w-4 h-4" />
                       </div>
                     ) : (
@@ -142,7 +142,7 @@ export const TriggerDashboard = ({ token }: TriggerDashboardProps) => {
                 <div className="space-y-2 text-xs">
                   {t.trigger_type === 'cron' ? (
                     <div className="flex items-center gap-2 bg-zinc-900/40 border border-zinc-850 p-3 rounded-xl">
-                      <Clock className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                      <Clock className="w-4 h-4 text-sky-400 flex-shrink-0" />
                       <div>
                         <span className="text-[10px] text-zinc-500 block uppercase font-bold tracking-wider">Cron Schedule Pattern</span>
                         <span className="font-mono text-zinc-200 text-xs font-bold">{config.cronExpression || '*/5 * * * *'}</span>

@@ -25,7 +25,7 @@ export const SQLiteStorageNode = ({ id, data, selected }: { id: string; data: SQ
   return (
     <div
       className={`min-w-[220px] rounded-xl border p-4 backdrop-blur-md transition-all duration-300 ${
-        selected ? 'ring-2 ring-purple-500/80 ring-offset-2 ring-offset-black' : ''
+        selected ? 'ring-2 ring-sky-500/80 ring-offset-2 ring-offset-black' : ''
       } ${statusColors[data.status] || statusColors.idle}`}
     >
       {/* Target handle - input */}

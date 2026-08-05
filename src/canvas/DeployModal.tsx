@@ -83,7 +83,7 @@ export const DeployModal = ({ deployment, onClose }: DeployModalProps) => {
                 type="text"
                 readOnly
                 value={deployment.bearer_token}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-[11px] font-mono text-purple-400 focus:outline-none"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-[11px] font-mono text-sky-400 focus:outline-none"
               />
               <button
                 onClick={() => copyToClipboard(deployment.bearer_token, setCopiedToken)}
@@ -108,7 +108,7 @@ export const DeployModal = ({ deployment, onClose }: DeployModalProps) => {
 
         <button
           onClick={onClose}
-          className="w-full py-2 px-4 rounded-lg font-semibold text-xs transition-all duration-200 bg-purple-600 hover:bg-purple-500 text-white shadow-lg"
+          className="w-full py-2 px-4 rounded-lg font-semibold text-xs transition-all duration-200 bg-sky-600 hover:bg-sky-500 text-white shadow-lg"
         >
           I have copied the details
         </button>

@@ -53,7 +53,7 @@ export const Marketplace = () => {
 
       {loading ? (
         <div className="text-zinc-550 text-xs py-12 text-center flex items-center justify-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+          <Loader2 className="w-4 h-4 animate-spin text-sky-400" />
           Loading marketplace registry...
         </div>
       ) : (
@@ -68,7 +68,7 @@ export const Marketplace = () => {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="p-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-purple-400">
+                      <div className="p-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-sky-400">
                         <Package className="w-4 h-4" />
                       </div>
                       <div>

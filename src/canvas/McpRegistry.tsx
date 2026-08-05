@@ -180,7 +180,7 @@ export const McpRegistry = ({ token, activeOrg }: McpRegistryProps) => {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
-            <Server className="w-4 h-4 text-purple-400" />
+            <Server className="w-4 h-4 text-sky-400" />
             Model Context Protocol (MCP) Registry
           </h3>
           <p className="text-[11px] text-zinc-400 mt-1">
@@ -191,7 +191,7 @@ export const McpRegistry = ({ token, activeOrg }: McpRegistryProps) => {
         {!isViewer && !showAddForm && (
           <button
             onClick={() => setShowAddForm(true)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold shadow-lg shadow-purple-600/10 transition-all active:scale-95"
+            className="flex items-center gap-1 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold shadow-lg shadow-sky-600/10 transition-all active:scale-95"
           >
             <Plus className="w-3.5 h-3.5" />
             Add Server
@@ -223,7 +223,7 @@ export const McpRegistry = ({ token, activeOrg }: McpRegistryProps) => {
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="e.g. postgres-mcp"
-                className="w-full bg-zinc-950 border border-zinc-800 focus:border-purple-500 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none"
+                className="w-full bg-zinc-950 border border-zinc-800 focus:border-sky-500 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none"
               />
             </div>
             <div>
@@ -231,7 +231,7 @@ export const McpRegistry = ({ token, activeOrg }: McpRegistryProps) => {
               <select
                 value={type}
                 onChange={e => setType(e.target.value as any)}
-                className="w-full bg-zinc-950 border border-zinc-800 focus:border-purple-500 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none"
+                className="w-full bg-zinc-950 border border-zinc-800 focus:border-sky-500 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none"
               >
                 <option value="stdio">Local Process (stdio)</option>
                 <option value="sse">HTTP Server (SSE)</option>
@@ -249,7 +249,7 @@ export const McpRegistry = ({ token, activeOrg }: McpRegistryProps) => {
                     value={command}
                     onChange={e => setCommand(e.target.value)}
                     placeholder="e.g. npx, python, node"
-                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-purple-500 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none"
+                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-sky-500 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none"
                   />
                 </div>
                 <div className="col-span-2">
@@ -259,7 +259,7 @@ export const McpRegistry = ({ token, activeOrg }: McpRegistryProps) => {
                     value={args}
                     onChange={e => setArgs(e.target.value)}
                     placeholder='e.g. ["-y", "@modelcontextprotocol/server-postgres"]'
-                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-purple-500 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none font-mono"
+                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-sky-500 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none font-mono"
                   />
                 </div>
               </div>
@@ -270,7 +270,7 @@ export const McpRegistry = ({ token, activeOrg }: McpRegistryProps) => {
                   value={env}
                   onChange={e => setEnv(e.target.value)}
                   placeholder='e.g. {"DATABASE_URL": "postgresql://localhost:5432/db"}'
-                  className="w-full bg-zinc-950 border border-zinc-800 focus:border-purple-500 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none font-mono"
+                  className="w-full bg-zinc-950 border border-zinc-800 focus:border-sky-500 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none font-mono"
                 />
               </div>
             </>
@@ -282,7 +282,7 @@ export const McpRegistry = ({ token, activeOrg }: McpRegistryProps) => {
                 value={url}
                 onChange={e => setUrl(e.target.value)}
                 placeholder="e.g. http://localhost:3010/sse"
-                className="w-full bg-zinc-950 border border-zinc-800 focus:border-purple-500 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none font-mono"
+                className="w-full bg-zinc-950 border border-zinc-800 focus:border-sky-500 rounded-lg p-2 text-xs text-zinc-200 focus:outline-none font-mono"
               />
             </div>
           )}
@@ -296,7 +296,7 @@ export const McpRegistry = ({ token, activeOrg }: McpRegistryProps) => {
             </button>
             <button
               onClick={handleCreate}
-              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold"
+              className="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold"
             >
               Register Server
             </button>
@@ -329,7 +329,7 @@ export const McpRegistry = ({ token, activeOrg }: McpRegistryProps) => {
                         onChange={e => {
                           setServers(servers.map(s => s.id === server.id ? { ...s, name: e.target.value } : s));
                         }}
-                        className="bg-zinc-950 border border-zinc-800 rounded px-2 py-0.5 text-xs text-zinc-200 focus:outline-none focus:border-purple-500"
+                        className="bg-zinc-950 border border-zinc-800 rounded px-2 py-0.5 text-xs text-zinc-200 focus:outline-none focus:border-sky-500"
                       />
                     ) : (
                       <span className="text-xs font-bold text-zinc-200">{server.name}</span>

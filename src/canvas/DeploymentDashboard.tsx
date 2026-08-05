@@ -95,7 +95,7 @@ export const DeploymentDashboard = ({ token }: DeploymentDashboardProps) => {
     <div className="space-y-6">
       {loading ? (
         <div className="text-xs text-zinc-550 py-16 text-center flex flex-col items-center justify-center gap-2">
-          <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-sky-400" />
           <span>Fetching deployment stats...</span>
         </div>
       ) : deployments.length === 0 ? (
@@ -183,7 +183,7 @@ export const DeploymentDashboard = ({ token }: DeploymentDashboardProps) => {
                       {regenerating === d.id ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : (
-                        <RefreshCw className="w-3.5 h-3.5 text-purple-400" />
+                        <RefreshCw className="w-3.5 h-3.5 text-sky-400" />
                       )}
                       Regenerate Token
                     </button>

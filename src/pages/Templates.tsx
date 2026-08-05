@@ -68,7 +68,7 @@ export const Templates = ({ token, activeOrg, onSelectWorkflow }: TemplatesProps
       <div className="flex items-center justify-between mb-8">
         <div>
           <h2 className="text-sm font-bold text-zinc-200 uppercase tracking-wider flex items-center gap-2">
-            <LayoutTemplate className="w-4 h-4 text-purple-400" />
+            <LayoutTemplate className="w-4 h-4 text-sky-400" />
             Template Gallery
           </h2>
           <p className="text-[10px] text-zinc-500 mt-1">Start from a working blueprint instead of a blank canvas.</p>
@@ -96,7 +96,7 @@ export const Templates = ({ token, activeOrg, onSelectWorkflow }: TemplatesProps
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border whitespace-nowrap ${
                   selectedCategory === cat
-                    ? 'bg-purple-500/10 text-purple-400 border-purple-500/30'
+                    ? 'bg-sky-500/10 text-sky-400 border-sky-500/30'
                     : 'bg-zinc-900/40 text-zinc-500 border-zinc-800 hover:text-zinc-300 hover:bg-zinc-800/50'
                 }`}
               >
@@ -128,7 +128,7 @@ export const Templates = ({ token, activeOrg, onSelectWorkflow }: TemplatesProps
 
                   <div className="space-y-2 relative z-10">
                     <div className="flex justify-between items-start">
-                      <span className="text-[8px] font-bold uppercase tracking-wider text-purple-300 bg-purple-900/50 px-2 py-0.5 rounded-full border border-purple-500/30 backdrop-blur-sm">
+                      <span className="text-[8px] font-bold uppercase tracking-wider text-sky-600 bg-sky-500/10 px-2 py-0.5 rounded-full border border-sky-500/30 backdrop-blur-sm">
                         {template.category || 'General'}
                       </span>
                     </div>
@@ -154,7 +154,7 @@ export const Templates = ({ token, activeOrg, onSelectWorkflow }: TemplatesProps
                     
                     <button
                       onClick={() => setSelectedTemplate(template)}
-                      className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-zinc-900/80 backdrop-blur-md border border-zinc-700 text-zinc-200 hover:bg-purple-600 hover:border-purple-500 hover:text-white transition-all duration-200 text-xs font-bold group-hover:shadow-lg group-hover:shadow-purple-900/30"
+                      className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-zinc-900/80 backdrop-blur-md border border-zinc-700 text-zinc-200 hover:bg-sky-600 hover:border-sky-500 hover:text-white transition-all duration-200 text-xs font-bold group-hover:shadow-lg group-hover:shadow-sky-900/30"
                     >
                       <FolderPlus className="w-4 h-4" />
                       Use Template

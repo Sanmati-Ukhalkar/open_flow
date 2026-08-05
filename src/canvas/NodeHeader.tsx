@@ -80,7 +80,7 @@ export const NodeHeader = ({ id, label, defaultLabel, icon: Icon, status }: Node
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={handleCommit}
             onKeyDown={handleKeyDown}
-            className="nodrag nowheel font-semibold text-sm text-zinc-100 bg-zinc-900 border border-purple-500 rounded px-1 py-0.5 w-full focus:outline-none focus:ring-1 focus:ring-purple-500"
+            className="nodrag nowheel font-semibold text-sm text-zinc-100 bg-zinc-900 border border-sky-500 rounded px-1 py-0.5 w-full focus:outline-none focus:ring-1 focus:ring-sky-500"
           />
         ) : (
           <span 

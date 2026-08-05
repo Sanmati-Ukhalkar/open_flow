@@ -83,7 +83,7 @@ export const DeploymentAlertModal = ({ deploymentId, token, onClose }: Deploymen
 
         {loading ? (
           <div className="flex justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+            <Loader2 className="w-6 h-6 animate-spin text-sky-400" />
           </div>
         ) : (
           <div className="space-y-4 text-sm">
@@ -93,7 +93,7 @@ export const DeploymentAlertModal = ({ deploymentId, token, onClose }: Deploymen
                 type="number"
                 value={errorThresholdPercent}
                 onChange={(e) => setErrorThresholdPercent(Number(e.target.value))}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-purple-500/50"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-sky-500/50"
                 placeholder="e.g. 10"
               />
             </div>
@@ -104,7 +104,7 @@ export const DeploymentAlertModal = ({ deploymentId, token, onClose }: Deploymen
                 type="number"
                 value={windowRuns}
                 onChange={(e) => setWindowRuns(Number(e.target.value))}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-purple-500/50"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-sky-500/50"
                 placeholder="e.g. 10"
               />
             </div>
@@ -115,7 +115,7 @@ export const DeploymentAlertModal = ({ deploymentId, token, onClose }: Deploymen
                 type="text"
                 value={webhookUrl}
                 onChange={(e) => setWebhookUrl(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-purple-500/50"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-sky-500/50"
                 placeholder="https://..."
               />
               <p className="text-[10px] text-zinc-500">We'll send a POST request with error details to this URL.</p>
@@ -124,7 +124,7 @@ export const DeploymentAlertModal = ({ deploymentId, token, onClose }: Deploymen
             <button
               onClick={handleSave}
               disabled={saving || !webhookUrl}
-              className="w-full mt-4 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+              className="w-full mt-4 flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-700 text-white py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Save Alert Config

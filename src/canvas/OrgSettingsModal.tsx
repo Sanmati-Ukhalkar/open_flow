@@ -71,8 +71,8 @@ export default function OrgSettingsModal({ token, activeOrg, onClose }: OrgSetti
         {/* Header */}
         <div className="px-5 py-4 border-b border-zinc-900 flex items-center justify-between bg-zinc-900/20">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20">
-              <Users className="w-5 h-5 text-purple-400" />
+            <div className="p-2 bg-sky-500/10 rounded-lg border border-sky-500/20">
+              <Users className="w-5 h-5 text-sky-400" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-zinc-100">Team Settings</h2>
@@ -103,13 +103,13 @@ export default function OrgSettingsModal({ token, activeOrg, onClose }: OrgSetti
                   value={inviteEmail}
                   onChange={e => setInviteEmail(e.target.value)}
                   placeholder="Email Address"
-                  className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none focus:border-purple-500/50"
+                  className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/50"
                   required
                 />
                 <select
                   value={inviteRole}
                   onChange={e => setInviteRole(e.target.value)}
-                  className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none focus:border-purple-500/50"
+                  className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/50"
                 >
                   <option value="viewer">Viewer</option>
                   <option value="editor">Editor</option>
@@ -118,7 +118,7 @@ export default function OrgSettingsModal({ token, activeOrg, onClose }: OrgSetti
                 <button
                   type="submit"
                   disabled={inviting}
-                  className="px-4 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold disabled:opacity-50 transition-colors flex items-center gap-1"
+                  className="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold disabled:opacity-50 transition-colors flex items-center gap-1"
                 >
                   {inviting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Invite'}
                 </button>
@@ -149,7 +149,7 @@ export default function OrgSettingsModal({ token, activeOrg, onClose }: OrgSetti
                         </div>
                         <span className="text-xs text-zinc-300">{m.email}</span>
                       </div>
-                      <span className="text-[10px] font-mono text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20 uppercase">
+                      <span className="text-[10px] font-mono text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20 uppercase">
                         {m.role}
                       </span>
                     </div>

@@ -20,12 +20,12 @@ const ICON_MAP: Record<string, any> = {
 };
 
 const COLOR_MAP: Record<string, string> = {
-  'llm-prompt': 'text-purple-400 border-purple-500/20 bg-purple-500/5',
+  'llm-prompt': 'text-sky-400 border-sky-500/20 bg-sky-500/5',
   'mcp-tool': 'text-blue-400 border-blue-500/20 bg-blue-500/5',
   'http-webhook': 'text-rose-400 border-rose-500/20 bg-rose-500/5',
   'sqlite-storage': 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5',
   'text-transform': 'text-yellow-400 border-yellow-500/20 bg-yellow-500/5',
-  'cron-trigger': 'text-purple-300 border-purple-500/20 bg-purple-500/5',
+  'cron-trigger': 'text-sky-300 border-sky-500/20 bg-sky-500/5',
   'webhook-trigger': 'text-blue-300 border-blue-500/20 bg-blue-500/5',
   'email': 'text-orange-400 border-orange-500/20 bg-orange-500/5',
   'vision-ocr': 'text-indigo-400 border-indigo-500/20 bg-indigo-500/5',
@@ -99,7 +99,7 @@ export const Sidebar = () => {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search nodes by name, info..."
-          className="w-full bg-zinc-900/60 border border-zinc-800 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 rounded-lg py-1.5 pl-8 pr-7 text-xs text-zinc-200 placeholder-zinc-550 focus:outline-none"
+          className="w-full bg-zinc-900/60 border border-zinc-800 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-lg py-1.5 pl-8 pr-7 text-xs text-zinc-200 placeholder-zinc-550 focus:outline-none"
         />
         {searchQuery && (
           <button

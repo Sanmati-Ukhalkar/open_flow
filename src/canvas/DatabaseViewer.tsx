@@ -52,7 +52,7 @@ function JsonCell({ value }: { value: any }) {
     <div>
       <button
         onClick={() => setExpanded((p) => !p)}
-        className="flex items-center gap-1 text-[10px] font-semibold text-purple-400 hover:text-purple-300 transition-colors mb-1"
+        className="flex items-center gap-1 text-[10px] font-semibold text-sky-400 hover:text-sky-300 transition-colors mb-1"
       >
         {expanded ? (
           <ChevronDown className="w-3 h-3" />
@@ -213,7 +213,7 @@ export const DatabaseViewer = ({ token }: DatabaseViewerProps) => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-zinc-100 flex items-center gap-3">
-            <Database className="w-6 h-6 text-purple-400" />
+            <Database className="w-6 h-6 text-sky-400" />
             Database Viewer
           </h1>
           <p className="text-zinc-400 text-sm mt-1">
@@ -250,7 +250,7 @@ export const DatabaseViewer = ({ token }: DatabaseViewerProps) => {
           <div className="flex-1 overflow-y-auto py-1">
             {loadingTables ? (
               <div className="flex items-center justify-center py-8">
-                <div className="w-4 h-4 border-2 border-zinc-700 border-t-purple-500 rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-zinc-700 border-t-sky-500 rounded-full animate-spin" />
               </div>
             ) : tables.length === 0 ? (
               <div className="px-3 py-6 text-center">
@@ -267,7 +267,7 @@ export const DatabaseViewer = ({ token }: DatabaseViewerProps) => {
                   onClick={() => handleSelectTable(t)}
                   className={`w-full text-left px-3 py-2 text-xs font-mono transition-all ${
                     selectedTable === t
-                      ? 'bg-purple-600/15 text-purple-300 border-l-2 border-purple-500'
+                      ? 'bg-sky-600/15 text-sky-300 border-l-2 border-sky-500'
                       : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 border-l-2 border-transparent'
                   }`}
                 >
@@ -329,7 +329,7 @@ export const DatabaseViewer = ({ token }: DatabaseViewerProps) => {
               </div>
             ) : loadingRows ? (
               <div className="flex items-center justify-center h-full">
-                <div className="w-6 h-6 border-2 border-zinc-700 border-t-purple-500 rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 border-zinc-700 border-t-sky-500 rounded-full animate-spin" />
               </div>
             ) : rows.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-zinc-600">
