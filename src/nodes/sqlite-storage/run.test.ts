@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { run } from './run';
 
-const mockDbRun = vi.fn();
-const mockDbClose = vi.fn();
+const { mockDbRun, mockDbClose } = vi.hoisted(() => ({
+  mockDbRun: vi.fn(),
+  mockDbClose: vi.fn(),
+}));
 
 vi.mock('sqlite3', () => {
   class Database {
@@ -20,14 +22,33 @@ vi.mock('sqlite3', () => {
       } else if (paramsOrCb) {
         params = paramsOrCb;
       }
-      mockDbRun(sql, params).then(
-        (_res: any) => {
-          if (actualCb) actualCb.call({ lastID: 100 }, null);
-        },
-        (err: any) => {
-          if (actualCb) actualCb(err);
-        }
-      );
+      const p = mockDbRun(sql, params);
+      if (p && typeof p.then === 'function') {
+        p.then(
+          (_res: any) => {
+            if (actualCb) actualCb.call({ lastID: 100 }, null);
+          },
+          (err: any) => {
+            if (actualCb) actualCb(err);
+          }
+        );
+      } else {
+        if (actualCb) actualCb.call({ lastID: 100 }, null);
+      }
+    }
+    all(_sql: string, paramsOrCb?: any, cb?: any) {
+      let actualCb = cb;
+      if (typeof paramsOrCb === 'function') {
+        actualCb = paramsOrCb;
+      }
+      if (actualCb) actualCb(null, []);
+    }
+    get(_sql: string, paramsOrCb?: any, cb?: any) {
+      let actualCb = cb;
+      if (typeof paramsOrCb === 'function') {
+        actualCb = paramsOrCb;
+      }
+      if (actualCb) actualCb(null, {});
     }
     close = mockDbClose;
   }

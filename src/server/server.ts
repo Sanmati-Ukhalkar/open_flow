@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { db } from './db';
+import { db, DatabaseWrapper } from './db';
 import { encrypt } from './crypto';
 import { hashPassword, generateSessionToken, authenticateToken, AuthenticatedRequest } from './auth';
 import { analyticsRouter } from './analytics';
@@ -1285,11 +1285,7 @@ const DATA_DB_PATH = path.resolve(process.cwd(), 'database.sqlite');
 
 // GET /api/db/tables — list all user-created tables in database.sqlite
 app.get('/api/db/tables', authenticateToken, (_req: AuthenticatedRequest, res) => {
-  const dataDb = new (require('sqlite3').Database)(DATA_DB_PATH, (err: Error | null) => {
-    if (err) {
-      return res.status(500).json({ success: false, error: { message: `Cannot open database: ${err.message}` } });
-    }
-  });
+  const dataDb = new DatabaseWrapper(process.env.DATABASE_URL, DATA_DB_PATH);
 
   dataDb.all(
     `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name`,
@@ -1317,11 +1313,7 @@ app.get('/api/db/tables/:name/rows', authenticateToken, (req: AuthenticatedReque
   const limit = Math.min(200, Math.max(1, parseInt((req.query.limit as string) || '50', 10)));
   const offset = (page - 1) * limit;
 
-  const dataDb = new (require('sqlite3').Database)(DATA_DB_PATH, (err: Error | null) => {
-    if (err) {
-      return res.status(500).json({ success: false, error: { message: `Cannot open database: ${err.message}` } });
-    }
-  });
+  const dataDb = new DatabaseWrapper(process.env.DATABASE_URL, DATA_DB_PATH);
 
   dataDb.get(`SELECT COUNT(*) as total FROM ${name}`, [], (countErr: Error | null, countRow: any) => {
     if (countErr) {
@@ -1332,7 +1324,7 @@ app.get('/api/db/tables/:name/rows', authenticateToken, (req: AuthenticatedReque
     const total = countRow?.total || 0;
 
     dataDb.all(
-      `SELECT * FROM ${name} ORDER BY rowid DESC LIMIT ? OFFSET ?`,
+      `SELECT * FROM ${name} ORDER BY id DESC LIMIT ? OFFSET ?`,
       [limit, offset],
       (err: Error | null, rows: any[]) => {
         dataDb.close();

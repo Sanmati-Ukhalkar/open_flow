@@ -1,15 +1,188 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
+import { Pool } from 'pg';
+
+export function translateToPostgres(sql: string, values: any[] = []): { query: string; values: any[] } {
+  let query = sql;
+  const newValues = [...values];
+
+  // 1. Replace '?' placeholders with '$1', '$2', ...
+  let index = 1;
+  query = query.replace(/\?/g, () => `$${index++}`);
+
+  // 2. Handle 'INSERT OR IGNORE INTO' -> 'INSERT INTO ... ON CONFLICT DO NOTHING'
+  if (query.match(/INSERT\s+OR\s+IGNORE\s+INTO/i)) {
+    query = query.replace(/INSERT\s+OR\s+IGNORE\s+INTO/i, 'INSERT INTO');
+    if (!query.includes('ON CONFLICT')) {
+      query += ' ON CONFLICT DO NOTHING';
+    }
+  }
+
+  // 3. Handle 'INTEGER PRIMARY KEY AUTOINCREMENT' -> 'SERIAL PRIMARY KEY'
+  query = query.replace(/INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT/gi, 'SERIAL PRIMARY KEY');
+
+  // 4. Handle sqlite_master -> information_schema
+  if (query.includes('sqlite_master')) {
+    query = query.replace(
+      /SELECT\s+name\s+FROM\s+sqlite_master\s+WHERE\s+type='table'\s+AND\s+name\s+NOT\s+LIKE\s+'sqlite_%'\s+ORDER\s+BY\s+name/i,
+      "SELECT table_name AS name FROM information_schema.tables WHERE table_schema='public' AND table_name NOT LIKE 'sqlite_%' ORDER BY table_name"
+    );
+  }
+
+  // 5. Convert table_info PRAGMA check:
+  // PRAGMA table_info(tableName)
+  const pragmaMatch = query.match(/PRAGMA\s+table_info\((\w+)\)/i);
+  if (pragmaMatch) {
+    const tableName = pragmaMatch[1];
+    query = `SELECT column_name AS name FROM information_schema.columns WHERE table_name = '${tableName}'`;
+  }
+
+  // 6. Handle BOOLEAN DEFAULT values (0 -> false, 1 -> true)
+  query = query.replace(/BOOLEAN\s+DEFAULT\s+0/gi, 'BOOLEAN DEFAULT FALSE');
+  query = query.replace(/BOOLEAN\s+DEFAULT\s+1/gi, 'BOOLEAN DEFAULT TRUE');
+
+  // 7. Handle DATETIME type -> TIMESTAMP
+  query = query.replace(/\bDATETIME\b/gi, 'TIMESTAMP');
+
+  // 8. If this is an INSERT statement, return id for serial id matching
+  if (query.trim().toUpperCase().startsWith('INSERT') && !query.includes('RETURNING')) {
+    if (!query.match(/INTO\s+organization_members/i)) {
+      query += ' RETURNING id';
+    }
+  }
+
+  return { query, values: newValues };
+}
+
+export class DatabaseWrapper {
+  public isPg: boolean;
+  private pool: Pool | null = null;
+  private sqliteDb: sqlite3.Database | null = null;
+
+  constructor(connectionString: string | undefined, sqlitePath: string) {
+    if (connectionString) {
+      this.isPg = true;
+      this.pool = new Pool({ connectionString });
+      console.log(`Connected to PostgreSQL database.`);
+    } else {
+      this.isPg = false;
+      this.sqliteDb = new sqlite3.Database(sqlitePath, (err) => {
+        if (err) {
+          console.error(`Failed to connect to SQLite at ${sqlitePath}:`, err.message);
+        } else {
+          console.log(`Connected to SQLite database.`);
+        }
+      });
+    }
+  }
+
+  serialize(callback: () => void) {
+    callback();
+  }
+
+  run(sql: string, params: any[] | any = [], callback?: (this: any, err: Error | null) => void) {
+    let actualParams = params;
+    let actualCallback = callback;
+    if (typeof params === 'function') {
+      actualCallback = params;
+      actualParams = [];
+    } else if (params === undefined || params === null) {
+      actualParams = [];
+    }
+
+    if (this.isPg) {
+      const { query, values } = translateToPostgres(sql, actualParams);
+      this.pool!.query(query, values)
+        .then((res) => {
+          if (actualCallback) {
+            const lastID = res.rows[0]?.id || null;
+            actualCallback.call({ lastID, changes: res.rowCount || 0 }, null);
+          }
+        })
+        .catch((err) => {
+          if (actualCallback) actualCallback.call({ lastID: null, changes: 0 }, err);
+        });
+    } else {
+      this.sqliteDb!.run(sql, actualParams, actualCallback);
+    }
+  }
+
+  get(sql: string, params: any[] | any = [], callback?: (err: Error | null, row: any) => void) {
+    let actualParams = params;
+    let actualCallback = callback;
+    if (typeof params === 'function') {
+      actualCallback = params;
+      actualParams = [];
+    } else if (params === undefined || params === null) {
+      actualParams = [];
+    }
+
+    if (this.isPg) {
+      const { query, values } = translateToPostgres(sql, actualParams);
+      this.pool!.query(query, values)
+        .then((res) => {
+          if (actualCallback) actualCallback(null, res.rows[0]);
+        })
+        .catch((err) => {
+          if (actualCallback) actualCallback(err, null);
+        });
+    } else {
+      this.sqliteDb!.get(sql, actualParams, actualCallback);
+    }
+  }
+
+  all(sql: string, params: any[] | any = [], callback?: (err: Error | null, rows: any[]) => void) {
+    let actualParams = params;
+    let actualCallback = callback;
+    if (typeof params === 'function') {
+      actualCallback = params;
+      actualParams = [];
+    } else if (params === undefined || params === null) {
+      actualParams = [];
+    }
+
+    if (this.isPg) {
+      const { query, values } = translateToPostgres(sql, actualParams);
+      this.pool!.query(query, values)
+        .then((res) => {
+          if (actualCallback) actualCallback(null, res.rows);
+        })
+        .catch((err) => {
+          if (actualCallback) actualCallback(err, []);
+        });
+    } else {
+      this.sqliteDb!.all(sql, actualParams, actualCallback);
+    }
+  }
+
+  prepare(sql: string) {
+    return {
+      run: (...args: any[]) => {
+        let callback: ((err: any) => void) | undefined;
+        let params = args;
+        if (typeof args[args.length - 1] === 'function') {
+          callback = args[args.length - 1];
+          params = args.slice(0, args.length - 1);
+        }
+        this.run(sql, params, callback);
+      },
+      finalize: (callback?: () => void) => {
+        if (callback) callback();
+      }
+    };
+  }
+
+  close(callback?: (err: any) => void) {
+    if (this.isPg) {
+      this.pool!.end().then(() => callback && callback(null)).catch(err => callback && callback(err));
+    } else {
+      this.sqliteDb!.close(callback);
+    }
+  }
+}
 
 const dbPath = path.resolve(process.cwd(), 'metadata.sqlite');
-
-export const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Failed to connect to SQLite metadata database:', err.message);
-  } else {
-    console.log('Connected to SQLite metadata database.');
-  }
-});
+export const db = new DatabaseWrapper(process.env.DATABASE_URL, dbPath);
 
 // Setup db schema
 db.serialize(() => {
@@ -18,7 +191,7 @@ db.serialize(() => {
       id TEXT PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
@@ -29,7 +202,7 @@ db.serialize(() => {
       org_id TEXT,
       provider TEXT NOT NULL,
       encrypted_key TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       UNIQUE(user_id, provider)
     )
@@ -42,13 +215,13 @@ db.serialize(() => {
       description TEXT,
       category TEXT,
       required_credentials TEXT,
-      is_template BOOLEAN DEFAULT 0,
+      is_template BOOLEAN DEFAULT FALSE,
       thumbnail_url TEXT,
       graph_json TEXT NOT NULL,
       owner_id TEXT NOT NULL,
       org_id TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
     )
   `);
@@ -59,8 +232,8 @@ db.serialize(() => {
       workflow_id TEXT NOT NULL,
       status TEXT NOT NULL,
       duration_ms INTEGER DEFAULT 0,
-      started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      finished_at DATETIME,
+      started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      finished_at TIMESTAMP,
       FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
     )
   `);
@@ -76,7 +249,7 @@ db.serialize(() => {
       cost_cents REAL DEFAULT 0,
       duration_ms INTEGER DEFAULT 0,
       metadata_json TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (run_id) REFERENCES runs(id) ON DELETE CASCADE
     )
   `);
@@ -86,7 +259,7 @@ db.serialize(() => {
       id TEXT PRIMARY KEY,
       workflow_id TEXT NOT NULL,
       graph_json TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
     )
   `);
@@ -99,10 +272,10 @@ db.serialize(() => {
       bearer_token TEXT NOT NULL,
       status TEXT NOT NULL,
       request_count INTEGER DEFAULT 0,
-      last_called_at DATETIME,
+      last_called_at TIMESTAMP,
       org_id TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE,
       FOREIGN KEY (workflow_version_id) REFERENCES workflow_versions(id) ON DELETE CASCADE,
       UNIQUE(workflow_id)
@@ -116,9 +289,9 @@ db.serialize(() => {
       trigger_type TEXT NOT NULL,
       status TEXT NOT NULL,
       config_json TEXT NOT NULL,
-      last_triggered_at DATETIME,
+      last_triggered_at TIMESTAMP,
       org_id TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE,
       UNIQUE(workflow_id, trigger_type)
     )
@@ -129,7 +302,7 @@ db.serialize(() => {
     CREATE TABLE IF NOT EXISTS organizations (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
@@ -138,7 +311,7 @@ db.serialize(() => {
       org_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
       role TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (org_id, user_id),
       FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -151,7 +324,7 @@ db.serialize(() => {
       org_id TEXT NOT NULL,
       email TEXT NOT NULL,
       role TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE,
       UNIQUE(org_id, email)
     )
@@ -165,7 +338,7 @@ db.serialize(() => {
       error_threshold_percent REAL NOT NULL,
       window_runs INTEGER NOT NULL DEFAULT 10,
       webhook_url TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (deployment_id) REFERENCES deployments(id) ON DELETE CASCADE,
       UNIQUE(deployment_id)
     )
@@ -195,11 +368,11 @@ db.serialize(() => {
   ];
 
   v11ColumnsToAdd.forEach(({ table, name, definition }) => {
-    db.all(`PRAGMA table_info(${table})`, (err, rows: any[]) => {
+    db.all(`PRAGMA table_info(${table})`, (err: any, rows: any[]) => {
       if (err) return;
       const existingColumns = rows.map(r => r.name);
       if (!existingColumns.includes(name)) {
-        db.run(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`, (alterErr) => {
+        db.run(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`, (alterErr: any) => {
           if (!alterErr) {
             console.log(`Added column ${name} to ${table} table.`);
             
@@ -220,7 +393,7 @@ db.serialize(() => {
     { table: 'workflows', name: 'description', definition: 'TEXT' },
     { table: 'workflows', name: 'category', definition: 'TEXT' },
     { table: 'workflows', name: 'required_credentials', definition: 'TEXT' },
-    { table: 'workflows', name: 'is_template', definition: 'BOOLEAN DEFAULT 0' },
+    { table: 'workflows', name: 'is_template', definition: 'BOOLEAN DEFAULT FALSE' },
     { table: 'workflows', name: 'thumbnail_url', definition: 'TEXT' },
     { table: 'run_node_results', name: 'cost_cents', definition: 'REAL DEFAULT 0' },
     { table: 'run_node_results', name: 'duration_ms', definition: 'INTEGER DEFAULT 0' },
@@ -229,10 +402,10 @@ db.serialize(() => {
   ];
 
   v13ColumnsToAdd.forEach(({ table, name, definition }) => {
-    db.all(`PRAGMA table_info(${table})`, (err, rows: any[]) => {
+    db.all(`PRAGMA table_info(${table})`, (err: any, rows: any[]) => {
       if (err) return;
       if (!rows.map(r => r.name).includes(name)) {
-        db.run(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`, (alterErr) => {
+        db.run(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`, (alterErr: any) => {
           if (!alterErr) console.log(`Added column ${name} to ${table} table.`);
         });
       }
@@ -241,11 +414,11 @@ db.serialize(() => {
 
   function runV11Migration() {
     // For every user, ensure they have a Personal org
-    db.all('SELECT id, email FROM users', [], (err, users: any[]) => {
+    db.all('SELECT id, email FROM users', [], (err: any, users: any[]) => {
       if (err || !users) return;
       
       users.forEach(user => {
-        db.get('SELECT org_id FROM organization_members WHERE user_id = ? AND role = "owner" LIMIT 1', [user.id], (_err, row: any) => {
+        db.get("SELECT org_id FROM organization_members WHERE user_id = ? AND role = 'owner' LIMIT 1", [user.id], (_err: any, row: any) => {
           if (!row) {
             const orgId = `org-${Math.random().toString(36).substr(2, 9)}`;
             db.run('INSERT INTO organizations (id, name) VALUES (?, ?)', [orgId, 'Personal'], () => {

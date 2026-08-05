@@ -1,4 +1,4 @@
-import sqlite3 from 'sqlite3';
+import { DatabaseWrapper } from '../../server/db';
 import path from 'path';
 
 interface SQLiteStorageConfig {
@@ -46,11 +46,7 @@ export async function run(
   const dbPath = path.resolve(process.cwd(), 'database.sqlite');
   
   return new Promise((resolve, reject) => {
-    const db = new sqlite3.Database(dbPath, (err) => {
-      if (err) {
-        return reject(new NodeExecutionError('DB_OPEN_ERROR', `Failed to open SQLite database: ${err.message}`));
-      }
-    });
+    const db = new DatabaseWrapper(process.env.DATABASE_URL, dbPath);
 
     db.serialize(() => {
       // Create table if not exists
@@ -60,7 +56,7 @@ export async function run(
           timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
           ${columnName} TEXT
         )`,
-        (err) => {
+        (err: Error | null) => {
           if (err) {
             db.close();
             return reject(new NodeExecutionError('CREATE_TABLE_ERROR', `Failed to create database table: ${err.message}`));
@@ -72,7 +68,7 @@ export async function run(
       db.run(
         `INSERT INTO ${tableName} (${columnName}) VALUES (?)`,
         [dataToStore],
-        function (err) {
+        function (this: any, err: Error | null) {
           db.close();
           if (err) {
             return reject(new NodeExecutionError('INSERT_ROW_ERROR', `Failed to insert record: ${err.message}`));
