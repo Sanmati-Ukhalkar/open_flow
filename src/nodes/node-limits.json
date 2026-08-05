@@ -5,6 +5,7 @@
   "http-webhook":      { "timeoutMs": 30000 },
   "sqlite-storage":    { "timeoutMs": 15000 },
   "text-transform":    { "timeoutMs": 10000 },
+  "code-execution":    { "timeoutMs": 10000 },
   "cron-trigger":      { "timeoutMs": 5000  },
   "webhook-trigger":   { "timeoutMs": 5000  }
 }
