@@ -414,6 +414,82 @@ app.delete('/api/workflows/:id', authenticateToken, requireOrgAccess, (req: Auth
 });
 
 // -------------------------------------------------------------
+// WORKFLOW VERSIONING ROUTES
+// -------------------------------------------------------------
+
+app.post('/api/workflows/:id/versions', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  const { id } = req.params;
+  const orgId = req.org!.id;
+  db.get('SELECT graph_json FROM workflows WHERE id = ? AND org_id = ?', [id, orgId], (err, row: any) => {
+    if (err || !row) {
+      return res.status(404).json({ success: false, error: { message: 'Workflow not found.' } });
+    }
+    const versionId = `ver-${Math.random().toString(36).substr(2, 9)}`;
+    db.run(
+      'INSERT INTO workflow_versions (id, workflow_id, graph_json) VALUES (?, ?, ?)',
+      [versionId, id, row.graph_json],
+      function(err) {
+        if (err) {
+          return res.status(500).json({ success: false, error: { message: err.message } });
+        }
+        return res.json({ success: true, version: { id: versionId, workflow_id: id, created_at: new Date().toISOString() } });
+      }
+    );
+  });
+});
+
+app.get('/api/workflows/:id/versions', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  const { id } = req.params;
+  const orgId = req.org!.id;
+  db.get('SELECT id FROM workflows WHERE id = ? AND org_id = ?', [id, orgId], (err, row) => {
+    if (err || !row) {
+      return res.status(404).json({ success: false, error: { message: 'Workflow not found.' } });
+    }
+    db.all(
+      'SELECT id, workflow_id, created_at FROM workflow_versions WHERE workflow_id = ? ORDER BY created_at DESC',
+      [id],
+      (err, rows) => {
+        if (err) {
+          return res.status(500).json({ success: false, error: { message: err.message } });
+        }
+        return res.json({ success: true, versions: rows });
+      }
+    );
+  });
+});
+
+app.post('/api/workflows/:id/versions/:versionId/restore', authenticateToken, requireOrgAccess, (req: AuthenticatedRequest, res) => {
+  const { id, versionId } = req.params;
+  const orgId = req.org!.id;
+  if (req.org!.role === 'viewer') {
+    return res.status(403).json({ success: false, error: { message: 'Viewers cannot modify workflows.' } });
+  }
+  db.get(
+    'SELECT graph_json FROM workflow_versions WHERE id = ? AND workflow_id = ?',
+    [versionId, id],
+    (err, versionRow: any) => {
+      if (err || !versionRow) {
+        return res.status(404).json({ success: false, error: { message: 'Version not found.' } });
+      }
+      db.run(
+        'UPDATE workflows SET graph_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND org_id = ?',
+        [versionRow.graph_json, id, orgId],
+        function(err) {
+          if (err) {
+            return res.status(500).json({ success: false, error: { message: err.message } });
+          }
+          try {
+            const graph = JSON.parse(versionRow.graph_json);
+            syncWorkflowTriggers(id, graph);
+          } catch (e) {}
+          return res.json({ success: true, graph_json: versionRow.graph_json });
+        }
+      );
+    }
+  );
+});
+
+// -------------------------------------------------------------
 // TEMPLATES ROUTES (v0.10)
 // -------------------------------------------------------------
 

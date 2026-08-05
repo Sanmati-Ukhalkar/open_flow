@@ -13,6 +13,7 @@ import Canvas from './canvas/Canvas';
 import ConfigPanel from './canvas/ConfigPanel';
 import OutputPanel from './canvas/OutputPanel';
 import RunLogPanel, { WorkflowRunLog } from './canvas/RunLogPanel';
+import HistoryPanel from './canvas/HistoryPanel';
 import AuthScreen from './canvas/AuthScreen';
 import Dashboard from './canvas/Dashboard';
 import CredentialsManager from './canvas/CredentialsManager';
@@ -1329,6 +1330,15 @@ function AppContent() {
             logs={runLogs}
             onSelectNode={handleSelectNodeById}
             nodes={nodes}
+          />
+
+          {/* Collapsible History Panel */}
+          <HistoryPanel
+            workflowId={currentWorkflowId}
+            token={token}
+            orgId={activeOrg?.id || ''}
+            setNodes={setNodes}
+            setEdges={setEdges}
           />
         </div>
 
