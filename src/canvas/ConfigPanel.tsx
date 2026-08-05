@@ -117,7 +117,7 @@ export const ConfigPanel = ({
                 const insertVal = `{{${v}}}`;
                 onUpdate(currentVal + insertVal);
               }}
-              className="text-[9px] bg-zinc-900 border border-zinc-800 hover:border-purple-500 text-zinc-300 hover:text-purple-400 font-mono px-1.5 py-0.5 rounded transition-all select-none"
+              className="text-[9px] bg-zinc-900 border border-zinc-800 hover:border-sky-500 text-zinc-300 hover:text-sky-400 font-mono px-1.5 py-0.5 rounded transition-all select-none"
               title={`Click to insert {{${v}}}`}
             >
               {v}
@@ -181,8 +181,8 @@ export const ConfigPanel = ({
           className={containerClasses}
         >
           <div className="flex flex-col justify-center items-center text-center space-y-4 my-auto">
-            <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-2xl">
-              <Settings className="w-7 h-7 text-purple-400" />
+            <div className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-2xl">
+              <Settings className="w-7 h-7 text-sky-400" />
             </div>
             <div>
               <p className="text-sm font-bold text-zinc-200">{selectedCount} nodes selected</p>
@@ -240,7 +240,7 @@ export const ConfigPanel = ({
                 value={config.model}
                 onChange={(e) => onChangeConfig(id, { ...config, model: e.target.value })}
                 disabled={isRunning || readOnly}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
               >
                 <option value="llama-3.1-8b-instant">Llama 3.1 8B (Groq - Recommended)</option>
                 <option value="llama3-8b-8192">Llama 3 8B (Groq)</option>
@@ -259,7 +259,7 @@ export const ConfigPanel = ({
                 disabled={isRunning || readOnly}
                 placeholder="e.g. Write a tagline for Open Flow..."
                 rows={isBottomSheet ? 5 : 8}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-sans leading-relaxed"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-sans leading-relaxed"
               />
               {renderVariableSuggestions(config.promptText, (newVal) => onChangeConfig(id, { ...config, promptText: newVal }))}
             </div>
@@ -292,7 +292,7 @@ export const ConfigPanel = ({
                     onChangeConfig(id, { ...config, toolName: nextToolName, inputParamName: nextParamName });
                   }}
                   disabled={isRunning || readOnly}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50 font-mono"
                 >
                   {availableTools.map(tool => (
                     <option key={tool.name} value={tool.name}>
@@ -315,7 +315,7 @@ export const ConfigPanel = ({
                   value={config.inputParamName}
                   onChange={(e) => onChangeConfig(id, { ...config, inputParamName: e.target.value })}
                   disabled={isRunning || readOnly}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50 font-mono"
                 >
                   {params.map(p => (
                     <option key={p} value={p}>
@@ -330,7 +330,7 @@ export const ConfigPanel = ({
                   onChange={(e) => onChangeConfig(id, { ...config, inputParamName: e.target.value })}
                   disabled={isRunning || readOnly}
                   placeholder="text"
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50 font-mono"
                 />
               )}
               <p className="text-[10px] text-zinc-550 leading-normal">
@@ -353,7 +353,7 @@ export const ConfigPanel = ({
                 onChange={(e) => onChangeConfig(id, { ...config, url: e.target.value })}
                 disabled={isRunning || readOnly}
                 placeholder="https://hooks.slack.com/services/..."
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50 font-mono"
               />
             </div>
             <div className="space-y-2">
@@ -364,7 +364,7 @@ export const ConfigPanel = ({
                 disabled={isRunning || readOnly}
                 placeholder="{\n  &quot;text&quot;: &quot;{{input}}&quot;\n}"
                 rows={isBottomSheet ? 5 : 8}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-mono leading-relaxed"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-mono leading-relaxed"
               />
               {renderVariableSuggestions(config.bodyTemplate, (newVal) => onChangeConfig(id, { ...config, bodyTemplate: newVal }))}
               <p className="text-[10px] text-zinc-550 leading-normal">
@@ -387,7 +387,7 @@ export const ConfigPanel = ({
                 onChange={(e) => onChangeConfig(id, { ...config, tableName: e.target.value })}
                 disabled={isRunning || readOnly}
                 placeholder="workflow_data"
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50 font-mono"
               />
             </div>
             <div className="space-y-2">
@@ -398,7 +398,7 @@ export const ConfigPanel = ({
                 onChange={(e) => onChangeConfig(id, { ...config, columnName: e.target.value })}
                 disabled={isRunning || readOnly}
                 placeholder="payload"
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50 font-mono"
               />
               <p className="text-[10px] text-zinc-550 leading-normal">
                 Appends the upstream data under this SQL column name.
@@ -420,7 +420,7 @@ export const ConfigPanel = ({
                 disabled={isRunning || readOnly}
                 placeholder="Result: {{llm-node-1}} and {{mcp-node-1.uppercaseText}}"
                 rows={isBottomSheet ? 5 : 10}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-mono leading-relaxed"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-mono leading-relaxed"
               />
               {renderVariableSuggestions(config.template, (newVal) => onChangeConfig(id, { ...config, template: newVal }))}
               <p className="text-[10px] text-zinc-550 leading-normal">
@@ -450,7 +450,7 @@ export const ConfigPanel = ({
               <button 
                 onClick={() => onChangeConfig(id, { ...config, cronMode: config.cronMode === 'advanced' ? 'basic' : 'advanced' })}
                 disabled={isRunning || readOnly}
-                className="text-[9px] text-purple-400 hover:text-purple-300 uppercase tracking-wider font-bold"
+                className="text-[9px] text-sky-400 hover:text-sky-300 uppercase tracking-wider font-bold"
               >
                 {config.cronMode === 'advanced' ? 'Basic UI' : 'Advanced (Raw)'}
               </button>
@@ -464,7 +464,7 @@ export const ConfigPanel = ({
                   onChange={(e) => onChangeConfig(id, { ...config, cronExpression: e.target.value })}
                   disabled={isRunning || readOnly}
                   placeholder="*/5 * * * *"
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50 font-mono"
                 />
                 <p className="text-[10px] text-zinc-550 leading-normal">
                   Standard crontab format representing execution frequency.
@@ -478,7 +478,7 @@ export const ConfigPanel = ({
                     value={config.basicType || 'minutes'}
                     onChange={(e) => updateBasicCron(e.target.value, config.basicValue || '5')}
                     disabled={isRunning || readOnly}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-purple-500/50"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-sky-500/50"
                   >
                     <option value="minutes">Every X Minutes</option>
                     <option value="hourly">Every Hour</option>
@@ -495,7 +495,7 @@ export const ConfigPanel = ({
                       value={config.basicValue || '5'}
                       onChange={(e) => updateBasicCron('minutes', e.target.value)}
                       disabled={isRunning || readOnly}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-purple-500/50"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-sky-500/50"
                     />
                   </div>
                 )}
@@ -509,7 +509,7 @@ export const ConfigPanel = ({
                       value={config.basicValue || '9'}
                       onChange={(e) => updateBasicCron('daily', e.target.value)}
                       disabled={isRunning || readOnly}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-purple-500/50"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-sky-500/50"
                     />
                   </div>
                 )}
@@ -538,7 +538,7 @@ export const ConfigPanel = ({
                     onChange={(e) => onChangeConfig(id, { ...config, [fieldName]: e.target.value })}
                     disabled={isRunning || readOnly}
                     placeholder={fieldDef?.placeholder}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50 font-mono"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50 font-mono"
                   />
                 </div>
               );
@@ -563,7 +563,7 @@ export const ConfigPanel = ({
                       disabled={isRunning || readOnly}
                       placeholder={fieldMeta.placeholder}
                       rows={isBottomSheet ? 3 : 5}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-sans leading-relaxed"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-sans leading-relaxed"
                     />
                   ) : (
                     <input
@@ -572,7 +572,7 @@ export const ConfigPanel = ({
                       onChange={(e) => onChangeConfig(id, { ...config, [fieldName]: e.target.value })}
                       disabled={isRunning || readOnly}
                       placeholder={fieldMeta.placeholder}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 font-mono"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 placeholder-zinc-650 disabled:opacity-50 font-mono"
                     />
                   )}
                   {renderVariableSuggestions(currentVal, (newVal) => onChangeConfig(id, { ...config, [fieldName]: newVal }))}
@@ -611,7 +611,7 @@ export const ConfigPanel = ({
                       {f.displayName || f.label || f.name}
                     </label>
                     {isFileField && (
-                      <label className="text-[9px] text-purple-400 hover:text-purple-350 cursor-pointer font-semibold uppercase tracking-wider select-none">
+                      <label className="text-[9px] text-sky-500 hover:text-sky-400 cursor-pointer font-semibold uppercase tracking-wider select-none">
                         Upload File
                         <input
                           type="file"
@@ -639,7 +639,7 @@ export const ConfigPanel = ({
                       disabled={isRunning || readOnly}
                       placeholder={f.placeholder}
                       rows={isBottomSheet ? 3 : 5}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-sans leading-relaxed"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-sans leading-relaxed"
                     />
                   ) : (
                     <input
@@ -648,7 +648,7 @@ export const ConfigPanel = ({
                       onChange={(e) => onChangeConfig(id, { ...(data.config || {}), [f.name]: e.target.value })}
                       disabled={isRunning || readOnly}
                       placeholder={f.placeholder}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
                     />
                   )}
                   {isTemplatedField && renderVariableSuggestions(currentVal, (newVal) => onChangeConfig(id, { ...(data.config || {}), [f.name]: newVal }))}
@@ -664,7 +664,7 @@ export const ConfigPanel = ({
   const getHeaderDetails = () => {
     switch (type) {
       case 'llm-prompt':
-        return { label: 'LLM Prompt', icon: Bot, color: 'text-purple-400' };
+        return { label: 'LLM Prompt', icon: Bot, color: 'text-sky-400' };
       case 'mcp-tool':
         return { label: 'MCP Tool', icon: Wrench, color: 'text-blue-400' };
       case 'http-webhook':
@@ -674,7 +674,7 @@ export const ConfigPanel = ({
       case 'text-transform':
         return { label: 'Text Transform', icon: Combine, color: 'text-yellow-400' };
       case 'cron-trigger':
-        return { label: 'Cron Trigger', icon: Calendar, color: 'text-purple-300' };
+        return { label: 'Cron Trigger', icon: Calendar, color: 'text-sky-300' };
       case 'webhook-trigger':
         return { label: 'Webhook Trigger', icon: Globe, color: 'text-blue-300' };
       default:
@@ -736,7 +736,7 @@ export const ConfigPanel = ({
             checked={!!data.isOutputNode}
             onChange={() => onChangeConfig(id, { ...(data.config || {}), isOutputNode: !data.isOutputNode })}
             disabled={readOnly}
-            className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-zinc-800 bg-zinc-900 accent-purple-500 cursor-pointer disabled:opacity-50"
+            className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-zinc-800 bg-zinc-900 accent-sky-500 cursor-pointer disabled:opacity-50"
           />
         </div>
 
@@ -749,17 +749,17 @@ export const ConfigPanel = ({
           <button
             onClick={handleRun}
             disabled={isRunning}
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-semibold text-xs transition-all duration-200 bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/15 disabled:bg-zinc-900 disabled:text-zinc-500 disabled:border disabled:border-zinc-850 disabled:shadow-none hover:scale-[1.01] active:scale-[0.99]"
+            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-semibold text-xs transition-all duration-200 bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-600/15 disabled:bg-zinc-900 disabled:text-zinc-500 disabled:border disabled:border-zinc-850 disabled:shadow-none hover:scale-[1.01] active:scale-[0.99]"
           >
             {isRunning ? (
               <>
                 <div className="w-3.5 h-3.5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                Running Workflow...
+                Running Node...
               </>
             ) : (
               <>
                 <Play className="w-3.5 h-3.5" />
-                Run Workflow
+                Test Node
               </>
             )}
           </button>

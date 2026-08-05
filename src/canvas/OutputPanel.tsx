@@ -42,7 +42,7 @@ export const OutputPanel = ({
       {/* Panel Header */}
       <div className="flex items-center gap-4 border-b border-zinc-850 px-6 py-2 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <Terminal className="w-3.5 h-3.5 text-purple-400" />
+          <Terminal className="w-3.5 h-3.5 text-sky-400" />
           <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-wider">Execution Output</span>
         </div>
 
@@ -67,7 +67,7 @@ export const OutputPanel = ({
                 onClick={() => setActiveTabId(node.id)}
                 className={`px-3 py-1 text-[10px] font-mono border rounded-md transition-all duration-150 flex items-center gap-1.5 ${
                   isTabActive
-                    ? 'border-purple-500 text-purple-300 bg-purple-500/5 font-semibold'
+                    ? 'border-sky-500 text-sky-300 bg-sky-500/5 font-semibold'
                     : tabStatusColors[nodeStatus as keyof typeof tabStatusColors] || tabStatusColors.idle
                 }`}
               >
@@ -94,7 +94,7 @@ export const OutputPanel = ({
 
         {/* Active Node Status Indicator */}
         {activeNode && (
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap">
             <span className="text-[9px] text-zinc-500 font-mono">{activeNode.id} status:</span>
             {activeStatus === 'running' && (
               <span className="text-[9px] text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20 animate-pulse">

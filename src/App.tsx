@@ -19,7 +19,7 @@ import Dashboard from './canvas/Dashboard';
 import CredentialsManager from './canvas/CredentialsManager';
 import ShortcutsOverlay from './canvas/ShortcutsOverlay';
 import { topoSort } from './engine/topoSort';
-import { Play, AlertTriangle, Save, FolderOpen, ShieldCheck, Key, Undo2, Redo2, Keyboard, Sun, Moon, HelpCircle } from 'lucide-react';
+import { Play, AlertTriangle, Save, FolderOpen, ShieldCheck, Key, Undo2, Redo2, Keyboard, HelpCircle } from 'lucide-react';
 import DeployModal from './canvas/DeployModal';
 import OrgSettingsModal from './canvas/OrgSettingsModal';
 import { useYjsSync } from './canvas/hooks/useYjsSync';
@@ -81,26 +81,6 @@ function AppContent() {
 
   // UI overlay state
   const [showShortcuts, setShowShortcuts] = useState(false);
-
-  // Theme management state
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('openflow_theme');
-    if (saved === 'light' || saved === 'dark') return saved;
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-      return 'light';
-    }
-    return 'dark';
-  });
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'light') {
-      root.classList.add('light');
-    } else {
-      root.classList.remove('light');
-    }
-    localStorage.setItem('openflow_theme', theme);
-  }, [theme]);
 
   // Real-time Visual Debugger Logs listener
   useEffect(() => {
@@ -1218,7 +1198,7 @@ function AppContent() {
             value={workflowName}
             onChange={(e) => setWorkflowName(e.target.value)}
             placeholder="Workflow Name"
-            className="bg-transparent border-0 border-b border-transparent hover:border-zinc-800 focus:border-purple-500 focus:ring-0 text-zinc-100 font-bold text-xs px-1.5 py-0.5 max-w-[200px]"
+            className="bg-transparent border-0 border-b border-transparent hover:border-zinc-800 focus:border-sky-500 focus:ring-0 text-zinc-100 font-bold text-xs px-1.5 py-0.5 max-w-[400px] w-full text-ellipsis overflow-hidden whitespace-nowrap"
           />
 
           {/* Undo / Redo buttons */}
@@ -1249,7 +1229,7 @@ function AppContent() {
             <div className="flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded border bg-zinc-950/80 border-zinc-850 select-none">
               {saveStatus === 'saving' && (
                 <>
-                  <div className="w-2 h-2 border border-purple-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-2 h-2 border border-sky-500 border-t-transparent rounded-full animate-spin" />
                   <span className="text-zinc-400 font-mono text-[9px] font-medium">Autosaving...</span>
                 </>
               )}
@@ -1336,7 +1316,7 @@ function AppContent() {
             className={`flex items-center gap-2 py-1.5 px-4 rounded-lg font-semibold text-xs transition-all duration-200 ${
               isWorkflowRunning || nodes.length === 0
                 ? 'bg-zinc-900 text-zinc-500 border border-zinc-850 cursor-not-allowed'
-                : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/15 hover:scale-[1.02] active:scale-[0.98]'
+                : 'bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-600/15 hover:scale-[1.02] active:scale-[0.98]'
             }`}
           >
             <Play className="w-3.5 h-3.5" />
@@ -1352,14 +1332,6 @@ function AppContent() {
             <Keyboard className="w-3.5 h-3.5" />
           </button>
 
-          {/* Theme Toggle Button */}
-          <button
-            onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
-            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            className="p-1.5 rounded-lg border border-zinc-850 bg-zinc-900/40 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 transition-all flex items-center justify-center"
-          >
-            {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-          </button>
 
           {/* Onboarding Help Button */}
           <button
@@ -1402,7 +1374,6 @@ function AppContent() {
               clientId={clientId}
               setCursor={setCursor}
               isMobile={isMobile}
-              theme={theme}
             />
           </div>
 
@@ -1433,7 +1404,7 @@ function AppContent() {
         </div>
 
         {/* Right Configuration Panel — shows multi-select summary when >1 node selected */}
-        {!isMobile && (
+        {!isMobile && (selectedNode || selectedNodeIds.length > 1) && (
           <ConfigPanel
             selectedNode={selectedNodeIds.length > 1 ? null : selectedNode}
             selectedCount={selectedNodeIds.length}
@@ -1485,7 +1456,7 @@ function AppContent() {
       {/* Onboarding Tour Spotlight Ring */}
       {runTour && tourCoords && (
         <div
-          className="absolute border-2 border-purple-500 rounded-lg pointer-events-none animate-pulse z-[9999]"
+          className="absolute border-2 border-sky-500 rounded-lg pointer-events-none animate-pulse z-[9999]"
           style={{
             top: tourCoords.targetTop - 4,
             left: tourCoords.targetLeft - 4,
@@ -1525,7 +1496,7 @@ function AppContent() {
             </button>
             <button
               onClick={handleNextTour}
-              className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-[10px] font-bold transition-all"
+              className="px-3 py-1 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold transition-all"
             >
               {currentTourStep === tourSteps.length - 1 ? "Finish" : "Next"}
             </button>

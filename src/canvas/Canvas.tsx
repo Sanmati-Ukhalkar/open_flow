@@ -51,7 +51,6 @@ interface CanvasProps {
   clientId?: number;
   setCursor?: (cursor: { x: number, y: number } | null) => void;
   isMobile?: boolean;
-  theme?: 'light' | 'dark';
 }
 
 export const Canvas = ({
@@ -67,7 +66,6 @@ export const Canvas = ({
   clientId,
   setCursor,
   isMobile = false,
-  theme = 'dark'
 }: CanvasProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const reactFlowInstance = useReactFlow();
@@ -144,17 +142,17 @@ export const Canvas = ({
   );
 
   const getNodeColor = useCallback((node?: Node) => {
-    if (!node) return theme === 'dark' ? '#18181b' : '#d4d4d8';
+    if (!node) return '#EDE9E1'; // warm paper fallback
     const status = node.data?.status;
     switch (status) {
-      case 'running': return '#3b82f6';
-      case 'success': return '#10b981';
-      case 'success-with-warning': return '#f59e0b';
-      case 'error': return '#f43f5e';
-      case 'skipped': return '#6b7280';
-      default: return theme === 'dark' ? '#18181b' : '#d4d4d8';
+      case 'running': return '#0369A1';
+      case 'success': return '#047857';
+      case 'success-with-warning': return '#B45309';
+      case 'error': return '#BE123C';
+      case 'skipped': return '#9A9285';
+      default: return '#EDE9E1';
     }
-  }, [theme]);
+  }, []);
 
   const isValidConnection = useCallback((connection: any) => {
     const sourceNode = nodes.find(n => n.id === connection.source);
@@ -256,13 +254,13 @@ export const Canvas = ({
         ry={props.borderRadius || 4}
         className={props.className}
         fill={fill}
-        stroke={props.strokeColor || (theme === 'dark' ? '#27272a' : '#e4e4e7')}
+        stroke={props.strokeColor || '#D8D2C7'}
         strokeWidth={props.strokeWidth || 1.5}
       >
         <title>{label}</title>
       </rect>
     );
-  }, [nodes, theme, getNodeColor]);
+  }, [nodes, getNodeColor]);
 
   return (
     <div
@@ -319,7 +317,7 @@ export const Canvas = ({
           variant={BackgroundVariant.Dots}
           gap={16}
           size={1}
-          color={theme === 'dark' ? "#27272a" : "#d4d4d8"}
+          color="#D8D2C7"
         />
         <Controls showInteractive={false} className="bg-zinc-950 border border-zinc-800 text-zinc-400" />
         
@@ -327,8 +325,9 @@ export const Canvas = ({
           <MiniMap
             nodeComponent={MiniMapNode}
             nodeStrokeWidth={2}
-            maskColor={theme === 'dark' ? "rgba(0, 0, 0, 0.4)" : "rgba(255, 255, 255, 0.4)"}
-            className="!bg-zinc-950/80 !border-zinc-800 !rounded-xl !shadow-2xl backdrop-blur-md transition-all duration-300"
+            position="bottom-left"
+            maskColor="rgba(246, 243, 238, 0.6)"
+            className="!bg-zinc-900/80 !border-zinc-800 !rounded-xl !shadow-md transition-all duration-300"
             style={{
               width: 150,
               height: 100,
@@ -342,7 +341,7 @@ export const Canvas = ({
         onClick={() => setShowMiniMap(prev => !prev)}
         className={`absolute z-20 p-2 rounded-lg bg-zinc-950/80 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 transition-all shadow-md backdrop-blur-md ${
           showMiniMap ? 'bottom-[120px]' : 'bottom-4'
-        } right-4`}
+        } left-4`}
         title={showMiniMap ? "Hide Minimap" : "Show Minimap"}
       >
         <Map className="w-4 h-4" />
