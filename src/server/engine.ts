@@ -13,7 +13,6 @@ import { run as runEmail } from '../nodes/email/run';
 import { run as runOCR } from '../nodes/vision-ocr/run';
 import { run as runVectorStore } from '../nodes/vector-store/run';
 import { run as runVectorRetrieve } from '../nodes/vector-retrieve/run';
-import { run as runCodeExecution } from '../nodes/code-execution/run';
 import { run as runBranch } from '../nodes/branch/run';
 import { runInSandbox, getNodeCapabilities } from './sandbox';
 import path from 'path';
@@ -215,7 +214,8 @@ if (node.type === 'llm-prompt') {
                 output = await runVectorRetrieve(nodeInput, node.data.config, { openai: apiKey });
               }
             } else if (node.type === 'code-execution') {
-              output = await runCodeExecution(nodeInput, node.data.config);
+              const runPath = path.resolve(process.cwd(), 'src/nodes/code-execution/run.ts');
+              output = await runInSandbox(node.type, runPath, nodeInput, node.data.config, []);
             } else if (node.type === 'branch') {
               output = await runBranch(nodeInput, node.data.config);
             } else {
