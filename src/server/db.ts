@@ -26,6 +26,7 @@ db.serialize(() => {
     CREATE TABLE IF NOT EXISTS credentials (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
+      org_id TEXT,
       provider TEXT NOT NULL,
       encrypted_key TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -45,6 +46,7 @@ db.serialize(() => {
       thumbnail_url TEXT,
       graph_json TEXT NOT NULL,
       owner_id TEXT NOT NULL,
+      org_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
@@ -56,6 +58,7 @@ db.serialize(() => {
       id TEXT PRIMARY KEY,
       workflow_id TEXT NOT NULL,
       status TEXT NOT NULL,
+      duration_ms INTEGER DEFAULT 0,
       started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       finished_at DATETIME,
       FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
@@ -70,6 +73,9 @@ db.serialize(() => {
       status TEXT NOT NULL,
       output_json TEXT,
       error_json TEXT,
+      cost_cents REAL DEFAULT 0,
+      duration_ms INTEGER DEFAULT 0,
+      metadata_json TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (run_id) REFERENCES runs(id) ON DELETE CASCADE
     )
@@ -94,6 +100,7 @@ db.serialize(() => {
       status TEXT NOT NULL,
       request_count INTEGER DEFAULT 0,
       last_called_at DATETIME,
+      org_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE,
@@ -110,6 +117,7 @@ db.serialize(() => {
       status TEXT NOT NULL,
       config_json TEXT NOT NULL,
       last_triggered_at DATETIME,
+      org_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE,
       UNIQUE(workflow_id, trigger_type)
