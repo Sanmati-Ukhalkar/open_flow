@@ -380,48 +380,50 @@ db.serialize(() => {
     { table: 'triggers', name: 'org_id', definition: 'TEXT' }
   ];
 
-  v11ColumnsToAdd.forEach(({ table, name, definition }) => {
-    db.all(`PRAGMA table_info(${table})`, (err: any, rows: any[]) => {
-      if (err) return;
-      const existingColumns = rows.map(r => r.name);
-      if (!existingColumns.includes(name)) {
-        db.run(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`, (alterErr: any) => {
-          if (!alterErr) {
-            console.log(`Added column ${name} to ${table} table.`);
-            
-            // If it's workflows, run the v0.11 auto-migration after adding the column
-            if (table === 'workflows') {
-              runV11Migration();
+  db.run("SELECT 1", () => {
+    v11ColumnsToAdd.forEach(({ table, name, definition }) => {
+      db.all(`PRAGMA table_info(${table})`, (err: any, rows: any[]) => {
+        if (err) return;
+        const existingColumns = rows.map(r => r.name);
+        if (!existingColumns.includes(name)) {
+          db.run(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`, (alterErr: any) => {
+            if (!alterErr) {
+              console.log(`Added column ${name} to ${table} table.`);
+              
+              // If it's workflows, run the v0.11 auto-migration after adding the column
+              if (table === 'workflows') {
+                runV11Migration();
+              }
             }
-          }
-        });
-      } else if (table === 'workflows') {
-        // If the column already exists, still run the migration in case there's unmigrated data
-        runV11Migration();
-      }
+          });
+        } else if (table === 'workflows') {
+          // If the column already exists, still run the migration in case there's unmigrated data
+          runV11Migration();
+        }
+      });
     });
-  });
 
-  const v13ColumnsToAdd = [
-    { table: 'workflows', name: 'description', definition: 'TEXT' },
-    { table: 'workflows', name: 'category', definition: 'TEXT' },
-    { table: 'workflows', name: 'required_credentials', definition: 'TEXT' },
-    { table: 'workflows', name: 'is_template', definition: 'BOOLEAN DEFAULT FALSE' },
-    { table: 'workflows', name: 'thumbnail_url', definition: 'TEXT' },
-    { table: 'run_node_results', name: 'cost_cents', definition: 'REAL DEFAULT 0' },
-    { table: 'run_node_results', name: 'duration_ms', definition: 'INTEGER DEFAULT 0' },
-    { table: 'run_node_results', name: 'metadata_json', definition: 'TEXT' },
-    { table: 'runs', name: 'duration_ms', definition: 'INTEGER DEFAULT 0' }
-  ];
+    const v13ColumnsToAdd = [
+      { table: 'workflows', name: 'description', definition: 'TEXT' },
+      { table: 'workflows', name: 'category', definition: 'TEXT' },
+      { table: 'workflows', name: 'required_credentials', definition: 'TEXT' },
+      { table: 'workflows', name: 'is_template', definition: 'BOOLEAN DEFAULT FALSE' },
+      { table: 'workflows', name: 'thumbnail_url', definition: 'TEXT' },
+      { table: 'run_node_results', name: 'cost_cents', definition: 'REAL DEFAULT 0' },
+      { table: 'run_node_results', name: 'duration_ms', definition: 'INTEGER DEFAULT 0' },
+      { table: 'run_node_results', name: 'metadata_json', definition: 'TEXT' },
+      { table: 'runs', name: 'duration_ms', definition: 'INTEGER DEFAULT 0' }
+    ];
 
-  v13ColumnsToAdd.forEach(({ table, name, definition }) => {
-    db.all(`PRAGMA table_info(${table})`, (err: any, rows: any[]) => {
-      if (err) return;
-      if (!rows.map(r => r.name).includes(name)) {
-        db.run(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`, (alterErr: any) => {
-          if (!alterErr) console.log(`Added column ${name} to ${table} table.`);
-        });
-      }
+    v13ColumnsToAdd.forEach(({ table, name, definition }) => {
+      db.all(`PRAGMA table_info(${table})`, (err: any, rows: any[]) => {
+        if (err) return;
+        if (!rows.map(r => r.name).includes(name)) {
+          db.run(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`, (alterErr: any) => {
+            if (!alterErr) console.log(`Added column ${name} to ${table} table.`);
+          });
+        }
+      });
     });
   });
 

@@ -18,6 +18,7 @@ import { runInSandbox, getNodeCapabilities } from './sandbox';
 import path from 'path';
 import fs from 'fs';
 import { log } from './logger';
+import { workflowEvents, WORKFLOW_RUN_UPDATE } from './events';
 
 // Error tracking integration placeholder
 function reportToErrorTracker(error: any, context: Record<string, any>) {
@@ -309,6 +310,12 @@ export async function executeRunBackend(
 ) {
   const runStartTime = Date.now();
   log.info({ workflowId, runId }, `Starting workflow execution run...`);
+  workflowEvents.emit(WORKFLOW_RUN_UPDATE, {
+    workflowId,
+    runId,
+    status: 'started',
+    timestamp: new Date().toISOString()
+  });
   try {
     let graphJson: string;
     if (versionId) {
@@ -428,6 +435,12 @@ export async function executeRunBackend(
             'UPDATE runs SET status = ?, finished_at = CURRENT_TIMESTAMP, duration_ms = ? WHERE id = ?',
             [finalStatus, runDurationMs, runId]
           );
+          workflowEvents.emit(WORKFLOW_RUN_UPDATE, {
+            workflowId,
+            runId,
+            status: finalStatus,
+            timestamp: new Date().toISOString()
+          });
           
           // Fire deployment alerts if necessary (in background)
           if (finalStatus === 'failed') {
@@ -479,6 +492,13 @@ export async function executeRunBackend(
               'UPDATE run_node_results SET status = ? WHERE run_id = ? AND node_id = ?',
               [skipReason, runId, node.id]
             );
+            workflowEvents.emit(WORKFLOW_RUN_UPDATE, {
+              workflowId,
+              runId,
+              nodeId: node.id,
+              status: skipReason,
+              timestamp: new Date().toISOString()
+            });
             await schedulerStep();
             return;
           }
@@ -511,6 +531,13 @@ export async function executeRunBackend(
             'UPDATE run_node_results SET status = ? WHERE run_id = ? AND node_id = ?',
             ['running', runId, node.id]
           );
+          workflowEvents.emit(WORKFLOW_RUN_UPDATE, {
+            workflowId,
+            runId,
+            nodeId: node.id,
+            status: 'running',
+            timestamp: new Date().toISOString()
+          });
 
           // Artificial delay for canvas visualizations
           await new Promise(r => setTimeout(r, 700));
@@ -531,6 +558,14 @@ export async function executeRunBackend(
 
             nodeStatuses.set(node.id, status);
             nodeOutputs.set(node.id, output);
+            workflowEvents.emit(WORKFLOW_RUN_UPDATE, {
+              workflowId,
+              runId,
+              nodeId: node.id,
+              status,
+              output,
+              timestamp: new Date().toISOString()
+            });
 
             const outputToSave = validation.isValid 
               ? output 
@@ -560,6 +595,14 @@ export async function executeRunBackend(
 
             nodeStatuses.set(node.id, 'error');
             nodeErrors.set(node.id, errorPayload);
+            workflowEvents.emit(WORKFLOW_RUN_UPDATE, {
+              workflowId,
+              runId,
+              nodeId: node.id,
+              status: 'error',
+              error: errorPayload,
+              timestamp: new Date().toISOString()
+            });
 
             const durationMs = Date.now() - nodeStartTime;
             await dbRun(
@@ -576,6 +619,13 @@ export async function executeRunBackend(
                 'UPDATE run_node_results SET status = ? WHERE run_id = ? AND node_id = ?',
                 ['skipped', runId, descId]
               );
+              workflowEvents.emit(WORKFLOW_RUN_UPDATE, {
+                workflowId,
+                runId,
+                nodeId: descId,
+                status: 'skipped',
+                timestamp: new Date().toISOString()
+              });
             }
           }
 

@@ -1385,22 +1385,40 @@ setPersistence({
   }
 });
 
+import { workflowEvents, WORKFLOW_RUN_UPDATE } from './events';
+
 const wss = new WebSocketServer({ noServer: true });
+const wssLogs = new WebSocketServer({ noServer: true });
+const logClients = new Map<string, Set<any>>();
+
+workflowEvents.on(WORKFLOW_RUN_UPDATE, (data) => {
+  const { workflowId } = data;
+  const clients = logClients.get(workflowId);
+  if (clients) {
+    const message = JSON.stringify(data);
+    clients.forEach((client) => {
+      if (client.readyState === 1) { // OPEN
+        client.send(message);
+      }
+    });
+  }
+});
 
 server.on('upgrade', (request: any, socket, head) => {
   try {
     const parsedUrl = url.parse(request.url, true);
     const pathname = parsedUrl.pathname || '';
 
-    // Route matching: /api/workflows/:workflowId/sync
+    // Route matching: /api/workflows/:workflowId/sync or /api/workflows/:workflowId/logs
     const match = pathname.match(/^\/api\/workflows\/([^/]+)\/sync$/);
-    if (!match) {
-      // Allow other upgrades to fail or be handled elsewhere
+    const logMatch = pathname.match(/^\/api\/workflows\/([^/]+)\/logs$/);
+    
+    if (!match && !logMatch) {
       socket.destroy();
       return;
     }
 
-    const workflowId = match[1];
+    const workflowId = match ? match[1] : logMatch![1];
     const token = parsedUrl.query.token as string;
     const orgId = parsedUrl.query.orgId as string;
 
@@ -1436,12 +1454,29 @@ server.on('upgrade', (request: any, socket, head) => {
               return;
             }
 
-            // Upgrade connection and setup Yjs sync
-            wss.handleUpgrade(request, socket, head, (ws) => {
-              // Standard y-websocket setup uses the URL pathname as document name
-              // We pass it to setupWSConnection which initializes the Yjs doc for that room
-              wss.emit('connection', ws, request);
-            });
+            if (match) {
+              // Upgrade connection and setup Yjs sync
+              wss.handleUpgrade(request, socket, head, (ws) => {
+                wss.emit('connection', ws, request);
+              });
+            } else {
+              // Upgrade connection and setup logs stream
+              wssLogs.handleUpgrade(request, socket, head, (ws) => {
+                let clients = logClients.get(workflowId);
+                if (!clients) {
+                  clients = new Set();
+                  logClients.set(workflowId, clients);
+                }
+                clients.add(ws);
+                
+                ws.on('close', () => {
+                  clients?.delete(ws);
+                  if (clients?.size === 0) {
+                    logClients.delete(workflowId);
+                  }
+                });
+              });
+            }
           });
         }
       );

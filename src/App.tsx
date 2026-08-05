@@ -102,6 +102,96 @@ function AppContent() {
     localStorage.setItem('openflow_theme', theme);
   }, [theme]);
 
+  // Real-time Visual Debugger Logs listener
+  useEffect(() => {
+    if (!currentWorkflowId || !token || !activeOrg?.id) return;
+
+    const wsUrl = window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${window.location.host}`;
+    const wsUrlReal = window.location.port === '5173' ? 'ws://localhost:3001' : wsUrl;
+
+    const socket = new WebSocket(
+      `${wsUrlReal}/api/workflows/${currentWorkflowId}/logs?token=${token}&orgId=${activeOrg.id}`
+    );
+
+    socket.onopen = () => {
+      console.log('Connected to real-time visual debugger stream.');
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.runId) {
+          const { nodeId, status, output, error, timestamp } = data;
+
+          if (status === 'started') {
+            setNodes((prev: any) => prev.map((n: any) => ({ ...n, data: { ...n.data, status: 'idle', error: undefined } })));
+            setRunLogs([]);
+            setExecutionOutputs({});
+            setExecutionErrors({});
+            setWorkflowStatus('running');
+            setIsWorkflowRunning(true);
+          } else if (status === 'success' || status === 'partial' || status === 'failed') {
+            setWorkflowStatus(status);
+            setIsWorkflowRunning(false);
+          } else if (nodeId) {
+            // Update node status on canvas
+            setNodes((prev: any) =>
+              prev.map((n: any) =>
+                n.id === nodeId
+                  ? {
+                      ...n,
+                      data: {
+                        ...n.data,
+                        status: status === 'success-with-warning' ? 'success-with-warning' : status,
+                        error: error?.message || error
+                      }
+                    }
+                  : n
+              )
+            );
+
+            // Add entry to run logs
+            setRunLogs((prev: any) => {
+              const eventType = (status === 'running') ? 'start' : 'end';
+              const isDup = prev.some((l: any) => l.nodeId === nodeId && l.event === eventType);
+              if (isDup) return prev;
+
+              return [
+                ...prev,
+                {
+                  timestamp: new Date(timestamp).toLocaleTimeString(),
+                  nodeId,
+                  nodeType: '',
+                  event: eventType,
+                  status: status.startsWith('skipped') ? 'skipped' : status,
+                  message: error?.message || ''
+                }
+              ];
+            });
+
+            // Update output/error collections
+            if (output) {
+              setExecutionOutputs((prev: any) => ({ ...prev, [nodeId]: output }));
+            }
+            if (error) {
+              setExecutionErrors((prev: any) => ({ ...prev, [nodeId]: error }));
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse visual debugger message:', e);
+      }
+    };
+
+    socket.onclose = () => {
+      console.log('Real-time visual debugger stream disconnected.');
+    };
+
+    return () => {
+      socket.close();
+    };
+  }, [currentWorkflowId, token, activeOrg?.id, setNodes]);
+
   // Mobile viewport detection
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   useEffect(() => {
