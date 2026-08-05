@@ -29,7 +29,13 @@ function templateString(template: string, data: any): string {
         value = value[resolvedKey];
       }
     }
-    return value !== undefined ? String(value) : '';
+    if (value !== undefined) {
+      if (typeof value === 'object' && value !== null) {
+        return JSON.stringify(value, null, 2);
+      }
+      return String(value);
+    }
+    return '';
   });
 }
 

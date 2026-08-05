@@ -44,6 +44,9 @@ export const TemplateCloneModal = ({ template, token, onClose, onClone }: Templa
             if (cap === 'secrets:groq' && !storedProviders.includes('groq')) {
               missing.push('Groq API Key');
             }
+            if (cap === 'secrets:smtp' && (!storedProviders.includes('smtp_user') || !storedProviders.includes('smtp_pass'))) {
+              missing.push('SMTP Credentials (smtp_user and smtp_pass)');
+            }
           });
 
           setMissingCapabilities(missing);

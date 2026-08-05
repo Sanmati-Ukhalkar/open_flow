@@ -65,7 +65,7 @@ const TEMPLATES = [
               to: 'admin@example.com',
               from: 'noreply@example.com',
               subject: 'Invoice Processed: {{file-trig-1.fileName}}',
-              body: 'A new document has been processed.\n\nFile: {{file-trig-1.fileName}}\nExtracted Data:\n{{llm-1.text}}',
+              body: 'A new document has been processed.\n\nFile: {{file-trig-1.fileName}}\nExtracted Data:\n{{llm-1.data.text}}',
               host: 'smtp.mailtrap.io',
               port: 587,
               secure: false
@@ -77,7 +77,8 @@ const TEMPLATES = [
         { id: 'e1', source: 'file-trig-1', target: 'ocr-1' },
         { id: 'e2', source: 'ocr-1', target: 'llm-1' },
         { id: 'e3', source: 'llm-1', target: 'storage-1' },
-        { id: 'e4', source: 'llm-1', target: 'email-1' }
+        { id: 'e4', source: 'llm-1', target: 'email-1' },
+        { id: 'e5', source: 'file-trig-1', target: 'email-1' }
       ]
     })
   },
@@ -107,7 +108,7 @@ const TEMPLATES = [
           position: { x: 350, y: 200 },
           data: {
             config: {
-              promptText: 'Summarize the following text in 3 bullet points:\n\n{{trigger-1.body.text}}',
+              promptText: 'Summarize the following text in 3 bullet points:\n\n{{trigger-1.data.body.text}}',
               model: 'llama-3.1-8b-instant'
             }
           }
@@ -129,7 +130,7 @@ const TEMPLATES = [
           data: {
             config: {
               url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL',
-              bodyTemplate: '{\n  "text": "{{transform-1.template}}"\n}'
+              bodyTemplate: '{\n  "text": "{{input}}"\n}'
             }
           }
         }
@@ -167,7 +168,7 @@ const TEMPLATES = [
           position: { x: 300, y: 200 },
           data: {
             config: {
-              promptText: 'Extract the primary keywords from the following text:\n\n{{trigger-1.body.text}}',
+              promptText: 'Extract the primary keywords from the following text:\n\n{{trigger-1.data.body.text}}',
               model: 'llama-3.1-8b-instant'
             }
           }
@@ -189,7 +190,7 @@ const TEMPLATES = [
           position: { x: 800, y: 200 },
           data: {
             config: {
-              template: 'Keywords:\n{{llm-1.text}}\n\nAnalysis:\nWord count: {{mcp-1.data.wordCount}}\nCharacter count: {{mcp-1.data.characterCount}}'
+              template: 'Keywords:\n{{llm-1.text}}\n\nAnalysis:\nWord count: {{mcp-1.wordCount}}\nCharacter count: {{mcp-1.characterCount}}'
             }
           }
         }
@@ -197,7 +198,8 @@ const TEMPLATES = [
       edges: [
         { id: 'e1', source: 'trigger-1', target: 'llm-1' },
         { id: 'e2', source: 'llm-1', target: 'mcp-1' },
-        { id: 'e3', source: 'mcp-1', target: 'transform-1' }
+        { id: 'e3', source: 'mcp-1', target: 'transform-1' },
+        { id: 'e4', source: 'llm-1', target: 'transform-1' }
       ]
     })
   },
@@ -276,7 +278,7 @@ const TEMPLATES = [
           position: { x: 300, y: 200 },
           data: {
             config: {
-              promptText: 'Classify the following customer query. Respond with exactly "urgent" or "normal" in lowercase:\n\nQuery: {{trigger-1.body.text}}',
+              promptText: 'Classify the following customer query. Respond with exactly "urgent" or "normal" in lowercase:\n\nQuery: {{trigger-1.data.body.text}}',
               model: 'llama-3.1-8b-instant'
             }
           }
@@ -287,7 +289,7 @@ const TEMPLATES = [
           position: { x: 550, y: 200 },
           data: {
             config: {
-              condition: 'input.text === "urgent"'
+              condition: 'input.data.text === "urgent"'
             }
           }
         },
@@ -300,7 +302,7 @@ const TEMPLATES = [
               to: 'support@example.com',
               from: 'triage@example.com',
               subject: 'Urgent Request: Action Needed',
-              body: 'An urgent request was flagged by the system:\n\n{{trigger-1.body.text}}',
+              body: 'An urgent request was flagged by the system:\n\n{{trigger-1.data.body.text}}',
               host: 'smtp.mailtrap.io',
               port: 587,
               secure: false
@@ -323,7 +325,9 @@ const TEMPLATES = [
         { id: 'e1', source: 'trigger-1', target: 'llm-1' },
         { id: 'e2', source: 'llm-1', target: 'branch-1' },
         { id: 'e3', source: 'branch-1', target: 'email-1', sourceHandle: 'true' },
-        { id: 'e4', source: 'branch-1', target: 'storage-1', sourceHandle: 'false' }
+        { id: 'e4', source: 'branch-1', target: 'storage-1', sourceHandle: 'false' },
+        { id: 'e5', source: 'trigger-1', target: 'email-1' },
+        { id: 'e6', source: 'trigger-1', target: 'storage-1' }
       ]
     })
   },
@@ -353,7 +357,7 @@ const TEMPLATES = [
           position: { x: 350, y: 200 },
           data: {
             config: {
-              query: '{{trigger-1.body.question}}',
+              query: '{{trigger-1.data.body.question}}',
               topK: 3
             }
           }
@@ -364,7 +368,7 @@ const TEMPLATES = [
           position: { x: 600, y: 200 },
           data: {
             config: {
-              promptText: 'Answer the user question based strictly on the retrieved context below. If context is empty, say "No context found".\n\nQuestion: {{trigger-1.body.question}}\n\nContext:\n{{retrieve-1.results}}',
+              promptText: 'Answer the user question based strictly on the retrieved context below. If context is empty, say "No context found".\n\nQuestion: {{trigger-1.data.body.question}}\n\nContext:\n{{retrieve-1.results}}',
               model: 'llama-3.1-8b-instant'
             }
           }
@@ -372,7 +376,8 @@ const TEMPLATES = [
       ],
       edges: [
         { id: 'e1', source: 'trigger-1', target: 'retrieve-1' },
-        { id: 'e2', source: 'retrieve-1', target: 'llm-1' }
+        { id: 'e2', source: 'retrieve-1', target: 'llm-1' },
+        { id: 'e3', source: 'trigger-1', target: 'llm-1' }
       ]
     })
   }
