@@ -330,6 +330,19 @@ db.serialize(() => {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS mcp_servers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      command TEXT,
+      args TEXT,
+      env TEXT,
+      url TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // v0.13 Observability schema migration
   db.run(`
     CREATE TABLE IF NOT EXISTS deployment_alerts (
