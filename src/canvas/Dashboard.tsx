@@ -83,16 +83,16 @@ export const Dashboard = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] flex flex-col items-center py-12 px-4 relative overflow-y-auto select-none">
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center py-12 px-4 relative overflow-y-auto select-none">
       {/* Background decoration */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-purple-600/5 blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-sky-600/5 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-blue-600/5 blur-[120px] pointer-events-none" />
 
       <div className="w-full max-w-4xl space-y-6 z-10">
         {/* Top Navbar */}
         <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
           <div className="flex items-center gap-2">
-            <Waves className="w-5 h-5 text-purple-400 animate-pulse" />
+            <Waves className="w-5 h-5 text-sky-400 animate-pulse" />
             <span className="font-bold text-sm text-zinc-100 uppercase tracking-wider">Open Flow</span>
           </div>
 
@@ -154,7 +154,7 @@ export const Dashboard = ({
             onClick={() => setActiveTab('workflows')}
             className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all flex-shrink-0 ${
               activeTab === 'workflows'
-                ? 'text-purple-400 border-purple-500'
+                ? 'text-sky-400 border-sky-500'
                 : 'text-zinc-505 border-transparent hover:text-zinc-300'
             }`}
           >
@@ -165,7 +165,7 @@ export const Dashboard = ({
             onClick={() => setActiveTab('templates')}
             className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all flex-shrink-0 ${
               activeTab === 'templates'
-                ? 'text-purple-400 border-purple-500'
+                ? 'text-sky-400 border-sky-500'
                 : 'text-zinc-505 border-transparent hover:text-zinc-300'
             }`}
           >
@@ -176,7 +176,7 @@ export const Dashboard = ({
             onClick={() => setActiveTab('deployments')}
             className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all flex-shrink-0 ${
               activeTab === 'deployments'
-                ? 'text-purple-400 border-purple-500'
+                ? 'text-sky-400 border-sky-500'
                 : 'text-zinc-505 border-transparent hover:text-zinc-300'
             }`}
           >
@@ -187,7 +187,7 @@ export const Dashboard = ({
             onClick={() => setActiveTab('triggers')}
             className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all flex-shrink-0 ${
               activeTab === 'triggers'
-                ? 'text-purple-400 border-purple-500'
+                ? 'text-sky-400 border-sky-500'
                 : 'text-zinc-505 border-transparent hover:text-zinc-300'
             }`}
           >
@@ -198,7 +198,7 @@ export const Dashboard = ({
             onClick={() => setActiveTab('marketplace')}
             className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all flex-shrink-0 ${
               activeTab === 'marketplace'
-                ? 'text-purple-400 border-purple-500'
+                ? 'text-sky-400 border-sky-500'
                 : 'text-zinc-505 border-transparent hover:text-zinc-300'
             }`}
           >
@@ -209,7 +209,7 @@ export const Dashboard = ({
             onClick={() => setActiveTab('analytics')}
             className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all flex-shrink-0 ${
               activeTab === 'analytics'
-                ? 'text-purple-400 border-purple-500'
+                ? 'text-sky-400 border-sky-500'
                 : 'text-zinc-505 border-transparent hover:text-zinc-300'
             }`}
           >
@@ -220,7 +220,7 @@ export const Dashboard = ({
             onClick={() => setActiveTab('database')}
             className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all flex-shrink-0 ${
               activeTab === 'database'
-                ? 'text-purple-400 border-purple-500'
+                ? 'text-sky-400 border-sky-500'
                 : 'text-zinc-505 border-transparent hover:text-zinc-300'
             }`}
           >
@@ -231,7 +231,7 @@ export const Dashboard = ({
             onClick={() => setActiveTab('mcp')}
             className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider pb-2 border-b-2 transition-all flex-shrink-0 ${
               activeTab === 'mcp'
-                ? 'text-purple-400 border-purple-500'
+                ? 'text-sky-400 border-sky-500'
                 : 'text-zinc-505 border-transparent hover:text-zinc-300'
             }`}
           >
@@ -269,7 +269,7 @@ export const Dashboard = ({
               {activeOrg?.role !== 'viewer' && (
                 <button
                   onClick={onCreateWorkflow}
-                  className="flex items-center gap-1.5 py-2 px-4 rounded-lg font-semibold text-xs transition-all duration-200 bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/15 hover:scale-[1.02] active:scale-[0.98]"
+                  className="flex items-center gap-1.5 py-2 px-4 rounded-lg font-semibold text-xs transition-all duration-200 bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-600/15 hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <Plus className="w-4 h-4" />
                   Create Workflow
@@ -292,14 +292,14 @@ export const Dashboard = ({
                 {activeOrg?.role !== 'viewer' && (
                   <button
                     onClick={onCreateWorkflow}
-                    className="text-[10px] text-purple-400 hover:underline mb-2"
+                    className="text-[10px] text-sky-400 hover:underline mb-2"
                   >
                     Create your first workflow
                   </button>
                 )}
                 <button
                   onClick={() => setActiveTab('templates')}
-                  className="px-4 py-2 mt-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-bold text-zinc-300 hover:text-purple-400 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all"
+                  className="px-4 py-2 mt-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-bold text-zinc-300 hover:text-sky-400 hover:border-sky-500/50 hover:bg-sky-500/10 transition-all"
                 >
                   Explore Templates
                 </button>
@@ -322,10 +322,10 @@ export const Dashboard = ({
                       className="p-5 border border-zinc-800 hover:border-zinc-700 bg-zinc-950/40 backdrop-blur-md rounded-2xl hover:scale-[1.01] transition-all duration-150 cursor-pointer flex flex-col justify-between h-40 group relative overflow-hidden"
                     >
                       {/* Hover glow */}
-                      <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/0 via-purple-500/0 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="absolute inset-0 bg-gradient-to-tr from-sky-500/0 via-sky-500/0 to-sky-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                       <div className="space-y-1 z-10">
-                        <h3 className="text-xs font-bold text-zinc-200 group-hover:text-purple-400 transition-colors duration-150 truncate max-w-[200px]">
+                        <h3 className="text-xs font-bold text-zinc-200 group-hover:text-sky-400 transition-colors duration-150 truncate max-w-[200px]">
                           {wf.name}
                         </h3>
                         <span className="text-[9px] font-mono text-zinc-600 block">ID: {wf.id}</span>

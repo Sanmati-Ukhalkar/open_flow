@@ -3,51 +3,33 @@
 @tailwind utilities;
 
 :root {
-  /* Dark mode (default) */
-  --zinc-50: #fafafa;
-  --zinc-100: #f4f4f5;
-  --zinc-200: #e4e4e7;
-  --zinc-300: #d4d4d8;
-  --zinc-400: #a1a1aa;
-  --zinc-450: #888890;
-  --zinc-500: #71717a;
-  --zinc-550: #5f5f67;
-  --zinc-600: #52525b;
-  --zinc-650: #424249;
-  --zinc-700: #3f3f46;
-  --zinc-800: #27272a;
-  --zinc-850: #1f1f23;
-  --zinc-900: #18181b;
-  --zinc-950: #09090b;
+  /* ─── Warm "Paper" Light Theme ───────────────────────────────────────────── */
+  /* Scale is INVERTED vs old dark theme: 950 = lightest bg, 50 = darkest text */
 
-  --status-running-text: #3b82f6;
-  --status-success-text: #10b981;
-  --status-warning-text: #f59e0b;
-  --status-error-text: #f43f5e;
-}
+  /* Backgrounds — warm linen, never harsh white */
+  --zinc-950: #F6F3EE; /* Main app canvas background  */
+  --zinc-900: #EDE9E1; /* Sidebars, panel backgrounds  */
+  --zinc-850: #E5E0D7; /* Panel section headers        */
+  --zinc-800: #D8D2C7; /* Borders, dividers            */
+  --zinc-700: #C3BAA8; /* Subtle borders               */
+  --zinc-650: #AAA294; /* Muted element backgrounds    */
 
-:root.light {
-  /* Light mode (inverted / high contrast) */
-  --zinc-50: #09090b;
-  --zinc-100: #18181b;
-  --zinc-200: #27272a;
-  --zinc-300: #3f3f46;
-  --zinc-400: #52525b;
-  --zinc-450: #5f5f67;
-  --zinc-550: #888890;
-  --zinc-500: #71717a;
-  --zinc-600: #a1a1aa;
-  --zinc-650: #b8b8be;
-  --zinc-700: #d4d4d8;
-  --zinc-800: #e4e4e7;
-  --zinc-850: #f1f1f2;
-  --zinc-900: #f4f4f5;
-  --zinc-950: #fafafa;
+  /* Text & Icon tones — warm charcoal, never flat gray */
+  --zinc-600: #928B7D; /* Muted icons                  */
+  --zinc-550: #7A7369; /* Secondary icons              */
+  --zinc-500: #6B6559; /* Secondary text               */
+  --zinc-450: #58524A; /* Medium body text             */
+  --zinc-400: #4A4540; /* Icon / label color           */
+  --zinc-300: #3A352E; /* Subheadings                  */
+  --zinc-200: #2B2520; /* Body text                    */
+  --zinc-100: #1A1610; /* Primary text / headings      */
+  --zinc-50:  #100E0A; /* Darkest text                 */
 
-  --status-running-text: #1d4ed8;
-  --status-success-text: #047857;
-  --status-warning-text: #b45309;
-  --status-error-text: #b91c1c;
+  /* Status colors – slightly deeper for legibility on light bg */
+  --status-running-text: #0369A1;  /* sky-700  */
+  --status-success-text: #047857;  /* emerald-700 */
+  --status-warning-text: #B45309;  /* amber-700 */
+  --status-error-text:   #BE123C;  /* rose-700 */
 }
 
 html, body, #root {
@@ -59,24 +41,23 @@ html, body, #root {
   background-color: var(--zinc-950);
   color: var(--zinc-100);
   font-family: ui-sans-serif, system-ui, sans-serif;
-  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* React Flow custom variable styles */
+/* ─── React Flow ─────────────────────────────────────────────────────────── */
 .react-flow__background {
   background-color: var(--zinc-950) !important;
 }
 
 .react-flow__controls {
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 1px 2px rgb(0 0 0 / 0.06);
   border: 1px solid var(--zinc-800) !important;
-  border-radius: 4px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .react-flow__controls-button {
   background: var(--zinc-900) !important;
-  color: var(--zinc-400) !important;
+  color: var(--zinc-500) !important;
   border: none !important;
   border-bottom: 1px solid var(--zinc-800) !important;
   fill: currentColor !important;
@@ -88,21 +69,21 @@ html, body, #root {
 
 .react-flow__controls-button:hover {
   background: var(--zinc-800) !important;
-  color: var(--zinc-100) !important;
+  color: var(--zinc-200) !important;
 }
 
 .react-flow__controls-button svg {
   fill: currentColor !important;
 }
 
-/* Custom scrollbar adjustments for variables */
+/* ─── Scrollbars ─────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--zinc-950);
+  background: var(--zinc-900);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -112,4 +93,14 @@ html, body, #root {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--zinc-700);
+}
+
+/* ─── React Flow edges ───────────────────────────────────────────────────── */
+.react-flow__edge-path {
+  stroke: var(--zinc-700) !important;
+}
+
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: #0EA5E9 !important;
 }

@@ -55,16 +55,16 @@ export const AuthScreen = ({ onAuthSuccess }: AuthScreenProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] flex flex-col justify-center items-center px-4 relative overflow-hidden select-none">
+    <div className="min-h-screen bg-zinc-950 flex flex-col justify-center items-center px-4 relative overflow-hidden select-none">
       {/* Background radial effects */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-purple-600/10 blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-sky-600/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-blue-600/10 blur-[120px] pointer-events-none" />
 
       <div className="w-full max-w-sm border border-zinc-800 bg-zinc-950/65 backdrop-blur-xl p-8 rounded-2xl shadow-2xl relative z-10 space-y-6">
         {/* Brand */}
         <div className="flex flex-col items-center space-y-2 text-center">
-          <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl">
-            <Waves className="w-6 h-6 text-purple-400 animate-pulse" />
+          <div className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-xl">
+            <Waves className="w-6 h-6 text-sky-400 animate-pulse" />
           </div>
           <h1 className="text-xl font-bold tracking-tight text-zinc-100 uppercase">Open Flow</h1>
           <p className="text-[10px] text-zinc-500 max-w-[240px] leading-relaxed">
@@ -93,7 +93,7 @@ export const AuthScreen = ({ onAuthSuccess }: AuthScreenProps) => {
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
                 placeholder="you@domain.com"
-                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
               />
             </div>
           </div>
@@ -110,7 +110,7 @@ export const AuthScreen = ({ onAuthSuccess }: AuthScreenProps) => {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
                 placeholder="••••••••"
-                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
               />
             </div>
           </div>
@@ -123,7 +123,7 @@ export const AuthScreen = ({ onAuthSuccess }: AuthScreenProps) => {
                   type="button"
                   onClick={() => setAccountType('individual')}
                   className={`py-2 px-1 rounded-lg text-[10px] font-medium border transition-colors ${
-                    accountType === 'individual' ? 'bg-purple-600/20 border-purple-500/50 text-purple-300' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    accountType === 'individual' ? 'bg-sky-600/20 border-sky-500/50 text-sky-300' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
                   Individual
@@ -157,7 +157,7 @@ export const AuthScreen = ({ onAuthSuccess }: AuthScreenProps) => {
                       onChange={(e) => handleMemberChange(idx, e.target.value)}
                       disabled={loading}
                       placeholder="colleague@domain.com"
-                      className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+                      className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-50"
                     />
                     {teamMembers.length > 1 && (
                       <button
@@ -175,7 +175,7 @@ export const AuthScreen = ({ onAuthSuccess }: AuthScreenProps) => {
               <button
                 type="button"
                 onClick={handleAddMember}
-                className="text-[10px] text-purple-400 hover:text-purple-300 font-medium flex items-center gap-1 pt-1"
+                className="text-[10px] text-sky-400 hover:text-sky-300 font-medium flex items-center gap-1 pt-1"
               >
                 <Plus className="w-3 h-3" /> Add another member
               </button>
@@ -185,7 +185,7 @@ export const AuthScreen = ({ onAuthSuccess }: AuthScreenProps) => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 mt-6 rounded-lg font-semibold text-xs transition-all duration-200 bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/15 disabled:bg-zinc-900 disabled:text-zinc-500 hover:scale-[1.01] active:scale-[0.99]"
+            className="w-full flex items-center justify-center gap-2 py-2 px-4 mt-6 rounded-lg font-semibold text-xs transition-all duration-200 bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-600/15 disabled:bg-zinc-900 disabled:text-zinc-500 hover:scale-[1.01] active:scale-[0.99]"
           >
             {loading ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -207,7 +207,7 @@ export const AuthScreen = ({ onAuthSuccess }: AuthScreenProps) => {
               setErrorMsg('');
             }}
             disabled={loading}
-            className="text-[10px] text-zinc-405 hover:text-purple-400 transition-colors duration-150"
+            className="text-[10px] text-zinc-405 hover:text-sky-400 transition-colors duration-150"
           >
             {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
           </button>

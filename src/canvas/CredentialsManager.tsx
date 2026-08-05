@@ -83,8 +83,8 @@ export const CredentialsManager = ({ token, onBack }: CredentialsManagerProps) =
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] flex flex-col items-center py-12 px-4 relative overflow-hidden select-none">
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-purple-600/5 blur-[120px] pointer-events-none" />
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center py-12 px-4 relative overflow-hidden select-none">
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-sky-600/5 blur-[120px] pointer-events-none" />
 
       <div className="w-full max-w-xl space-y-6 z-10">
         {/* Navigation header */}
@@ -97,7 +97,7 @@ export const CredentialsManager = ({ token, onBack }: CredentialsManagerProps) =
             Back to Dashboard
           </button>
           <h1 className="text-sm font-bold text-zinc-100 uppercase tracking-wider flex items-center gap-2">
-            <Key className="w-4 h-4 text-purple-400" />
+            <Key className="w-4 h-4 text-sky-400" />
             Credentials Manager
           </h1>
         </div>
@@ -119,7 +119,7 @@ export const CredentialsManager = ({ token, onBack }: CredentialsManagerProps) =
                 <select
                   value={provider}
                   onChange={(e) => setProvider(e.target.value)}
-                  className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
                 >
                   <option value="groq">Groq (Llama 3, Mixtral)</option>
                   <option value="openai">OpenAI (GPT-4o, mini)</option>
@@ -134,14 +134,14 @@ export const CredentialsManager = ({ token, onBack }: CredentialsManagerProps) =
                   onChange={(e) => setApiKey(e.target.value)}
                   disabled={saving}
                   placeholder="Paste your key here..."
-                  className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono"
+                  className="w-full bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 font-mono"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={saving || !apiKey}
-                className="w-full flex items-center justify-center gap-1.5 py-2 px-4 rounded-lg font-semibold text-xs transition-all duration-200 bg-purple-600 hover:bg-purple-500 text-white disabled:bg-zinc-900 disabled:text-zinc-500"
+                className="w-full flex items-center justify-center gap-1.5 py-2 px-4 rounded-lg font-semibold text-xs transition-all duration-200 bg-sky-600 hover:bg-sky-500 text-white disabled:bg-zinc-900 disabled:text-zinc-500"
               >
                 {saving ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
