@@ -14,13 +14,79 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-// Secure PBKDF2 Password Hashing
-export function hashPassword(password: string): string {
-  const salt = 'open_flow_static_salt_value'; // Basic static salt is sufficient for local databases
-  const iterations = 1000;
-  const keylen = 64;
-  const digest = 'sha512';
-  return crypto.pbkdf2Sync(password, salt, iterations, keylen, digest).toString('hex');
+const LEGACY_STATIC_SALT = 'open_flow_static_salt_value';
+const PBKDF2_ITERATIONS = 210000;
+const KEYLEN = 64;
+const DIGEST = 'sha512';
+
+/**
+ * Hashes a password using PBKDF2-HMAC-SHA512 with a dynamic per-user salt and 210,000 iterations.
+ * Format: pbkdf2$sha512$210000$<salt_hex>$<hash_hex>
+ */
+export function hashPassword(password: string, providedSalt?: string): string {
+  const saltHex = providedSalt || crypto.randomBytes(16).toString('hex');
+  const hashBuffer = crypto.pbkdf2Sync(password, saltHex, PBKDF2_ITERATIONS, KEYLEN, DIGEST);
+  return `pbkdf2$sha512$${PBKDF2_ITERATIONS}$${saltHex}$${hashBuffer.toString('hex')}`;
+}
+
+/**
+ * Computes legacy hash for static-salted backward compatibility checking.
+ */
+export function computeLegacyHash(password: string): string {
+  return crypto.pbkdf2Sync(password, LEGACY_STATIC_SALT, 1000, 64, 'sha512').toString('hex');
+}
+
+/**
+ * Verifies a password against a stored hash using constant-time comparison.
+ * Supports legacy static-salt hashes and flags `needsUpgrade: true` if an upgrade is required.
+ */
+export function verifyPassword(password: string, storedHash: string): { isValid: boolean; needsUpgrade: boolean } {
+  if (!storedHash || typeof storedHash !== 'string') {
+    return { isValid: false, needsUpgrade: false };
+  }
+
+  // Check if hash matches the new structured format: pbkdf2$sha512$iterations$salt$hash
+  if (storedHash.startsWith('pbkdf2$sha512$')) {
+    const parts = storedHash.split('$');
+    if (parts.length !== 5) {
+      return { isValid: false, needsUpgrade: false };
+    }
+    const iterations = parseInt(parts[2], 10);
+    const saltHex = parts[3];
+    const targetHashHex = parts[4];
+
+    if (isNaN(iterations) || !saltHex || !targetHashHex) {
+      return { isValid: false, needsUpgrade: false };
+    }
+
+    const computedHashBuffer = crypto.pbkdf2Sync(password, saltHex, iterations, KEYLEN, DIGEST);
+    const targetHashBuffer = Buffer.from(targetHashHex, 'hex');
+
+    if (computedHashBuffer.length !== targetHashBuffer.length) {
+      return { isValid: false, needsUpgrade: false };
+    }
+
+    const isValid = crypto.timingSafeEqual(computedHashBuffer, targetHashBuffer);
+    return { isValid, needsUpgrade: false };
+  }
+
+  // Legacy fallback check (static salt, 1,000 iterations)
+  const legacyHashHex = computeLegacyHash(password);
+  const legacyHashBuffer = Buffer.from(legacyHashHex, 'hex');
+  
+  let targetBuffer: Buffer;
+  try {
+    targetBuffer = Buffer.from(storedHash, 'hex');
+  } catch {
+    return { isValid: false, needsUpgrade: false };
+  }
+
+  if (legacyHashBuffer.length !== targetBuffer.length) {
+    return { isValid: false, needsUpgrade: false };
+  }
+
+  const isValid = crypto.timingSafeEqual(legacyHashBuffer, targetBuffer);
+  return { isValid, needsUpgrade: isValid };
 }
 
 // Generate secure native signature session token
