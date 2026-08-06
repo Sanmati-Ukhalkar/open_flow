@@ -25,55 +25,69 @@ export function useYjsSync(workflowId: string | null, token: string, orgId: stri
     const wsUrl = `ws://${window.location.host}`; // The proxy handles WS upgrade, or we connect to port 3001 if direct
     const wsUrlReal = window.location.port === '5173' ? 'ws://localhost:3001' : wsUrl;
 
-    const provider = new WebsocketProvider(
-      `${wsUrlReal}/api/workflows`,
-      `${workflowId}/sync?token=${token}&orgId=${orgId}`,
-      ydoc,
-      { connect: true }
-    );
-    providerRef.current = provider;
+    let isCancelled = false;
 
-    const yNodes = ydoc.getArray<Node>('nodes');
-    const yEdges = ydoc.getArray<Edge>('edges');
-    
-    // Set up local undo manager
-    const undoManager = new Y.UndoManager([yNodes, yEdges], { trackedOrigins: new Set([provider.awareness.clientID]) });
-    undoManagerRef.current = undoManager;
+    fetch('/api/auth/ws-ticket', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (isCancelled) return;
+        const authQuery = data.success && data.ticket ? `ticket=${data.ticket}` : `token=${token}`;
+        
+        const provider = new WebsocketProvider(
+          `${wsUrlReal}/api/workflows`,
+          `${workflowId}/sync?${authQuery}&orgId=${orgId}`,
+          ydoc,
+          { connect: true }
+        );
+        providerRef.current = provider;
 
-    // Set local awareness state
-    const awareness = provider.awareness;
-    awareness.setLocalStateField('user', {
-      id: user.id,
-      email: user.email,
-      color: '#' + Math.floor(Math.random()*16777215).toString(16),
-      editingNodeId: null,
-      cursor: null
-    });
+        const yNodes = ydoc.getArray<Node>('nodes');
+        const yEdges = ydoc.getArray<Edge>('edges');
+        
+        // Set up local undo manager
+        const undoManager = new Y.UndoManager([yNodes, yEdges], { trackedOrigins: new Set([provider.awareness.clientID]) });
+        undoManagerRef.current = undoManager;
 
-    awareness.on('change', () => {
-      setAwarenessUsers(new Map(awareness.getStates()));
-    });
+        // Set local awareness state
+        const awareness = provider.awareness;
+        awareness.setLocalStateField('user', {
+          id: user.id,
+          email: user.email,
+          color: '#' + Math.floor(Math.random()*16777215).toString(16),
+          editingNodeId: null,
+          cursor: null
+        });
 
-    // Observer: Yjs -> React Flow
-    const observeYNodes = (_event: Y.YArrayEvent<Node>) => {
-      isUpdatingFromYjs.current = true;
-      setNodes(yNodes.toArray());
-      setTimeout(() => { isUpdatingFromYjs.current = false; }, 10);
-    };
+        awareness.on('change', () => {
+          setAwarenessUsers(new Map(awareness.getStates()));
+        });
 
-    const observeYEdges = (_event: Y.YArrayEvent<Edge>) => {
-      isUpdatingFromYjs.current = true;
-      setEdges(yEdges.toArray());
-      setTimeout(() => { isUpdatingFromYjs.current = false; }, 10);
-    };
+        // Observer: Yjs -> React Flow
+        const observeYNodes = (_event: Y.YArrayEvent<Node>) => {
+          isUpdatingFromYjs.current = true;
+          setNodes(yNodes.toArray());
+          setTimeout(() => { isUpdatingFromYjs.current = false; }, 10);
+        };
 
-    yNodes.observe(observeYNodes);
-    yEdges.observe(observeYEdges);
+        const observeYEdges = (_event: Y.YArrayEvent<Edge>) => {
+          isUpdatingFromYjs.current = true;
+          setEdges(yEdges.toArray());
+          setTimeout(() => { isUpdatingFromYjs.current = false; }, 10);
+        };
+
+        yNodes.observe(observeYNodes);
+        yEdges.observe(observeYEdges);
+      })
+      .catch(err => console.error("Failed to fetch WS ticket:", err));
 
     return () => {
-      yNodes.unobserve(observeYNodes);
-      yEdges.unobserve(observeYEdges);
-      provider.destroy();
+      isCancelled = true;
+      if (providerRef.current) {
+        providerRef.current.destroy();
+      }
       ydoc.destroy();
     };
   }, [workflowId, token, orgId, user?.id]);
