@@ -63,7 +63,7 @@ export function runInSandbox(
   return new Promise((resolve, reject) => {
     const workerUrl = new URL('./sandbox-worker.ts', import.meta.url);
     const worker = new Worker(workerUrl, {
-      workerData: { runPath, input, config, allowedEnv },
+      workerData: { runPath, input, config, allowedEnv, capabilities },
       // Use tsx to transpile TypeScript worker on the fly
       execArgv: ['--import', 'tsx/esm'],
     });

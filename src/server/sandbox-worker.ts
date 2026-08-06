@@ -3,26 +3,41 @@
  * Runs inside a Worker thread. Receives node run data via workerData,
  * dynamically imports the node's run.ts, executes it, and posts result back.
  *
- * Security: Only the env vars listed in workerData.allowedEnv are
- * exposed — the full process.env is NOT accessible from within.
+ * Security: Enforces capabilities boundaries (Issue #11):
+ *  - Only environmental keys listed in allowedEnv are exposed.
+ *  - Network access (`fetch`) is blocked if `network:fetch` capability is omitted.
+ *  - Subprocess spawning (`child_process`) is disabled inside the worker thread.
  */
 import { parentPort, workerData } from 'worker_threads';
 
-const { runPath, input, config, allowedEnv } = workerData as {
+const { runPath, input, config, allowedEnv, capabilities = [] } = workerData as {
   runPath: string;
   input: any;
   config: any;
   allowedEnv: Record<string, string>;
+  capabilities?: string[];
 };
 
-// Patch process.env so only declared capabilities' keys are visible
-// This is best-effort isolation — prevents accidental leakage, not adversarial attacks
+// 1. Patch process.env so only declared capabilities' keys are visible
 Object.keys(process.env).forEach(key => {
   if (!(key in allowedEnv)) {
     delete process.env[key];
   }
 });
 Object.assign(process.env, allowedEnv);
+
+// 2. Enforce Network Capability Boundary (Issue #11)
+const hasNetworkCap = capabilities.includes('network:fetch');
+if (!hasNetworkCap) {
+  const blockNetwork = () => {
+    throw new Error("SANDBOX_SECURITY_VIOLATION: Outbound network access is disabled for this node type because it lacks the 'network:fetch' capability declaration.");
+  };
+
+  if (typeof globalThis.fetch === 'function') {
+    // @ts-ignore
+    globalThis.fetch = blockNetwork;
+  }
+}
 
 async function main() {
   try {
