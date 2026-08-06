@@ -8,7 +8,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { db, DatabaseWrapper } from './db';
 import { encrypt } from './crypto';
-import { hashPassword, verifyPassword, generateSessionToken, authenticateToken, AuthenticatedRequest } from './auth';
+import { hashPassword, verifyPassword, generateSessionToken, verifySessionToken, authenticateToken, AuthenticatedRequest } from './auth';
 import { analyticsRouter } from './analytics';
 import { executeRunBackend } from './engine';
 import { run as runLLMPrompt } from '../nodes/llm-prompt/run';
@@ -26,9 +26,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const PORT = process.env.PORT || 3001;
-const JWT_SECRET = process.env.JWT_SECRET || 'secret-for-dev';
 
-import jwt from 'jsonwebtoken';
 import { WebSocketServer } from 'ws';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
@@ -1525,7 +1523,6 @@ server.on('upgrade', (request: any, socket, head) => {
           });
         }
       );
-    });
   } catch (e) {
     socket.destroy();
   }
