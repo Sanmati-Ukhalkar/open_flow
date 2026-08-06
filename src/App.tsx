@@ -19,7 +19,7 @@ import Dashboard from './canvas/Dashboard';
 import CredentialsManager from './canvas/CredentialsManager';
 import ShortcutsOverlay from './canvas/ShortcutsOverlay';
 import { topoSort } from './engine/topoSort';
-import { Play, AlertTriangle, Save, FolderOpen, ShieldCheck, Key, Undo2, Redo2, Keyboard, HelpCircle } from 'lucide-react';
+import { Play, AlertTriangle, Save, FolderOpen, ShieldCheck, Key, Undo2, Redo2, Keyboard, HelpCircle, Download, Upload } from 'lucide-react';
 import DeployModal from './canvas/DeployModal';
 import OrgSettingsModal from './canvas/OrgSettingsModal';
 import { useYjsSync } from './canvas/hooks/useYjsSync';
@@ -785,9 +785,55 @@ function AppContent() {
       } else {
         alert(result.error?.message || 'Failed to save workflow.');
       }
-    } catch {
-      alert('Error connecting to backend database.');
+    } catch (err: any) {
+      setSaveStatus('error');
+      alert('Network error while saving workflow: ' + err.message);
     }
+  };
+
+  // Import / Export JSON Handlers (Issue #8)
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleExportJSON = () => {
+    const exportData = {
+      version: '1.0.0',
+      name: workflowName || 'Untitled Workflow',
+      exportedAt: new Date().toISOString(),
+      nodes,
+      edges
+    };
+    const jsonString = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(workflowName || 'workflow').toLowerCase().replace(/\s+/g, '-')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (!Array.isArray(data.nodes) || !Array.isArray(data.edges)) {
+          alert('Invalid workflow JSON structure. Missing nodes or edges array.');
+          return;
+        }
+        setNodes(data.nodes);
+        setEdges(data.edges);
+        if (data.name) setWorkflowName(data.name);
+        alert('Workflow JSON successfully imported onto canvas!');
+      } catch (err: any) {
+        alert('Failed to parse workflow JSON file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   // Autosave useEffect hook
@@ -1261,6 +1307,33 @@ function AppContent() {
           >
             <Save className="w-3.5 h-3.5 text-zinc-400" />
             Save Definition
+          </button>
+
+          {/* Export JSON Button */}
+          <button
+            onClick={handleExportJSON}
+            className="flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg border border-zinc-850 bg-zinc-900/40 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 transition-all text-[11px]"
+            title="Export workflow to JSON file"
+          >
+            <Download className="w-3.5 h-3.5 text-zinc-400" />
+            Export JSON
+          </button>
+
+          {/* Import JSON Button */}
+          <input
+            type="file"
+            ref={importInputRef}
+            onChange={handleImportJSON}
+            accept=".json"
+            className="hidden"
+          />
+          <button
+            onClick={() => importInputRef.current?.click()}
+            className="flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg border border-zinc-850 bg-zinc-900/40 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 transition-all text-[11px]"
+            title="Import workflow from JSON file"
+          >
+            <Upload className="w-3.5 h-3.5 text-zinc-400" />
+            Import JSON
           </button>
 
           {/* Deploy Button */}
