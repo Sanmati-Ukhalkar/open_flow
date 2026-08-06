@@ -8,7 +8,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { db, DatabaseWrapper } from './db';
 import { encrypt } from './crypto';
-import { hashPassword, generateSessionToken, authenticateToken, AuthenticatedRequest } from './auth';
+import { hashPassword, verifyPassword, generateSessionToken, authenticateToken, AuthenticatedRequest } from './auth';
 import { analyticsRouter } from './analytics';
 import { executeRunBackend } from './engine';
 import { run as runLLMPrompt } from '../nodes/llm-prompt/run';
@@ -97,17 +97,26 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(400).json({ success: false, error: { message: 'Email and password are required.' } });
   }
 
-  const passwordHash = hashPassword(password);
-
   db.get(
-    'SELECT * FROM users WHERE email = ? AND password_hash = ?',
-    [email, passwordHash],
+    'SELECT * FROM users WHERE email = ?',
+    [email],
     (err, user: any) => {
       if (err) {
         return res.status(500).json({ success: false, error: { message: err.message } });
       }
       if (!user) {
         return res.status(400).json({ success: false, error: { message: 'Invalid credentials. Please verify your email and password.' } });
+      }
+
+      const { isValid, needsUpgrade } = verifyPassword(password, user.password_hash);
+      if (!isValid) {
+        return res.status(400).json({ success: false, error: { message: 'Invalid credentials. Please verify your email and password.' } });
+      }
+
+      // Upgrade legacy static-salted password hash transparently upon successful login
+      if (needsUpgrade) {
+        const newPasswordHash = hashPassword(password);
+        db.run('UPDATE users SET password_hash = ? WHERE id = ?', [newPasswordHash, user.id], () => {});
       }
 
       const token = generateSessionToken(user.id, user.email);
@@ -1391,6 +1400,36 @@ const wss = new WebSocketServer({ noServer: true });
 const wssLogs = new WebSocketServer({ noServer: true });
 const logClients = new Map<string, Set<any>>();
 
+// Single-use WebSocket ticket store (Issue #12)
+interface WSTicket {
+  userId: string;
+  email: string;
+  expiresAt: number;
+}
+const wsTickets = new Map<string, WSTicket>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ticket, data] of wsTickets.entries()) {
+    if (data.expiresAt < now) {
+      wsTickets.delete(ticket);
+    }
+  }
+}, 30000);
+
+app.post('/api/auth/ws-ticket', authenticateToken, (req: AuthenticatedRequest, res) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: { message: 'Unauthorized' } });
+  }
+  const ticket = `wst-${crypto.randomBytes(16).toString('hex')}`;
+  wsTickets.set(ticket, {
+    userId: req.user.id,
+    email: req.user.email,
+    expiresAt: Date.now() + 30000 // Valid for 30s
+  });
+  return res.json({ success: true, ticket });
+});
+
 workflowEvents.on(WORKFLOW_RUN_UPDATE, (data) => {
   const { workflowId } = data;
   const clients = logClients.get(workflowId);
@@ -1419,23 +1458,29 @@ server.on('upgrade', (request: any, socket, head) => {
     }
 
     const workflowId = match ? match[1] : logMatch![1];
+    const ticket = parsedUrl.query.ticket as string;
     const token = parsedUrl.query.token as string;
     const orgId = parsedUrl.query.orgId as string;
 
-    if (!token || !orgId) {
+    let authenticatedUser: { id: string; email: string } | null = null;
+
+    if (ticket && wsTickets.has(ticket)) {
+      const ticketData = wsTickets.get(ticket)!;
+      wsTickets.delete(ticket); // Single-use consumption
+      if (ticketData.expiresAt >= Date.now()) {
+        authenticatedUser = { id: ticketData.userId, email: ticketData.email };
+      }
+    } else if (token) {
+      authenticatedUser = verifySessionToken(token);
+    }
+
+    if (!authenticatedUser || !orgId) {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
       socket.destroy();
       return;
     }
 
-    jwt.verify(token, JWT_SECRET, (err: any, decoded: any) => {
-      if (err || !decoded) {
-        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-        socket.destroy();
-        return;
-      }
-
-      const userId = decoded.id;
+    const userId = authenticatedUser.id;
       db.get(
         'SELECT role FROM organization_members WHERE org_id = ? AND user_id = ?',
         [orgId, userId],

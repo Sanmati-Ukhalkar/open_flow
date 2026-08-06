@@ -542,56 +542,84 @@ export async function executeRunBackend(
           // Artificial delay for canvas visualizations
           await new Promise(r => setTimeout(r, 700));
 
+          const maxRetries = Math.min(Math.max(Number(node.data?.config?.maxRetries) || 0, 0), 5);
+          const initialDelayMs = Math.max(Number(node.data?.config?.retryDelayMs) || 1000, 100);
+          const backoffFactor = 2;
           const nodeStartTime = Date.now();
-          try {
-            let output: any;
 
+          let lastError: any = null;
+          let executionSucceeded = false;
 
-            if (node.type === 'loop') {
-              output = await executeLoopSubgraph(node, nodeInput, orgId, nodes, edges);
-            } else {
-              output = await evaluateNode(node, nodeInput, orgId);
-            }
-            // Output Validation
-            const validation = checkOutputSchema(node.type, output);
-            const status = validation.isValid ? 'success' : 'success-with-warning';
-
-            nodeStatuses.set(node.id, status);
-            nodeOutputs.set(node.id, output);
-            workflowEvents.emit(WORKFLOW_RUN_UPDATE, {
-              workflowId,
-              runId,
-              nodeId: node.id,
-              status,
-              output,
-              timestamp: new Date().toISOString()
-            });
-
-            const outputToSave = validation.isValid 
-              ? output 
-              : { ...output, warning: validation.warning };
-              
-            const durationMs = Date.now() - nodeStartTime;
-            const { costCents, metadata } = calculateNodeCost(node.type, output, node.data.config);
-
-            log.info({ workflowId, runId, nodeId: node.id }, `Node execution succeeded: status=${status}, duration=${durationMs}ms`);
-            const slowThreshold = Number(process.env.SLOW_NODE_THRESHOLD_MS) || 5000;
-            if (durationMs > slowThreshold) {
-              log.warn({ workflowId, runId, nodeId: node.id }, `Slow node execution detected: ${durationMs}ms (threshold: ${slowThreshold}ms)`);
+          for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            if (attempt > 0) {
+              const retryDelay = initialDelayMs * Math.pow(backoffFactor, attempt - 1);
+              log.warn({ workflowId, runId, nodeId: node.id }, `Auto-retrying node execution (attempt ${attempt}/${maxRetries}) after ${retryDelay}ms delay...`);
+              workflowEvents.emit(WORKFLOW_RUN_UPDATE, {
+                workflowId,
+                runId,
+                nodeId: node.id,
+                status: 'retrying',
+                message: `Transient error encountered. Retrying (${attempt}/${maxRetries}) in ${retryDelay}ms...`,
+                timestamp: new Date().toISOString()
+              });
+              await new Promise(r => setTimeout(r, retryDelay));
             }
 
-            await dbRun(
-              'UPDATE run_node_results SET status = ?, output_json = ?, duration_ms = ?, cost_cents = ?, metadata_json = ? WHERE run_id = ? AND node_id = ?',
-              [status, JSON.stringify(outputToSave), durationMs, costCents, JSON.stringify(metadata), runId, node.id]
-            );
+            try {
+              let output: any;
+              if (node.type === 'loop') {
+                output = await executeLoopSubgraph(node, nodeInput, orgId, nodes, edges);
+              } else {
+                output = await evaluateNode(node, nodeInput, orgId);
+              }
+              // Output Validation
+              const validation = checkOutputSchema(node.type, output);
+              const status = validation.isValid ? 'success' : 'success-with-warning';
 
-          } catch (err: any) {
+              nodeStatuses.set(node.id, status);
+              nodeOutputs.set(node.id, output);
+              workflowEvents.emit(WORKFLOW_RUN_UPDATE, {
+                workflowId,
+                runId,
+                nodeId: node.id,
+                status,
+                output,
+                timestamp: new Date().toISOString()
+              });
+
+              const outputToSave = validation.isValid 
+                ? output 
+                : { ...output, warning: validation.warning };
+                
+              const durationMs = Date.now() - nodeStartTime;
+              const { costCents, metadata } = calculateNodeCost(node.type, output, node.data?.config);
+
+              log.info({ workflowId, runId, nodeId: node.id }, `Node execution succeeded: status=${status}, duration=${durationMs}ms`);
+              const slowThreshold = Number(process.env.SLOW_NODE_THRESHOLD_MS) || 5000;
+              if (durationMs > slowThreshold) {
+                log.warn({ workflowId, runId, nodeId: node.id }, `Slow node execution detected: ${durationMs}ms (threshold: ${slowThreshold}ms)`);
+              }
+
+              await dbRun(
+                'UPDATE run_node_results SET status = ?, output_json = ?, duration_ms = ?, cost_cents = ?, metadata_json = ? WHERE run_id = ? AND node_id = ?',
+                [status, JSON.stringify(outputToSave), durationMs, costCents, JSON.stringify(metadata), runId, node.id]
+              );
+
+              executionSucceeded = true;
+              break;
+            } catch (err: any) {
+              lastError = err;
+            }
+          }
+
+          if (!executionSucceeded && lastError) {
+            const err = lastError;
             const errorPayload = {
               code: err.code || 'EXECUTION_ERROR',
               message: err.message || 'An error occurred during execution.'
             };
 
-            log.error({ workflowId, runId, nodeId: node.id }, `Node execution failed: code=${errorPayload.code}, message="${errorPayload.message}"`, err);
+            log.error({ workflowId, runId, nodeId: node.id }, `Node execution failed after retries: code=${errorPayload.code}, message="${errorPayload.message}"`, err);
 
             nodeStatuses.set(node.id, 'error');
             nodeErrors.set(node.id, errorPayload);

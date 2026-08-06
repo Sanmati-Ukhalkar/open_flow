@@ -740,6 +740,28 @@ export const ConfigPanel = ({
           />
         </div>
 
+        {/* Auto-Retry Policy Settings (Issue #7) */}
+        <div className="p-3 border border-zinc-850 bg-zinc-900/20 rounded-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-[10px] font-bold text-zinc-300 uppercase tracking-wide">Auto-Retry Policy</h4>
+              <span className="text-[9px] text-zinc-550 block">Max retries on transient errors</span>
+            </div>
+            <select
+              value={data.config?.maxRetries ?? 0}
+              onChange={(e) => onChangeConfig(id, { ...(data.config || {}), maxRetries: Number(e.target.value) })}
+              disabled={readOnly}
+              className="text-[10px] bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-zinc-200 focus:ring-sky-500 focus:border-sky-500"
+            >
+              <option value={0}>Disabled (0)</option>
+              <option value={1}>1 Retry</option>
+              <option value={2}>2 Retries</option>
+              <option value={3}>3 Retries</option>
+              <option value={5}>5 Retries</option>
+            </select>
+          </div>
+        </div>
+
         {/* Dynamic form field section */}
         {renderFormFields()}
       </div>
