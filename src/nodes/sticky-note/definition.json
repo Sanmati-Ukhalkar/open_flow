@@ -1,0 +1,29 @@
+{
+  "id": "sticky-note",
+  "name": "Sticky Note",
+  "category": "Documentation",
+  "description": "Add visual sticky notes and annotations directly onto the workflow canvas.",
+  "icon": "StickyNote",
+  "color": "sky",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "noteTitle": {
+        "type": "string",
+        "title": "Title",
+        "default": "Workflow Note"
+      },
+      "noteText": {
+        "type": "string",
+        "title": "Note Content",
+        "default": "Document workflow steps or add instructions here."
+      },
+      "colorTheme": {
+        "type": "string",
+        "title": "Color Theme",
+        "enum": ["yellow", "sky", "emerald", "rose", "paper"],
+        "default": "yellow"
+      }
+    }
+  }
+}

@@ -19,6 +19,7 @@ import MCPToolNode from './MCPToolNode';
 import HTTPWebhookNode from './HTTPWebhookNode';
 import SQLiteStorageNode from './SQLiteStorageNode';
 import TextTransformNode from './TextTransformNode';
+import StickyNoteNode from './StickyNoteNode';
 import GenericNode from './GenericNode';
 
 // Map custom node types
@@ -28,6 +29,7 @@ const nodeTypes = {
   'http-webhook': HTTPWebhookNode,
   'sqlite-storage': SQLiteStorageNode,
   'text-transform': TextTransformNode,
+  'sticky-note': StickyNoteNode,
   'email': GenericNode,
   'vision-ocr': GenericNode,
   'file-trigger': GenericNode,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Wrench, Globe, Database, Combine, Calendar, Package, ShieldAlert, Search, X, Mail, FileUp, Code, GitBranch, RefreshCcw } from 'lucide-react';
+import { Bot, Wrench, Globe, Database, Combine, Calendar, Package, ShieldAlert, Search, X, Mail, FileUp, Code, GitBranch, RefreshCcw, StickyNote } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
   'llm-prompt': Bot,
@@ -7,6 +7,7 @@ const ICON_MAP: Record<string, any> = {
   'http-webhook': Globe,
   'sqlite-storage': Database,
   'text-transform': Combine,
+  'sticky-note': StickyNote,
   'cron-trigger': Calendar,
   'webhook-trigger': Globe,
   'email': Mail,
@@ -25,6 +26,7 @@ const COLOR_MAP: Record<string, string> = {
   'http-webhook': 'text-rose-400 border-rose-500/20 bg-rose-500/5',
   'sqlite-storage': 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5',
   'text-transform': 'text-yellow-400 border-yellow-500/20 bg-yellow-500/5',
+  'sticky-note': 'text-amber-500 border-amber-500/20 bg-amber-500/5',
   'cron-trigger': 'text-sky-300 border-sky-500/20 bg-sky-500/5',
   'webhook-trigger': 'text-blue-300 border-blue-500/20 bg-blue-500/5',
   'email': 'text-orange-400 border-orange-500/20 bg-orange-500/5',
