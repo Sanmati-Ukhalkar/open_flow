@@ -66,6 +66,28 @@ Kickstart your workflow automations with these gorgeous, pre-configured blueprin
 
 ---
 
+## 🖼️ UI Walkthrough
+
+Here are some of the important steps and usable screens captured during the main workflow of the OpenFlow application.
+
+### 1. Initial Canvas
+The initial view of the workflow canvas where users can start building their automations.  
+<img src="docs/screenshots/01-canvas.png" width="800" />
+
+### 2. Adding a Node
+Drag and drop nodes from the sidebar onto the canvas. Here, an LLM Prompt node has been added to the canvas.  
+<img src="docs/screenshots/02-node-added.png" width="800" />
+
+### 3. Node Configuration
+Clicking on a node opens its configuration panel where you can edit its settings.  
+<img src="docs/screenshots/03-node-config.png" width="800" />
+
+### 4. Execution Output
+Running the workflow processes the nodes and displays the execution output at the bottom of the screen.  
+<img src="docs/screenshots/04-execution-output.png" width="800" />
+
+---
+
 ## 🛠 Features & Status
 
 Open Flow was built version by version, with each version shipping something fully working before the next begins.

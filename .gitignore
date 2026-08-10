@@ -145,3 +145,6 @@ vite.config.ts.timestamp-*
 # SQLite database
 *.sqlite
 database.sqlite
+eng.traineddata
+playwright-report/
+test-results/
