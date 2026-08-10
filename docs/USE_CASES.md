@@ -8,6 +8,9 @@ Welcome to **Open Flow**, a visual, no-code, drag-and-drop workflow builder buil
 
 Open Flow's secure authentication ensures that workspace configurations, credentials, and execution environments are completely isolated.
 
+### Landing / Authentication Screen
+![Landing Page](images/landing_page.png)
+
 ### Use Case 1.1: Registering a New Account
 - Navigate to the landing page.
 - Select the **Register** tab.
@@ -66,6 +69,9 @@ Workspaces isolate workflow DAGs, credentials, and run logs by organizational bo
 ## 4. Canvas Workflow Builder (The Visual Workspace)
 
 The React Flow canvas is the central workspace for dragging, dropping, connecting, and documenting workflow elements.
+
+### Canvas Editor Interface
+![Canvas Editor](images/canvas_editor.png)
 
 ### Use Case 4.1: Dragging and Dropping Nodes
 - Open the left-side **Node Library / Sidebar**.
