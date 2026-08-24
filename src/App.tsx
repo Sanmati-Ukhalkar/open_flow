@@ -19,7 +19,7 @@ import Dashboard from './canvas/Dashboard';
 import CredentialsManager from './canvas/CredentialsManager';
 import ShortcutsOverlay from './canvas/ShortcutsOverlay';
 import { topoSort } from './engine/topoSort';
-import { Play, AlertTriangle, Save, FolderOpen, ShieldCheck, Key, Undo2, Redo2, Keyboard, HelpCircle, Download, Upload } from 'lucide-react';
+import { Play, AlertTriangle, Save, FolderOpen, ShieldCheck, Key, Undo2, Redo2, Keyboard, HelpCircle, Download, Upload, Sun, Moon } from 'lucide-react';
 import DeployModal from './canvas/DeployModal';
 import OrgSettingsModal from './canvas/OrgSettingsModal';
 import { useYjsSync } from './canvas/hooks/useYjsSync';
@@ -51,6 +51,20 @@ function AppContent() {
   const [orgs, setOrgs] = useState<any[]>([]);
   const [view, setView] = useState<'auth' | 'dashboard' | 'credentials' | 'canvas'>('auth');
   const [showOrgSettings, setShowOrgSettings] = useState(false);
+
+  // Theme State (Light / Dark)
+  const [theme, setTheme] = useState<'light' | 'dark'>((localStorage.getItem('openflow_theme') as 'light' | 'dark') || 'light');
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.add('light');
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('openflow_theme', theme);
+  }, [theme]);
 
   // Active Workflow States
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string | null>(null);
@@ -1396,6 +1410,15 @@ function AppContent() {
             Run Workflow
           </button>
 
+          {/* Theme Toggle Button */}
+          <button
+            onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+            title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} theme`}
+            className="p-1.5 rounded-lg border border-zinc-850 bg-zinc-900/40 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 transition-all flex items-center justify-center"
+          >
+            {theme === 'light' ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5 text-amber-400" />}
+          </button>
+
           {/* Shortcuts help button */}
           <button
             onClick={() => setShowShortcuts(true)}
@@ -1447,6 +1470,7 @@ function AppContent() {
               clientId={clientId}
               setCursor={setCursor}
               isMobile={isMobile}
+              theme={theme}
             />
           </div>
 

@@ -1,6 +1,7 @@
-import { Handle, Position } from 'reactflow';
+import { Position } from 'reactflow';
 import { Wrench } from 'lucide-react';
 import NodeHeader from './NodeHeader';
+import NodeHandle from './NodeHandle';
 
 export interface MCPToolNodeData {
   label?: string;
@@ -9,31 +10,33 @@ export interface MCPToolNodeData {
     toolName: string;
     inputParamName: string;
   };
+  output?: any;
   error?: string;
 }
 
 export const MCPToolNode = ({ id, data, selected }: { id: string; data: MCPToolNodeData; selected: boolean }) => {
   const statusColors = {
     idle: 'border-zinc-800 bg-zinc-950 text-zinc-400 shadow-md',
-    running: 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.25)] bg-zinc-950 text-status-running',
-    success: 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.25)] bg-zinc-950 text-status-success',
-    'success-with-warning': 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.25)] bg-zinc-950 text-status-warning',
-    error: 'border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.25)] bg-zinc-950 text-status-error',
-    skipped: 'border-zinc-900 bg-zinc-900 text-zinc-650 opacity-50',
+    running: 'border-sky-500 animate-running-glow bg-zinc-950 text-status-running',
+    success: 'border-emerald-500 animate-success-flash bg-zinc-950 text-status-success',
+    'success-with-warning': 'border-amber-500 bg-zinc-950 text-status-warning',
+    error: 'border-rose-500 bg-zinc-950 text-status-error',
+    skipped: 'border-zinc-900 bg-zinc-900 text-zinc-600 opacity-60',
   };
+
+  const outputSnippet = data.output ? (typeof data.output === 'string' ? data.output : JSON.stringify(data.output)) : '';
 
   return (
     <div
-      className={`min-w-[220px] rounded-xl border p-4 backdrop-blur-md transition-all duration-300 ${
-        selected ? 'ring-2 ring-sky-500/80 ring-offset-2 ring-offset-black' : ''
+      className={`min-w-[230px] rounded-xl border p-4 backdrop-blur-md transition-all duration-200 ${
+        selected ? 'ring-2 ring-indigo-500/80 ring-offset-2 ring-offset-black' : ''
       } ${statusColors[data.status] || statusColors.idle}`}
     >
-      {/* Target handle - input */}
-      <Handle
+      <NodeHandle
         type="target"
         position={Position.Left}
-        title="Input: Map to selected parameter (string)"
-        className="w-2.5 h-2.5 !bg-zinc-800 !border-zinc-700"
+        dataType="object"
+        title="Input: Map to selected parameter (object)"
       />
 
       <NodeHeader
@@ -44,27 +47,31 @@ export const MCPToolNode = ({ id, data, selected }: { id: string; data: MCPToolN
         status={data.status}
       />
 
-      <div className="text-xs text-zinc-400 space-y-2">
+      <div className="text-xs text-zinc-400 space-y-2 mt-2">
         <div>
-          <span className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-0.5">Selected Tool</span>
-          <div className="font-mono bg-zinc-900/80 p-1.5 rounded border border-zinc-800 truncate max-w-[200px] text-zinc-300">
+          <span className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider block mb-0.5">Selected Tool</span>
+          <div className="font-mono bg-zinc-900/80 p-1.5 rounded border border-zinc-800 truncate max-w-[210px] text-zinc-300">
             {data.config?.toolName || 'Not Selected'}
           </div>
         </div>
-        <div>
-          <span className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-0.5">Input Parameter</span>
-          <div className="font-mono bg-zinc-900/80 p-1.5 rounded border border-zinc-800 truncate max-w-[200px] text-zinc-450">
-            {data.config?.inputParamName || 'text'}
+
+        {outputSnippet && (
+          <div className="pt-2 border-t border-zinc-800/80">
+            <span className="text-[9px] font-semibold text-emerald-400 uppercase tracking-wider block mb-1">
+              Tool Output Preview
+            </span>
+            <div className="font-mono text-[10px] bg-zinc-900/90 text-zinc-200 px-2 py-1.5 rounded border border-zinc-800 truncate max-w-[210px]" title={outputSnippet}>
+              {outputSnippet}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Source handle - output */}
-      <Handle
+      <NodeHandle
         type="source"
         position={Position.Right}
+        dataType="object"
         title="Output: Produces data payload (object)"
-        className="w-2.5 h-2.5 !bg-zinc-800 !border-zinc-700"
       />
     </div>
   );

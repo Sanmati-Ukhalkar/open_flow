@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Node, useNodes, useEdges } from 'reactflow';
-import { Play, Settings, Wrench, Globe, Database, Combine, Trash2, Bot, Calendar, Package, ShieldAlert } from 'lucide-react';
+import { Play, Settings, Wrench, Globe, Database, Combine, Trash2, Bot, Calendar, Package, ShieldAlert, HelpCircle, Key, ShieldCheck, ArrowRightLeft } from 'lucide-react';
+import NodeDocsModal from './NodeDocsModal';
 
 interface ConfigPanelProps {
   selectedNode: Node<any> | null;
@@ -46,6 +47,7 @@ export const ConfigPanel = ({
   const [availableTools, setAvailableTools] = useState<MCPTool[]>([]);
   const [loadingTools, setLoadingTools] = useState(false);
   const [definitions, setDefinitions] = useState<any[]>([]);
+  const [showDocsModal, setShowDocsModal] = useState(false);
   const nodes = useNodes();
   const edges = useEdges();
 
@@ -254,14 +256,21 @@ export const ConfigPanel = ({
             <div className="space-y-2">
               <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">Prompt Template</label>
               <textarea
-                value={config.promptText}
+                value={config.promptText || ''}
                 onChange={(e) => onChangeConfig(id, { ...config, promptText: e.target.value })}
                 disabled={isRunning || readOnly}
                 placeholder="e.g. Write a tagline for Open Flow..."
                 rows={isBottomSheet ? 5 : 8}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-sans leading-relaxed"
+                className={`w-full bg-zinc-900 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-sky-500 placeholder-zinc-650 disabled:opacity-50 resize-none font-sans leading-relaxed border ${
+                  !config.promptText?.trim() ? 'border-rose-500/80 bg-rose-500/5' : 'border-zinc-800'
+                }`}
               />
-              {renderVariableSuggestions(config.promptText, (newVal) => onChangeConfig(id, { ...config, promptText: newVal }))}
+              {!config.promptText?.trim() && (
+                <p className="text-[10px] text-rose-400 font-mono flex items-center gap-1">
+                  <span>⚠</span> Prompt template cannot be empty.
+                </p>
+              )}
+              {renderVariableSuggestions(config.promptText || '', (newVal) => onChangeConfig(id, { ...config, promptText: newVal }))}
             </div>
           </div>
         );
@@ -682,6 +691,25 @@ export const ConfigPanel = ({
     }
   };
 
+  const currentDef = definitions.find(d => d.id === type);
+  const requiredCreds = currentDef?.requiredCredentials || [];
+  const upstreamPayloads = (() => {
+    if (!selectedNode) return null;
+    const parentEdges = edges.filter(e => e.target === selectedNode.id);
+    if (parentEdges.length === 0) return null;
+
+    const payloads: Record<string, any> = {};
+    parentEdges.forEach(e => {
+      const pNode = nodes.find(n => n.id === e.source);
+      const output = (pNode?.data as any)?.output;
+      if (output !== undefined) {
+        payloads[e.source] = output;
+      }
+    });
+
+    return Object.keys(payloads).length > 0 ? payloads : null;
+  })();
+
   const header = getHeaderDetails();
   const HeaderIcon = header.icon;
 
@@ -690,6 +718,14 @@ export const ConfigPanel = ({
       id="config-panel"
       className={containerClasses}
     >
+      {showDocsModal && (
+        <NodeDocsModal
+          nodeType={type || ''}
+          definition={currentDef}
+          onClose={() => setShowDocsModal(false)}
+        />
+      )}
+
       {isLocked && (
         <div className="absolute inset-0 bg-black/65 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center p-6 text-center">
           <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mb-4">
@@ -714,16 +750,81 @@ export const ConfigPanel = ({
             <p className="text-[10px] text-zinc-550 mt-1 font-mono">ID: {id}</p>
           </div>
 
-          {!readOnly && (
+          <div className="flex items-center gap-1.5">
+            {/* Documentation Help Button */}
             <button
-              onClick={handleDelete}
-              title="Delete Node"
-              className="p-1.5 rounded-lg border border-zinc-850 bg-zinc-900 text-zinc-550 hover:text-rose-400 hover:border-rose-500/20 hover:bg-rose-500/5 transition-all duration-150"
+              onClick={() => setShowDocsModal(true)}
+              title="Open Node Documentation & Schema"
+              className="p-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-sky-400 hover:bg-sky-500/10 hover:border-sky-500/30 transition-all"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <HelpCircle className="w-3.5 h-3.5" />
             </button>
-          )}
+
+            {!readOnly && (
+              <button
+                onClick={handleDelete}
+                title="Delete Node"
+                className="p-1.5 rounded-lg border border-zinc-850 bg-zinc-900 text-zinc-550 hover:text-rose-400 hover:border-rose-500/20 hover:bg-rose-500/5 transition-all duration-150"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Credential Status Indicator Badge */}
+        {requiredCreds.length > 0 ? (
+          <div className="p-2.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-300 text-[10px] flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Key className="w-3.5 h-3.5 text-amber-400" />
+              <span>Requires API Secret: <strong className="font-mono">{requiredCreds.join(', ')}</strong></span>
+            </div>
+            <span className="text-[9px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-semibold uppercase tracking-wider">
+              Configured
+            </span>
+          </div>
+        ) : (
+          <div className="p-2 rounded-xl border border-zinc-800 bg-zinc-900/40 text-zinc-400 text-[10px] flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>No external credentials required</span>
+          </div>
+        )}
+
+        {/* Expects (Input Schema) & Produces (Output Schema) Sections */}
+        {currentDef && (
+          <div className="p-3 border border-zinc-850 bg-zinc-900/40 rounded-xl space-y-2">
+            <h4 className="text-[10px] font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+              <ArrowRightLeft className="w-3 h-3 text-sky-400" />
+              Data Contracts
+            </h4>
+            <div className="grid grid-cols-2 gap-2 text-[10px]">
+              <div className="bg-zinc-900 p-2 rounded border border-zinc-800 space-y-1">
+                <span className="text-[9px] font-bold text-sky-400 uppercase tracking-wider block">Expects</span>
+                <span className="font-mono text-zinc-300 block truncate">
+                  {Object.keys(currentDef.inputSchema?.properties || {}).join(', ') || 'Any Payload'}
+                </span>
+              </div>
+              <div className="bg-zinc-900 p-2 rounded border border-zinc-800 space-y-1">
+                <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider block">Produces</span>
+                <span className="font-mono text-zinc-300 block truncate">
+                  {Object.keys(currentDef.outputSchema?.properties || {}).join(', ') || 'Output Object'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Live Received Upstream Input Payload */}
+        {upstreamPayloads && (
+          <div className="p-3 border border-zinc-850 bg-zinc-900/40 rounded-xl space-y-1">
+            <span className="text-[9px] font-bold text-sky-400 uppercase tracking-wider block">
+              Live Last Received Input
+            </span>
+            <pre className="text-zinc-300 font-mono text-[10px] bg-zinc-950 p-2 rounded border border-zinc-850 overflow-x-auto max-h-28 leading-relaxed">
+              {JSON.stringify(upstreamPayloads, null, 2)}
+            </pre>
+          </div>
+        )}
 
         {/* Output Node Switch */}
         <div className="flex items-center justify-between p-3 border border-zinc-850 bg-zinc-900/20 rounded-xl">

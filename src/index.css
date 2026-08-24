@@ -2,34 +2,128 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  /* ─── Warm "Paper" Light Theme ───────────────────────────────────────────── */
-  /* Scale is INVERTED vs old dark theme: 950 = lightest bg, 50 = darkest text */
+/* ─── OpenFlow Dual Design Token System ───────────────────────────────────── */
 
-  /* Backgrounds — warm linen, never harsh white */
-  --zinc-950: #F6F3EE; /* Main app canvas background  */
-  --zinc-900: #EDE9E1; /* Sidebars, panel backgrounds  */
-  --zinc-850: #E5E0D7; /* Panel section headers        */
-  --zinc-800: #D8D2C7; /* Borders, dividers            */
-  --zinc-700: #C3BAA8; /* Subtle borders               */
-  --zinc-650: #AAA294; /* Muted element backgrounds    */
+:root, .light {
+  /* Warm "Paper" Light Theme (Default) */
+  --bg-app: #F6F3EE;
+  --bg-surface: #EDE9E1;
+  --bg-surface-header: #E5E0D7;
+  --border-subtle: #D8D2C7;
+  --border-strong: #C3BAA8;
 
-  /* Text & Icon tones — warm charcoal, never flat gray */
-  --zinc-600: #928B7D; /* Muted icons                  */
-  --zinc-550: #7A7369; /* Secondary icons              */
-  --zinc-500: #6B6559; /* Secondary text               */
-  --zinc-450: #58524A; /* Medium body text             */
-  --zinc-400: #4A4540; /* Icon / label color           */
-  --zinc-300: #3A352E; /* Subheadings                  */
-  --zinc-200: #2B2520; /* Body text                    */
-  --zinc-100: #1A1610; /* Primary text / headings      */
-  --zinc-50:  #100E0A; /* Darkest text                 */
+  --text-primary: #1A1610;
+  --text-secondary: #4A4540;
+  --text-muted: #6B6559;
+  --text-faint: #928B7D;
 
-  /* Status colors – slightly deeper for legibility on light bg */
-  --status-running-text: #0369A1;  /* sky-700  */
-  --status-success-text: #047857;  /* emerald-700 */
-  --status-warning-text: #B45309;  /* amber-700 */
-  --status-error-text:   #BE123C;  /* rose-700 */
+  /* Accent Color (AI-native Electric Indigo) */
+  --accent-primary: #4F46E5;
+  --accent-primary-hover: #4338CA;
+  --accent-light: #EEF2FF;
+  --accent-border: #C7D2FE;
+
+  /* Status Colors (WCAG AA compliant contrast on light bg) */
+  --status-running-text: #0284C7;
+  --status-running-bg: rgba(2, 132, 199, 0.1);
+  --status-running-border: #38BDF8;
+
+  --status-success-text: #047857;
+  --status-success-bg: rgba(4, 120, 87, 0.1);
+  --status-success-border: #34D399;
+
+  --status-warning-text: #B45309;
+  --status-warning-bg: rgba(180, 83, 9, 0.1);
+  --status-warning-border: #FBBF24;
+
+  --status-error-text: #BE123C;
+  --status-error-bg: rgba(190, 18, 60, 0.1);
+  --status-error-border: #FB7185;
+
+  --status-skipped-text: #4B5563;
+  --status-skipped-bg: rgba(107, 114, 128, 0.1);
+  --status-skipped-border: #9CA3AF;
+
+  /* Legacy Zinc scale mappings for backwards compatibility in light mode */
+  --zinc-950: #F6F3EE;
+  --zinc-900: #EDE9E1;
+  --zinc-850: #E5E0D7;
+  --zinc-800: #D8D2C7;
+  --zinc-700: #C3BAA8;
+  --zinc-650: #AAA294;
+  --zinc-600: #928B7D;
+  --zinc-550: #7A7369;
+  --zinc-500: #6B6559;
+  --zinc-450: #58524A;
+  --zinc-400: #4A4540;
+  --zinc-300: #3A352E;
+  --zinc-200: #2B2520;
+  --zinc-100: #1A1610;
+  --zinc-50:  #100E0A;
+
+  /* Canvas Grid */
+  --canvas-grid: #D8D2C7;
+}
+
+.dark {
+  /* Deep Space Charcoal Dark Theme */
+  --bg-app: #09090B;
+  --bg-surface: #121215;
+  --bg-surface-header: #18181B;
+  --border-subtle: #27272A;
+  --border-strong: #3F3F46;
+
+  --text-primary: #FAFAFA;
+  --text-secondary: #D4D4D8;
+  --text-muted: #A1A1AA;
+  --text-faint: #71717A;
+
+  /* Accent Color (Electric Indigo Glow) */
+  --accent-primary: #6366F1;
+  --accent-primary-hover: #4F46E5;
+  --accent-light: rgba(99, 102, 241, 0.15);
+  --accent-border: #818CF8;
+
+  /* Status Colors (WCAG AA compliant contrast on dark bg) */
+  --status-running-text: #38BDF8;
+  --status-running-bg: rgba(56, 189, 248, 0.15);
+  --status-running-border: #0284C7;
+
+  --status-success-text: #34D399;
+  --status-success-bg: rgba(52, 211, 153, 0.15);
+  --status-success-border: #059669;
+
+  --status-warning-text: #FBBF24;
+  --status-warning-bg: rgba(251, 191, 36, 0.15);
+  --status-warning-border: #D97706;
+
+  --status-error-text: #FB7185;
+  --status-error-bg: rgba(251, 113, 133, 0.15);
+  --status-error-border: #E11D48;
+
+  --status-skipped-text: #9CA3AF;
+  --status-skipped-bg: rgba(156, 163, 175, 0.12);
+  --status-skipped-border: #4B5563;
+
+  /* Legacy Zinc scale mappings for dark mode */
+  --zinc-950: #09090B;
+  --zinc-900: #121215;
+  --zinc-850: #18181B;
+  --zinc-800: #27272A;
+  --zinc-700: #3F3F46;
+  --zinc-650: #52525B;
+  --zinc-600: #71717A;
+  --zinc-550: #A1A1AA;
+  --zinc-500: #D4D4D8;
+  --zinc-450: #E4E4E7;
+  --zinc-400: #F4F4F5;
+  --zinc-300: #FAFAFA;
+  --zinc-200: #FAFAFA;
+  --zinc-100: #FFFFFF;
+  --zinc-50:  #FFFFFF;
+
+  /* Canvas Grid */
+  --canvas-grid: #27272A;
 }
 
 html, body, #root {
@@ -38,29 +132,31 @@ html, body, #root {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background-color: var(--zinc-950);
-  color: var(--zinc-100);
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
-/* ─── React Flow ─────────────────────────────────────────────────────────── */
+/* ─── React Flow Canvas Styling ────────────────────────────────────────────── */
 .react-flow__background {
-  background-color: var(--zinc-950) !important;
+  background-color: var(--bg-app) !important;
 }
 
 .react-flow__controls {
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 1px 2px rgb(0 0 0 / 0.06);
-  border: 1px solid var(--zinc-800) !important;
-  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 10px;
   overflow: hidden;
 }
 
 .react-flow__controls-button {
-  background: var(--zinc-900) !important;
-  color: var(--zinc-500) !important;
+  background: var(--bg-surface) !important;
+  color: var(--text-muted) !important;
   border: none !important;
-  border-bottom: 1px solid var(--zinc-800) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
   fill: currentColor !important;
+  transition: all 150ms ease;
 }
 
 .react-flow__controls-button:last-child {
@@ -68,12 +164,61 @@ html, body, #root {
 }
 
 .react-flow__controls-button:hover {
-  background: var(--zinc-800) !important;
-  color: var(--zinc-200) !important;
+  background: var(--border-subtle) !important;
+  color: var(--text-primary) !important;
 }
 
 .react-flow__controls-button svg {
   fill: currentColor !important;
+}
+
+/* ─── Custom Animations & State Transitions ───────────────────────────────── */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(56, 189, 248, 0.7);
+  }
+}
+
+@keyframes successFlash {
+  0% {
+    box-shadow: 0 0 25px rgba(52, 211, 153, 0.8);
+    border-color: #34D399;
+  }
+  100% {
+    box-shadow: 0 0 8px rgba(52, 211, 153, 0.2);
+  }
+}
+
+.animate-running-glow {
+  animation: pulseGlow 1.8s infinite ease-in-out;
+}
+
+.animate-success-flash {
+  animation: successFlash 0.8s ease-out;
+}
+
+/* Connection handle micro-interactions */
+.react-flow__handle {
+  transition: transform 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.react-flow__handle:hover,
+.react-flow__handle-connecting {
+  transform: scale(1.35) !important;
+  box-shadow: 0 0 10px var(--accent-primary) !important;
+}
+
+.react-flow__handle-valid {
+  background-color: var(--status-success-border) !important;
+  box-shadow: 0 0 12px var(--status-success-border) !important;
+}
+
+.react-flow__handle-invalid {
+  background-color: var(--status-error-border) !important;
+  box-shadow: 0 0 12px var(--status-error-border) !important;
 }
 
 /* ─── Scrollbars ─────────────────────────────────────────────────────────── */
@@ -83,24 +228,14 @@ html, body, #root {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--zinc-900);
+  background: var(--bg-surface);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--zinc-800);
+  background: var(--border-subtle);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--zinc-700);
-}
-
-/* ─── React Flow edges ───────────────────────────────────────────────────── */
-.react-flow__edge-path {
-  stroke: var(--zinc-700) !important;
-}
-
-.react-flow__edge.selected .react-flow__edge-path,
-.react-flow__edge:hover .react-flow__edge-path {
-  stroke: #0EA5E9 !important;
+  background: var(--border-strong);
 }

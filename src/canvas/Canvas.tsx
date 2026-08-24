@@ -21,6 +21,7 @@ import SQLiteStorageNode from './SQLiteStorageNode';
 import TextTransformNode from './TextTransformNode';
 import StickyNoteNode from './StickyNoteNode';
 import GenericNode from './GenericNode';
+import CustomDataEdge from './CustomDataEdge';
 
 // Map custom node types
 const nodeTypes = {
@@ -40,6 +41,12 @@ const nodeTypes = {
   'loop': GenericNode,
 };
 
+// Map custom edge types
+const edgeTypes = {
+  default: CustomDataEdge,
+  customData: CustomDataEdge,
+};
+
 interface CanvasProps {
   nodes: Node[];
   edges: Edge[];
@@ -53,6 +60,7 @@ interface CanvasProps {
   clientId?: number;
   setCursor?: (cursor: { x: number, y: number } | null) => void;
   isMobile?: boolean;
+  theme?: 'light' | 'dark';
 }
 
 export const Canvas = ({
@@ -68,6 +76,7 @@ export const Canvas = ({
   clientId,
   setCursor,
   isMobile = false,
+  theme = 'light'
 }: CanvasProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const reactFlowInstance = useReactFlow();
@@ -292,15 +301,33 @@ export const Canvas = ({
           </div>
         );
       })}
-      
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        isValidConnection={isValidConnection}
+
+      {/* Enrich edges with source output payload & execution status */}
+      {(() => {
+        const formattedEdges = edges.map(edge => {
+          const sourceNode = nodes.find(n => n.id === edge.source);
+          const targetNode = nodes.find(n => n.id === edge.target);
+          return {
+            ...edge,
+            type: edge.type || 'default',
+            data: {
+              ...edge.data,
+              payload: sourceNode?.data?.output,
+              status: targetNode?.data?.status || sourceNode?.data?.status || 'idle',
+            },
+          };
+        });
+
+        return (
+          <ReactFlow
+            nodes={nodes}
+            edges={formattedEdges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            isValidConnection={isValidConnection}
         onNodeClick={(_event, node) => onSelectNode(node)}
         onPaneClick={() => onSelectNode(null)}
         onSelectionChange={onSelectionChange}
@@ -319,7 +346,7 @@ export const Canvas = ({
           variant={BackgroundVariant.Dots}
           gap={16}
           size={1}
-          color="#D8D2C7"
+          color={theme === 'dark' ? '#27272A' : '#D8D2C7'}
         />
         <Controls showInteractive={false} className="bg-zinc-950 border border-zinc-800 text-zinc-400" />
         
@@ -337,6 +364,8 @@ export const Canvas = ({
           />
         )}
       </ReactFlow>
+      );
+      })()}
 
       {/* MiniMap Toggle Button */}
       <button
