@@ -75,7 +75,7 @@ function AppContent() {
   const lastSavedStateRef = useRef<string>('');
 
   // React Flow canvas states (Synced with Yjs)
-  const { nodes, setNodes, onNodesChange, edges, setEdges, onEdgesChange, undo, redo, awarenessUsers, setEditingNode, clientId, setCursor } = useYjsSync(currentWorkflowId, token, activeOrg?.id, user);
+  const { nodes, setNodes, onNodesChange, edges, setEdges, onEdgesChange, awarenessUsers, setEditingNode, clientId, setCursor } = useYjsSync(currentWorkflowId, token, activeOrg?.id, user);
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   // Multi-select tracking: all currently selected node IDs
@@ -325,10 +325,6 @@ function AppContent() {
     localStorage.setItem('openflow_onboarding_completed', 'true');
   };
 
-  // Undo/Redo history — delegated to Yjs UndoManager
-  const canUndo = true;
-  const canRedo = true;
-
   // Clipboard for copy/paste
   const clipboardRef = useRef<Node[]>([]);
 
@@ -341,22 +337,92 @@ function AppContent() {
   const prevStatusesRef = useRef<Record<string, string>>({});
 
   // -------------------------------------------
-  // History (Undo/Redo) helpers
+  // History (Undo/Redo) Stack Implementation
   // -------------------------------------------
+  const historyRef = useRef<{ nodes: Node[]; edges: Edge[] }[]>([]);
+  const historyIndexRef = useRef<number>(-1);
+  const isUndoingRedoingRef = useRef<boolean>(false);
 
-  // Kept as no-op to avoid breaking existing dependency arrays
-  const pushHistory = useCallback((_newNodes: Node[], _newEdges: Edge[]) => {}, []);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  const updateUndoRedoState = useCallback(() => {
+    setCanUndo(historyIndexRef.current > 0);
+    setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+  }, []);
+
+  const pushHistory = useCallback((newNodes: Node[], newEdges: Edge[]) => {
+    if (isUndoingRedoingRef.current) return;
+
+    // Truncate any forward redo history if a new user action takes place
+    const nextHistory = historyRef.current.slice(0, historyIndexRef.current + 1);
+
+    // Deep clone snapshot to prevent mutating past history entries
+    const snapshot = {
+      nodes: JSON.parse(JSON.stringify(newNodes)),
+      edges: JSON.parse(JSON.stringify(newEdges))
+    };
+
+    // Ignore duplicate consecutive snapshots
+    const lastSnapshot = nextHistory[nextHistory.length - 1];
+    if (lastSnapshot && JSON.stringify(lastSnapshot) === JSON.stringify(snapshot)) {
+      return;
+    }
+
+    nextHistory.push(snapshot);
+
+    // Limit stack size to 50 snapshots
+    if (nextHistory.length > 50) {
+      nextHistory.shift();
+    }
+
+    historyRef.current = nextHistory;
+    historyIndexRef.current = nextHistory.length - 1;
+
+    updateUndoRedoState();
+  }, [updateUndoRedoState]);
 
   const handleUndo = useCallback(() => {
-    undo();
-  }, [undo]);
+    if (historyIndexRef.current <= 0) return;
+
+    isUndoingRedoingRef.current = true;
+    historyIndexRef.current -= 1;
+    const previousState = historyRef.current[historyIndexRef.current];
+
+    if (previousState) {
+      const restoredNodes = JSON.parse(JSON.stringify(previousState.nodes));
+      const restoredEdges = JSON.parse(JSON.stringify(previousState.edges));
+      setNodes(restoredNodes);
+      setEdges(restoredEdges);
+    }
+
+    updateUndoRedoState();
+    setTimeout(() => { isUndoingRedoingRef.current = false; }, 50);
+  }, [setNodes, setEdges, updateUndoRedoState]);
 
   const handleRedo = useCallback(() => {
-    redo();
-  }, [redo]);
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+
+    isUndoingRedoingRef.current = true;
+    historyIndexRef.current += 1;
+    const nextState = historyRef.current[historyIndexRef.current];
+
+    if (nextState) {
+      const restoredNodes = JSON.parse(JSON.stringify(nextState.nodes));
+      const restoredEdges = JSON.parse(JSON.stringify(nextState.edges));
+      setNodes(restoredNodes);
+      setEdges(restoredEdges);
+    }
+
+    updateUndoRedoState();
+    setTimeout(() => { isUndoingRedoingRef.current = false; }, 50);
+  }, [setNodes, setEdges, updateUndoRedoState]);
 
   const clearHistory = useCallback(() => {
-    // Handled by Yjs upon workflow switch
+    historyRef.current = [];
+    historyIndexRef.current = -1;
+    setCanUndo(false);
+    setCanRedo(false);
   }, []);
 
   // Debounced config history push — groups typing into single undo step
@@ -840,6 +906,8 @@ function AppContent() {
         }
         setNodes(data.nodes);
         setEdges(data.edges);
+        clearHistory();
+        pushHistory(data.nodes, data.edges);
         if (data.name) setWorkflowName(data.name);
         alert('Workflow JSON successfully imported onto canvas!');
       } catch (err: any) {
@@ -936,13 +1004,16 @@ function AppContent() {
         const wf = data.workflow;
         setCurrentWorkflowId(wf.id);
         setWorkflowName(wf.name);
-        setNodes(wf.graph.nodes || []);
-        setEdges(wf.graph.edges || []);
+        const wfNodes = wf.graph.nodes || [];
+        const wfEdges = wf.graph.edges || [];
+        setNodes(wfNodes);
+        setEdges(wfEdges);
         clearHistory();
+        pushHistory(wfNodes, wfEdges);
         lastSavedStateRef.current = JSON.stringify({
           name: wf.name,
-          nodes: wf.graph.nodes || [],
-          edges: wf.graph.edges || []
+          nodes: wfNodes,
+          edges: wfEdges
         });
         setSaveStatus('saved');
         
@@ -971,6 +1042,7 @@ function AppContent() {
     setNodes([]);
     setEdges([]);
     clearHistory();
+    pushHistory([], []);
     setExecutionOutputs({});
     setExecutionErrors({});
     setRunLogs([]);
@@ -1466,6 +1538,7 @@ function AppContent() {
               onSelectNode={handleSelectNode}
               onDropNode={handleDropNode}
               onSelectionChange={handleSelectionChange}
+              onNodeDragStop={() => pushHistory(nodes, edges)}
               awarenessUsers={awarenessUsers}
               clientId={clientId}
               setCursor={setCursor}

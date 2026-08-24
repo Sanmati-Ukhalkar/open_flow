@@ -56,6 +56,7 @@ interface CanvasProps {
   onSelectNode: (node: Node | null) => void;
   onDropNode: (type: string, position: { x: number; y: number }) => void;
   onSelectionChange?: (params: OnSelectionChangeParams) => void;
+  onNodeDragStop?: () => void;
   awarenessUsers?: Map<number, any>;
   clientId?: number;
   setCursor?: (cursor: { x: number, y: number } | null) => void;
@@ -72,6 +73,7 @@ export const Canvas = ({
   onSelectNode,
   onDropNode,
   onSelectionChange,
+  onNodeDragStop,
   awarenessUsers,
   clientId,
   setCursor,
@@ -327,6 +329,7 @@ export const Canvas = ({
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onNodeDragStop={onNodeDragStop}
             isValidConnection={isValidConnection}
         onNodeClick={(_event, node) => onSelectNode(node)}
         onPaneClick={() => onSelectNode(null)}
