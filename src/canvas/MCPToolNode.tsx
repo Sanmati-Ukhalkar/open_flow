@@ -1,5 +1,5 @@
 import { Position } from 'reactflow';
-import { Wrench } from 'lucide-react';
+import { Cpu } from 'lucide-react';
 import NodeHeader from './NodeHeader';
 import NodeHandle from './NodeHandle';
 
@@ -41,9 +41,10 @@ export const MCPToolNode = ({ id, data, selected }: { id: string; data: MCPToolN
 
       <NodeHeader
         id={id}
+        nodeType="mcp-tool"
         label={data.label}
         defaultLabel="MCP Tool"
-        icon={Wrench}
+        icon={Cpu}
         status={data.status}
       />
 

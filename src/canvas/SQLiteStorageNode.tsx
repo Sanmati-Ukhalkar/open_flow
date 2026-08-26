@@ -45,6 +45,7 @@ export const SQLiteStorageNode = ({ id, data, selected }: { id: string; data: SQ
 
       <NodeHeader
         id={id}
+        nodeType="sqlite-storage"
         label={data.label}
         defaultLabel="SQLite Storage"
         icon={Database}

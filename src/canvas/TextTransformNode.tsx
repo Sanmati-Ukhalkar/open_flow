@@ -1,5 +1,5 @@
 import { Position } from 'reactflow';
-import { Combine } from 'lucide-react';
+import { Wrench } from 'lucide-react';
 import NodeHeader from './NodeHeader';
 import NodeHandle from './NodeHandle';
 
@@ -43,9 +43,10 @@ export const TextTransformNode = ({ id, data, selected }: { id: string; data: Te
 
       <NodeHeader
         id={id}
+        nodeType="text-transform"
         label={data.label}
         defaultLabel="Text Transform"
-        icon={Combine}
+        icon={Wrench}
         status={data.status}
       />
 

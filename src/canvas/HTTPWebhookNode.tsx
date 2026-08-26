@@ -45,6 +45,7 @@ export const HTTPWebhookNode = ({ id, data, selected }: { id: string; data: HTTP
 
       <NodeHeader
         id={id}
+        nodeType="http-webhook"
         label={data.label}
         defaultLabel="HTTP Webhook"
         icon={Globe}

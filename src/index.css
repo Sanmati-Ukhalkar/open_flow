@@ -17,11 +17,11 @@
   --text-muted: #6B6559;
   --text-faint: #928B7D;
 
-  /* Accent Color (AI-native Electric Indigo) */
-  --accent-primary: #4F46E5;
-  --accent-primary-hover: #4338CA;
-  --accent-light: #EEF2FF;
-  --accent-border: #C7D2FE;
+  /* Accent Color (Quantum Azure / Cyber Cyan) */
+  --accent-primary: #0284C7;
+  --accent-primary-hover: #0369A1;
+  --accent-light: #E0F2FE;
+  --accent-border: #7DD3FC;
 
   /* Status Colors (WCAG AA compliant contrast on light bg) */
   --status-running-text: #0284C7;
@@ -78,11 +78,11 @@
   --text-muted: #A1A1AA;
   --text-faint: #71717A;
 
-  /* Accent Color (Electric Indigo Glow) */
-  --accent-primary: #6366F1;
-  --accent-primary-hover: #4F46E5;
-  --accent-light: rgba(99, 102, 241, 0.15);
-  --accent-border: #818CF8;
+  /* Accent Color (Quantum Azure / Cyber Cyan Glow) */
+  --accent-primary: #0EA5E9;
+  --accent-primary-hover: #0284C7;
+  --accent-light: rgba(14, 165, 233, 0.15);
+  --accent-border: #38BDF8;
 
   /* Status Colors (WCAG AA compliant contrast on dark bg) */
   --status-running-text: #38BDF8;
@@ -136,6 +136,23 @@ html, body, #root {
   color: var(--text-primary);
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   transition: background-color 200ms ease, color 200ms ease;
+}
+
+/* ─── Typography Token Scale ────────────────────────────────────────────────── */
+.type-heading {
+  @apply font-sans font-bold text-sm tracking-tight text-zinc-100;
+}
+
+.type-body {
+  @apply font-sans text-xs text-zinc-300 leading-relaxed;
+}
+
+.type-label {
+  @apply font-sans text-[10px] font-semibold text-zinc-400 uppercase tracking-wider;
+}
+
+.type-mono {
+  @apply font-mono text-[10px] text-zinc-300 font-normal;
 }
 
 /* ─── React Flow Canvas Styling ────────────────────────────────────────────── */

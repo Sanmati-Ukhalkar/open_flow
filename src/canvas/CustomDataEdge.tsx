@@ -36,20 +36,30 @@ export const CustomDataEdge: React.FC<EdgeProps> = ({
   const status = data?.status || 'idle';
   const hasPayload = payload !== undefined && payload !== null;
 
-  // Determine line style and stroke based on status & hover state
-  let strokeColor = style.stroke || 'var(--border-strong)';
+  // ─── 3 Distinct Edge Visual States ───────────────────────────────────────────
+  let strokeColor = 'var(--border-strong)';
+  let strokeDasharray: string | undefined = undefined;
   let strokeWidth = isHovered ? 3.5 : (style.strokeWidth as number) || 2;
 
-  if (status === 'running') {
+  if (status === 'idle') {
+    // State 1: Never-Run / Idle Edge (Dashed neutral line)
+    strokeColor = isHovered ? 'var(--accent-primary)' : 'var(--border-strong)';
+    strokeDasharray = '4,4';
+  } else if (status === 'running') {
+    // Active Running Edge (Glowing cyan accent line)
     strokeColor = 'var(--status-running-text)';
+    strokeWidth = 2.5;
   } else if (status === 'success') {
+    // State 2: Successful Execution Edge (Solid bright emerald line)
     strokeColor = 'var(--status-success-text)';
+    strokeWidth = 2.5;
   } else if (status === 'success-with-warning') {
     strokeColor = 'var(--status-warning-text)';
-  } else if (status === 'error') {
-    strokeColor = 'var(--status-error-text)';
-  } else if (status === 'skipped') {
-    strokeColor = 'var(--status-skipped-text)';
+    strokeDasharray = '6,3';
+  } else if (status === 'error' || status === 'skipped') {
+    // State 3: Failed or Skipped Edge (Warning/Error dashed line)
+    strokeColor = status === 'error' ? 'var(--status-error-text)' : 'var(--status-skipped-text)';
+    strokeDasharray = '6,3';
   }
 
   // Format payload for tooltip display
@@ -76,6 +86,7 @@ export const CustomDataEdge: React.FC<EdgeProps> = ({
         style={{
           ...style,
           stroke: isHovered ? 'var(--accent-primary)' : strokeColor,
+          strokeDasharray: strokeDasharray || style.strokeDasharray,
           strokeWidth,
           transition: 'stroke 150ms ease, stroke-width 150ms ease',
           cursor: 'pointer',
@@ -107,19 +118,29 @@ export const CustomDataEdge: React.FC<EdgeProps> = ({
             onMouseLeave={() => setIsHovered(false)}
           >
             <div className="flex items-center justify-between gap-2 border-b border-zinc-800 pb-1 mb-1 text-[9px] uppercase tracking-wider font-sans text-zinc-400">
-              <span className="flex items-center gap-1 font-bold text-indigo-400">
+              <span className="flex items-center gap-1 font-bold text-sky-400">
                 <span>⚡</span> Edge Data Stream
               </span>
               <span className="font-mono text-zinc-500">source: {source}</span>
             </div>
 
-            <div className="text-zinc-300 break-words font-mono text-[10px] leading-relaxed">
-              {formatPayloadPreview(payload)}
-            </div>
+            {status === 'idle' ? (
+              <div className="text-zinc-500 italic text-[10px] py-0.5 font-sans">
+                Status: Idle (Not executed yet)
+              </div>
+            ) : status === 'error' || status === 'skipped' ? (
+              <div className="text-rose-400 font-sans text-[10px] py-0.5">
+                ⚠ Source node {status === 'error' ? 'failed' : 'was skipped'}
+              </div>
+            ) : (
+              <div className="text-zinc-300 break-words font-mono text-[10px] leading-relaxed">
+                {formatPayloadPreview(payload)}
+              </div>
+            )}
 
-            {hasPayload && (
+            {hasPayload && status === 'success' && (
               <div className="mt-1 text-[8px] text-emerald-400 font-sans font-semibold">
-                ✓ Data payload available
+                ✓ Data payload transferred
               </div>
             )}
           </div>

@@ -46,6 +46,7 @@ export const LLMPromptNode = ({ id, data, selected }: { id: string; data: LLMPro
 
       <NodeHeader
         id={id}
+        nodeType="llm-prompt"
         label={data.label}
         defaultLabel="LLM Prompt"
         icon={Bot}
