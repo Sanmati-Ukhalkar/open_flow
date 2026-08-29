@@ -1,0 +1,262 @@
+open_flow
+├── .env
+├── .env.example
+├── .github
+│   └── workflows
+│       ├── ci.yml
+│       └── deploy.yml
+├── .gitignore
+├── Dockerfile
+├── LICENSE
+├── README.md
+├── database.sqlite
+├── docker-compose.yml
+├── docs
+│   ├── AGENTS.md
+│   ├── API_REFERENCE.md
+│   ├── ARCHITECTURE.md
+│   ├── ARCHITECTURE_DOCS.md
+│   ├── ARCHITECTURE_INFRA.md
+│   ├── ARCHITECTURE_V10.md
+│   ├── ARCHITECTURE_V11.md
+│   ├── ARCHITECTURE_V12.md
+│   ├── ARCHITECTURE_V13.md
+│   ├── ARCHITECTURE_V14.md
+│   ├── ARCHITECTURE_V15.md
+│   ├── ARCHITECTURE_V2.md
+│   ├── ARCHITECTURE_V3.md
+│   ├── ARCHITECTURE_V4.md
+│   ├── ARCHITECTURE_V5.md
+│   ├── ARCHITECTURE_V6.md
+│   ├── ARCHITECTURE_V7.md
+│   ├── ARCHITECTURE_V8.md
+│   ├── ARCHITECTURE_V9.md
+│   ├── AUDIT_CLOSURE_PROMPT.md
+│   ├── AUDIT_CLOSURE_ROUND2.md
+│   ├── BROWSER_AGENT_QUEUE_ROUND2.md
+│   ├── CONTRIBUTING.md
+│   ├── CURRENT_STRUCTURE.md
+│   ├── FINAL_STRICT_AUDIT.md
+│   ├── FINAL_STRICT_AUDIT_RESULTS.json
+│   ├── FINAL_STRICT_AUDIT_RESULTS.md
+│   ├── FULL_PRODUCT_POLISH_PROMPT (1).md
+│   ├── NODE_AUDIT.md
+│   ├── NODE_AUTHORING_GUIDE.md
+│   ├── PRODUCT_POLISH_ROUND2.md
+│   ├── PRODUCT_POLISH_ROUND3.md
+│   ├── README (1).md
+│   ├── TEMPLATE_IMPLEMENTATION_PROMPT.md
+│   ├── UI_Screenshots.md
+│   ├── USE_CASES.md
+│   ├── VIDEO_WALKTHROUGH.md
+│   ├── images
+│   │   ├── canvas_editor.png
+│   │   └── landing_page.png
+│   └── screenshots
+│       ├── 01-canvas.png
+│       ├── 01_dark_canvas.png
+│       ├── 02-node-added.png
+│       ├── 03-node-config.png
+│       ├── 03_post_run_canvas.png
+│       ├── 04-execution-output.png
+│       └── 05_after_drag_connection.png
+├── e2e
+│   └── live_browser_audit.ts
+├── eng.traineddata
+├── eslint.config.js
+├── index.html
+├── metadata.sqlite
+├── netlify.toml
+├── package.json
+├── playwright-report
+│   └── index.html
+├── playwright.config.ts
+├── postcss.config.js
+├── public
+│   └── thumbnails
+│       ├── tmpl-cron-task.png
+│       ├── tmpl-daily-quote.png
+│       ├── tmpl-data-logger.png
+│       ├── tmpl-sentiment-analysis.png
+│       ├── tmpl-summarize-slack.png
+│       └── tmpl-text-transformer.png
+├── refactor.cjs
+├── scratch_clean_run.ts
+├── scratch_r2_screenshots.ts
+├── scratch_r2_step1.ts
+├── scratch_r2_step2.ts
+├── scratch_step10.ts
+├── scratch_step11.ts
+├── scratch_step12.ts
+├── scratch_step13.ts
+├── scratch_step14.ts
+├── scratch_step15.ts
+├── scratch_step5.ts
+├── scratch_step6.ts
+├── scratch_step7.ts
+├── scratch_step8.ts
+├── scratch_step9.ts
+├── src
+│   ├── App.tsx
+│   ├── canvas
+│   │   ├── AnalyticsDashboard.tsx
+│   │   ├── AuthScreen.tsx
+│   │   ├── Canvas.tsx
+│   │   ├── ConfigPanel.tsx
+│   │   ├── CredentialsManager.tsx
+│   │   ├── CustomDataEdge.tsx
+│   │   ├── Dashboard.tsx
+│   │   ├── DatabaseViewer.tsx
+│   │   ├── DeployModal.tsx
+│   │   ├── DeploymentAlertModal.tsx
+│   │   ├── DeploymentDashboard.tsx
+│   │   ├── GenericNode.tsx
+│   │   ├── HTTPWebhookNode.tsx
+│   │   ├── HistoryPanel.tsx
+│   │   ├── LLMPromptNode.tsx
+│   │   ├── MCPToolNode.tsx
+│   │   ├── Marketplace.tsx
+│   │   ├── McpRegistry.tsx
+│   │   ├── NodeDocsModal.tsx
+│   │   ├── NodeHandle.tsx
+│   │   ├── NodeHeader.tsx
+│   │   ├── OrgSettingsModal.tsx
+│   │   ├── OutputPanel.tsx
+│   │   ├── RunLogPanel.tsx
+│   │   ├── SQLiteStorageNode.tsx
+│   │   ├── ShortcutsOverlay.tsx
+│   │   ├── Sidebar.tsx
+│   │   ├── StickyNoteNode.tsx
+│   │   ├── TextTransformNode.tsx
+│   │   ├── TriggerDashboard.tsx
+│   │   ├── categoryUtils.ts
+│   │   ├── dateHelper.ts
+│   │   └── hooks
+│   │       └── useYjsSync.ts
+│   ├── components
+│   │   └── TemplateCloneModal.tsx
+│   ├── engine
+│   │   ├── topoSort.test.ts
+│   │   └── topoSort.ts
+│   ├── index.css
+│   ├── main.tsx
+│   ├── nodes
+│   │   ├── branch
+│   │   │   ├── definition.json
+│   │   │   ├── run.test.ts
+│   │   │   └── run.ts
+│   │   ├── code-execution
+│   │   │   ├── definition.json
+│   │   │   ├── run.test.ts
+│   │   │   └── run.ts
+│   │   ├── community
+│   │   │   ├── .gitkeep
+│   │   │   └── math-helper
+│   │   │       ├── definition.json
+│   │   │       ├── manifest.json
+│   │   │       └── run.ts
+│   │   ├── cron-trigger
+│   │   │   ├── README.md
+│   │   │   ├── definition.json
+│   │   │   ├── manifest.json
+│   │   │   ├── run.test.ts
+│   │   │   └── run.ts
+│   │   ├── email
+│   │   │   ├── definition.json
+│   │   │   ├── run.test.ts
+│   │   │   └── run.ts
+│   │   ├── file-trigger
+│   │   │   ├── definition.json
+│   │   │   ├── run.test.ts
+│   │   │   └── run.ts
+│   │   ├── http-webhook
+│   │   │   ├── README.md
+│   │   │   ├── definition.json
+│   │   │   ├── manifest.json
+│   │   │   ├── run.test.ts
+│   │   │   └── run.ts
+│   │   ├── llm-prompt
+│   │   │   ├── README.md
+│   │   │   ├── definition.json
+│   │   │   ├── manifest.json
+│   │   │   ├── run.test.ts
+│   │   │   └── run.ts
+│   │   ├── loop
+│   │   │   ├── definition.json
+│   │   │   ├── run.test.ts
+│   │   │   └── run.ts
+│   │   ├── mcp-tool
+│   │   │   ├── README.md
+│   │   │   ├── definition.json
+│   │   │   ├── manifest.json
+│   │   │   ├── run.test.ts
+│   │   │   └── run.ts
+│   │   ├── node-limits.json
+│   │   ├── registry.json
+│   │   ├── sqlite-storage
+│   │   │   ├── README.md
+│   │   │   ├── definition.json
+│   │   │   ├── manifest.json
+│   │   │   ├── run.test.ts
+│   │   │   └── run.ts
+│   │   ├── sticky-note
+│   │   │   └── definition.json
+│   │   ├── text-transform
+│   │   │   ├── README.md
+│   │   │   ├── definition.json
+│   │   │   ├── manifest.json
+│   │   │   ├── run.test.ts
+│   │   │   └── run.ts
+│   │   ├── vector-retrieve
+│   │   │   ├── definition.json
+│   │   │   ├── run.test.ts
+│   │   │   └── run.ts
+│   │   ├── vector-store
+│   │   │   ├── definition.json
+│   │   │   ├── run.test.ts
+│   │   │   └── run.ts
+│   │   ├── vision-ocr
+│   │   │   ├── definition.json
+│   │   │   ├── run.test.ts
+│   │   │   └── run.ts
+│   │   └── webhook-trigger
+│   │       ├── README.md
+│   │       ├── definition.json
+│   │       ├── manifest.json
+│   │       ├── run.test.ts
+│   │       └── run.ts
+│   ├── pages
+│   │   └── Templates.tsx
+│   └── server
+│       ├── __tests__
+│       │   ├── auth.test.ts
+│       │   ├── engine.test.ts
+│       │   └── templates.test.ts
+│       ├── analytics.ts
+│       ├── auth.ts
+│       ├── crypto.ts
+│       ├── db.ts
+│       ├── engine.ts
+│       ├── events.ts
+│       ├── logger.ts
+│       ├── mcp-server.ts
+│       ├── sandbox-worker.ts
+│       ├── sandbox.ts
+│       ├── seed-templates.ts
+│       └── server.ts
+├── tailwind.config.js
+├── test-results
+│   └── .last-run.json
+├── tests
+│   ├── adversarial.spec.ts
+│   ├── all-nodes-audit.spec.ts
+│   ├── canvas.spec.ts
+│   ├── helpers
+│   │   └── navigateToCanvas.ts
+│   ├── screenshots-gen.spec.ts
+│   └── strict-audit.spec.ts
+├── tree.txt
+├── tsconfig.json
+├── tsconfig.tsbuildinfo
+├── vite.config.ts
+└── vitest.config.ts

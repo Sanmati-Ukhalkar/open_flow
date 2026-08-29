@@ -146,5 +146,7 @@ vite.config.ts.timestamp-*
 *.sqlite
 database.sqlite
 eng.traineddata
+data/
 playwright-report/
 test-results/
+

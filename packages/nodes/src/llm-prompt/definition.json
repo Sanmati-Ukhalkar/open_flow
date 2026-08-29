@@ -1,0 +1,57 @@
+{
+  "id": "llm-prompt",
+  "displayName": "LLM Prompt",
+  "icon": "Bot",
+  "category": "AI",
+  "inputSchema": {
+    "type": "object",
+    "properties": {}
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "capabilities": ["network:fetch", "secrets:llm"],
+  "configFields": [
+    {
+      "name": "promptText",
+      "label": "Prompt",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Enter your prompt template here..."
+    },
+    {
+      "name": "model",
+      "label": "Model",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "groq/compound", "label": "Groq Compound (Groq - Recommended)" },
+        { "value": "groq/compound-mini", "label": "Groq Compound Mini (Groq)" },
+        { "value": "openai/gpt-oss-120b", "label": "GPT-OSS 120B (Groq)" },
+        { "value": "openai/gpt-oss-20b", "label": "GPT-OSS 20B (Groq)" },
+        { "value": "openai/gpt-oss-safeguard-20b", "label": "GPT-OSS Safeguard 20B (Groq)" },
+        { "value": "qwen/qwen3.6-27b", "label": "Qwen 3.6 27B (Groq)" },
+        { "value": "qwen/qwen3.8-27b", "label": "Qwen 3.8 27B (Groq)" },
+        { "value": "canopylabs/orpheus-v1-english", "label": "Orpheus v1 English (Groq)" },
+        { "value": "canopylabs/orpheus-arabic-saudi", "label": "Orpheus Arabic Saudi (Groq)" },
+        { "value": "meta-llama/llama-prompt-guard-2-86m", "label": "Llama Prompt Guard 2 86M (Groq)" },
+        { "value": "meta-llama/llama-prompt-guard-2-22m", "label": "Llama Prompt Guard 2 22M (Groq)" },
+        { "value": "whisper-large-v3", "label": "Whisper Large v3 (Groq)" },
+        { "value": "whisper-large-v3-turbo", "label": "Whisper Large v3 Turbo (Groq)" },
+        { "value": "gpt-4o-mini", "label": "gpt-4o-mini (OpenAI)" },
+        { "value": "gpt-4o", "label": "gpt-4o (OpenAI)" }
+      ],
+      "defaultValue": "groq/compound"
+    }
+  ]
+}

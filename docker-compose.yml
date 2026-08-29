@@ -1,34 +1,72 @@
 version: '3.8'
 
 services:
-  backend:
+  redis:
+    image: redis:7-alpine
+    container_name: openflow_redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  api:
     build:
       context: .
-      target: backend
-    container_name: openflow_backend
+      dockerfile: Dockerfile
+      target: api
+    container_name: openflow_api
     ports:
       - "3001:3001"
-    volumes:
-      - ./metadata.sqlite:/app/metadata.sqlite
-      - ./database.sqlite:/app/database.sqlite
     environment:
       - PORT=3001
       - NODE_ENV=production
-      - LOG_LEVEL=info
+      - REDIS_URL=redis://redis:6379
       - JWT_SECRET=production-secret-change-me
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GROQ_API_KEY=${GROQ_API_KEY}
+    depends_on:
+      - redis
     restart: always
 
-  frontend:
+  worker:
     build:
       context: .
-      target: frontend
-    container_name: openflow_frontend
+      dockerfile: Dockerfile
+      target: worker
+    container_name: openflow_worker
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    depends_on:
+      - redis
+      - api
+    restart: always
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: scheduler
+    container_name: openflow_scheduler
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+      - api
+    restart: always
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web
+    container_name: openflow_web
     ports:
       - "5173:5173"
     environment:
-      - BACKEND_URL=http://backend:3001
+      - BACKEND_URL=http://api:3001
     depends_on:
-      - backend
+      - api
     restart: always
