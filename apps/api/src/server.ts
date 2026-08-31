@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { db, DatabaseWrapper, encrypt, seedTemplates, runMigrations, logger, log } from '@open-flow/db';
+import { db, DatabaseWrapper, encrypt, seedTemplates, runMigrations, logger } from '@open-flow/db';
 import { hashPassword, verifyPassword, generateSessionToken, verifySessionToken, authenticateToken, AuthenticatedRequest } from './auth';
 import { analyticsRouter } from './analytics';
 import { executeRunBackend } from '@open-flow/engine';

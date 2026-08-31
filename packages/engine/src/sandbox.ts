@@ -6,7 +6,6 @@
  *  - Structured error mapping onto the existing node error model
  */
 import { Worker } from 'worker_threads';
-import path from 'path';
 import fs from 'fs';
 import { resolveNodeFile } from './paths';
 

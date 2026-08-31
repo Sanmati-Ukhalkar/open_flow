@@ -17,7 +17,6 @@ import {
 } from '@open-flow/nodes';
 import { runInSandbox, getNodeCapabilities } from './sandbox';
 import { workflowEvents, WORKFLOW_RUN_UPDATE } from './events';
-import path from 'path';
 import fs from 'fs';
 
 
