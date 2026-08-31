@@ -71,6 +71,7 @@ export class DatabaseWrapper {
           console.error(`Failed to connect to SQLite at ${sqlitePath}:`, err.message);
         } else {
           console.log(`Connected to SQLite database.`);
+          this.sqliteDb?.configure('busyTimeout', 5000);
         }
       });
     }

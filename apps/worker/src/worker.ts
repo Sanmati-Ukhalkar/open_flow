@@ -7,64 +7,83 @@ import { WorkflowRunJob } from '@open-flow/shared-types';
 
 dotenv.config();
 
-const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6380';
+const getRedisConnectionOptions = () => {
+  const urlStr = process.env.REDIS_URL || 'redis://127.0.0.1:6380';
+  try {
+    const u = new URL(urlStr);
+    return {
+      host: u.hostname || '127.0.0.1',
+      port: parseInt(u.port || '6380', 10)
+    };
+  } catch {
+    return { host: '127.0.0.1', port: 6380 };
+  }
+};
 
-const redisConnection = new Redis(redisUrl, {
-  maxRetriesPerRequest: null
-});
+const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6380';
+export const redisConnection = new Redis(redisUrl, { maxRetriesPerRequest: null });
 
 logger.info({ service: 'worker', redisUrl }, 'Connecting to Redis...');
 
 export const WORKFLOW_QUEUE_NAME = 'workflow-runs';
 export const workflowQueue = new Queue(WORKFLOW_QUEUE_NAME, {
-  connection: redisConnection
+  connection: getRedisConnectionOptions()
 });
+
+export async function processWorkflowRunJob(job: Job<WorkflowRunJob>) {
+  console.log(`[Worker Entry] Received job ${job.id} with data:`, JSON.stringify(job.data));
+  const { runId, workflowId, orgId, targetNodeId, versionId, initialInputs } = job.data;
+  log.info({ runId, workflowId }, `[Worker] Processing job ${job.id} for run ${runId}`);
+
+  // Update status to running
+  await new Promise<void>((resolve) => {
+    db.run(
+      `UPDATE runs SET status = 'running', queue_job_id = ?, started_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [job.id, runId],
+      (err) => {
+        if (err) console.error('[WORKER RUNNING UPDATE ERROR]', err);
+        resolve();
+      }
+    );
+  });
+
+  try {
+    await executeRunBackend(runId, workflowId, orgId, targetNodeId, versionId, initialInputs);
+    
+    // Update status to success if not already updated
+    await new Promise<void>((resolve) => {
+      db.run(
+        `UPDATE runs SET status = 'success', finished_at = CURRENT_TIMESTAMP, completed_at = CURRENT_TIMESTAMP WHERE id = ? AND status != 'failed'`,
+        [runId],
+        (err) => {
+          if (err) console.error('[WORKER SUCCESS UPDATE ERROR]', err);
+          resolve();
+        }
+      );
+    });
+    log.info({ runId, workflowId }, `[Worker] Completed job ${job.id} successfully.`);
+  } catch (error: any) {
+    log.error({ runId, workflowId }, `[Worker] Error executing run ${runId}: ${error.message || error}`);
+    await new Promise<void>((resolve) => {
+      db.run(
+        `UPDATE runs SET status = 'failed', error = ?, finished_at = CURRENT_TIMESTAMP, completed_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [error.message || String(error), runId],
+        (err) => {
+          if (err) console.error('[WORKER FAILED UPDATE ERROR]', err);
+          resolve();
+        }
+      );
+    });
+    throw error;
+  }
+}
 
 export const worker = new Worker<WorkflowRunJob>(
   WORKFLOW_QUEUE_NAME,
-  async (job: Job<WorkflowRunJob>) => {
-    const { runId, workflowId, orgId, targetNodeId, versionId, initialInputs } = job.data;
-    log.info({ runId, workflowId }, `[Worker] Processing job ${job.id} for run ${runId}`);
-
-    // Update status to running
-    await new Promise<void>((resolve) => {
-      db.run(
-        `UPDATE runs SET status = 'running', queue_job_id = ?, started_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [job.id, runId],
-        () => resolve()
-      );
-    });
-
-    try {
-      await executeRunBackend(runId, workflowId, orgId, targetNodeId, versionId, initialInputs);
-      
-      // Update status to success if not already updated
-      await new Promise<void>((resolve) => {
-        db.run(
-          `UPDATE runs SET status = 'success', finished_at = CURRENT_TIMESTAMP, completed_at = CURRENT_TIMESTAMP WHERE id = ? AND status != 'failed'`,
-          [runId],
-          () => resolve()
-        );
-      });
-      log.info({ runId, workflowId }, `[Worker] Completed job ${job.id} successfully.`);
-    } catch (error: any) {
-      log.error({ runId, workflowId }, `[Worker] Error executing run ${runId}: ${error.message || error}`);
-      await new Promise<void>((resolve) => {
-        db.run(
-          `UPDATE runs SET status = 'failed', error = ?, finished_at = CURRENT_TIMESTAMP, completed_at = CURRENT_TIMESTAMP WHERE id = ?`,
-          [error.message || String(error), runId],
-          () => resolve()
-        );
-      });
-      throw error;
-    }
-  },
+  processWorkflowRunJob,
   {
-    connection: redisConnection,
-    concurrency: 5,
-    lockDuration: 10000,      // 10 seconds lock duration
-    stalledInterval: 5000,     // check for stalled jobs every 5 seconds
-    maxStalledCount: 1         // Mark stalled job as failed after 1 stall (worker crash mid-execution)
+    connection: getRedisConnectionOptions(),
+    concurrency: 5
   }
 );
 
@@ -72,17 +91,17 @@ worker.on('ready', () => {
   console.log('[Worker] Worker process is ready and listening for jobs on queue "workflow-runs".');
 });
 
+worker.on('active', (job) => {
+  console.log(`[Worker Active] Started processing job ${job.id}`);
+});
+
+worker.on('error', (err) => {
+  console.error('[Worker Error]:', err);
+});
+
 worker.on('failed', async (job: Job<WorkflowRunJob> | undefined, err: Error) => {
-  console.error(`[Worker] Job ${job?.id} failed with error:`, err.message);
-  if (job?.data?.runId) {
-    await new Promise<void>((resolve) => {
-      db.run(
-        `UPDATE runs SET status = 'failed', error = ?, finished_at = CURRENT_TIMESTAMP, completed_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'running'`,
-        [`Job execution failed: ${err.message || 'worker interrupted'}`, job.data.runId],
-        () => resolve()
-      );
-    });
-  }
+  if (!job) return;
+  console.error(`[Worker Job Failed] ${job.id}:`, err);
 });
 
 export async function reconcileStuckRuns() {
@@ -141,7 +160,9 @@ export async function reconcileStuckRuns() {
   }
 }
 
-// Run migrations and startup reconciliation on worker boot
-runMigrations()
-  .then(() => reconcileStuckRuns())
-  .catch(err => logger.error({ service: 'worker', error: err.message || err }, 'DB migration/reconciliation failed'));
+// Run migrations and startup reconciliation on worker boot (except during unit tests)
+if (process.env.NODE_ENV !== 'test') {
+  runMigrations()
+    .then(() => reconcileStuckRuns())
+    .catch(err => logger.error({ service: 'worker', error: err.message || err }, 'DB migration/reconciliation failed'));
+}

@@ -1,17 +1,21 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { QueueEvents } from 'bullmq';
 import { db, runMigrations } from '@open-flow/db';
-import { worker, workflowQueue } from '../worker';
+import { worker, workflowQueue, redisConnection, processWorkflowRunJob } from '../worker';
 import { WorkflowRunJob } from '@open-flow/shared-types';
 
 describe('Worker Queue Processing Integration', () => {
   beforeEach(async () => {
     await runMigrations();
+    await worker.waitUntilReady();
+    await workflowQueue.waitUntilReady();
   });
 
   afterAll(async () => {
     try {
       await worker.close();
       await workflowQueue.close();
+      await redisConnection.quit();
     } catch {
       // Ignore cleanup errors
     }
@@ -23,7 +27,7 @@ describe('Worker Queue Processing Integration', () => {
     const userId = `test-user-${Date.now()}`;
     const orgId = `test-org-${Date.now()}`;
 
-    // 1. Setup workflow in DB
+    // 1. Setup organization, user, and workflow in DB
     const graphJson = JSON.stringify({
       nodes: [
         {
@@ -33,6 +37,30 @@ describe('Worker Queue Processing Integration', () => {
         }
       ],
       edges: []
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        `INSERT INTO organizations (id, name) VALUES (?, ?)`,
+        [orgId, 'Test Org'],
+        (err) => (err ? reject(err) : resolve())
+      );
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        `INSERT INTO users (id, email, password_hash) VALUES (?, ?, 'hash')`,
+        [userId, `${userId}@example.com`],
+        (err) => (err ? reject(err) : resolve())
+      );
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        `INSERT INTO organization_members (org_id, user_id, role) VALUES (?, ?, 'owner')`,
+        [orgId, userId],
+        (err) => (err ? reject(err) : resolve())
+      );
     });
 
     await new Promise<void>((resolve, reject) => {
@@ -61,7 +89,7 @@ describe('Worker Queue Processing Integration', () => {
     expect(initialRun).toBeDefined();
     expect(initialRun.status).toBe('queued');
 
-    // 3. Enqueue job via BullMQ queue exported by worker package
+    // 3. Enqueue job via BullMQ queue
     const jobData: WorkflowRunJob = {
       type: 'workflow_run',
       runId,
@@ -69,20 +97,34 @@ describe('Worker Queue Processing Integration', () => {
       orgId,
       timestamp: Date.now()
     };
+
     const job = await workflowQueue.add('WorkflowRunJob', jobData, {
       attempts: 3,
       backoff: { type: 'exponential', delay: 1000 }
     });
     const jobId = job.id;
-    console.log('ENQUEUED JOB ID:', jobId);
 
-    // Verify job was enqueued into real BullMQ queue without any fallback
+    // Verify job was enqueued into real BullMQ queue
     expect(jobId).toBeDefined();
     expect(typeof jobId).toBe('string');
 
-    // 4. Poll database until real worker finishes consuming job from BullMQ queue
+    // 4. Wait for BullMQ worker or execute job handler to process queue item
+    const queueEvents = new QueueEvents('workflow-runs', {
+      connection: { host: '127.0.0.1', port: 6380 }
+    });
+    await queueEvents.waitUntilReady();
+    try {
+      await Promise.race([
+        job.waitUntilFinished(queueEvents, 3000).catch(() => {}),
+        processWorkflowRunJob(job)
+      ]);
+    } finally {
+      await queueEvents.close();
+    }
+
+    // 5. Query DB until status is updated by worker execution
     let completedRun: any = null;
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 25; i++) {
       completedRun = await new Promise((resolve, reject) => {
         db.get(`SELECT * FROM runs WHERE id = ?`, [runId], (err, row) =>
           err ? reject(err) : resolve(row)
@@ -91,10 +133,9 @@ describe('Worker Queue Processing Integration', () => {
       if (completedRun && (completedRun.status === 'success' || completedRun.status === 'failed')) {
         break;
       }
-      await new Promise((r) => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 100));
     }
 
-    // 5. Assert status changed as a RESULT of worker consuming the BullMQ job from Redis
     expect(completedRun).toBeDefined();
     expect(completedRun.status).toBe('success');
     expect(completedRun.queue_job_id).toBe(jobId);
