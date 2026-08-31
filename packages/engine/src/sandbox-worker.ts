@@ -19,15 +19,17 @@ const { runPath, input, config, allowedEnv, capabilities = [] } = workerData as 
   capabilities?: string[];
 };
 
-// 1. Patch process.env so only declared capabilities' keys are visible
+// 1. Patch process.env so only declared capabilities' keys are visible and sensitive keys are explicitly purged
+const SENSITIVE_KEYS = ['ENCRYPTION_KEY', 'JWT_SECRET', 'DATABASE_URL', 'SQLITE_DB_PATH', 'STORAGE_DB_PATH', 'REDIS_URL'];
 Object.keys(process.env).forEach(key => {
-  if (!(key in allowedEnv)) {
+  if (!(key in allowedEnv) || SENSITIVE_KEYS.includes(key)) {
     delete process.env[key];
   }
 });
 Object.assign(process.env, allowedEnv);
+SENSITIVE_KEYS.forEach(key => delete process.env[key]);
 
-// 2. Enforce Network Capability Boundary (Issue #11)
+// 2. Enforce Network Capability Boundary (Issue #11 & #14)
 const hasNetworkCap = capabilities.includes('network:fetch');
 if (!hasNetworkCap) {
   const blockNetwork = () => {
@@ -37,6 +39,23 @@ if (!hasNetworkCap) {
   if (typeof globalThis.fetch === 'function') {
     // @ts-ignore
     globalThis.fetch = blockNetwork;
+  }
+}
+
+// 3. Enforce Subprocess Spawning Capability Boundary (Issue #14)
+const hasChildProcessCap = capabilities.includes('exec:child_process');
+if (!hasChildProcessCap) {
+  try {
+    const cp = require('child_process');
+    const blockExec = () => {
+      throw new Error("SANDBOX_SECURITY_VIOLATION: Child process execution is disabled for this node type because it lacks the 'exec:child_process' capability declaration.");
+    };
+    cp.exec = blockExec;
+    cp.spawn = blockExec;
+    cp.execFile = blockExec;
+    cp.execSync = blockExec;
+  } catch {
+    // Ignore if child_process cannot be required
   }
 }
 

@@ -66,6 +66,10 @@ export function runInSandbox(
       workerData: { runPath, input, config, allowedEnv, capabilities },
       // Use tsx to transpile TypeScript worker on the fly
       execArgv: ['--import', 'tsx/esm'],
+      resourceLimits: {
+        maxOldGenerationSizeMb: 128,
+        maxYoungGenerationSizeMb: 32
+      }
     });
 
     let settled = false;

@@ -19,6 +19,7 @@ import {
   runTextTransform
 } from '@open-flow/nodes';
 import { enqueueWorkflowRun } from './queue';
+import { checkSlidingWindowRateLimit } from './rateLimiter';
 
 
 dotenv.config();
@@ -1062,7 +1063,7 @@ app.post('/api/webhooks/:workflowId', async (req, res) => {
     }
 
     // Check trigger state in triggers table
-    db.get('SELECT * FROM triggers WHERE workflow_id = ? AND trigger_type = ?', [workflowId, 'webhook'], (trigErr, trigger: any) => {
+    db.get('SELECT * FROM triggers WHERE workflow_id = ? AND trigger_type = ?', [workflowId, 'webhook'], async (trigErr, trigger: any) => {
       if (trigErr || !trigger) {
         return res.status(404).json({ error: 'Not Found', message: 'Webhook trigger is not configured or disabled for this workflow.' });
       }
@@ -1071,8 +1072,14 @@ app.post('/api/webhooks/:workflowId', async (req, res) => {
       }
 
       // Check Rate Limits
-      if (!checkRateLimit(deployment.id)) {
-        return res.status(429).json({ error: 'Too Many Requests', message: 'Rate limit cap exceeded.' });
+      const rateLimitRes = await checkSlidingWindowRateLimit(`webhook:${workflowId}`, 60);
+      if (!rateLimitRes.allowed) {
+        res.setHeader('Retry-After', String(rateLimitRes.retryAfterSeconds));
+        return res.status(429).json({
+          error: 'Too Many Requests',
+          message: 'Rate limit cap exceeded. Please try again later.',
+          retryAfterSeconds: rateLimitRes.retryAfterSeconds
+        });
       }
 
       // Fetch workflow details
