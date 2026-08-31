@@ -77,7 +77,7 @@ The following active source files, build scripts, and docs contain hardcoded pat
 | [apps/api/src/server.ts](file:///c:/Projects/open_flow/apps/api/src/server.ts#L1210) | 1210 | `path.resolve(process.cwd(), 'src/server/mcp-server.ts')` | MCP server registration spawns non-existent script. |
 | [packages/nodes/src/mcp-tool/run.ts](file:///c:/Projects/open_flow/packages/nodes/src/mcp-tool/run.ts#L87) | 87 | `path.resolve(process.cwd(), 'src/server/mcp-server.ts')` | MCP node runner fails to spawn local stdio MCP server. |
 | [apps/web/src/canvas/Marketplace.tsx](file:///c:/Projects/open_flow/apps/web/src/canvas/Marketplace.tsx#L21) | 21 | `fetch('/src/nodes/registry.json')` | Client marketplace component fails to load registry JSON. |
-| [docs/CURRENT_STRUCTURE.md](file:///c:/Projects/open_flow/docs/CURRENT_STRUCTURE.md#L406-L409) | 406–409 | Describes root `src/` monolithic directory layout. | Stale architectural documentation. |
+| [docs/architecture/CURRENT_STRUCTURE.md](file:///c:/Projects/open_flow/docs/architecture/CURRENT_STRUCTURE.md#L406-L409) | 406–409 | Describes root `src/` monolithic directory layout. | Stale architectural documentation. |
 | [docs/guides/CONTRIBUTING.md](file:///c:/Projects/open_flow/docs/guides/CONTRIBUTING.md#L13-L29) | 13, 29 | References `src/server/__tests__/engine.test.ts` and `src/server/seed-templates.ts`. | Onboarding guidance broken for contributors. |
 | [docs/guides/NODE_AUTHORING_GUIDE.md](file:///c:/Projects/open_flow/docs/guides/NODE_AUTHORING_GUIDE.md#L11) | 11 | Directs users to create files in `src/nodes/`. | Onboarding guidance broken for contributors. |
 
@@ -141,7 +141,7 @@ The following active source files, build scripts, and docs contain hardcoded pat
 ### 4.2 Architecture Documentation Drift
 
 - **[docs/architecture/ARCHITECTURE.md](file:///c:/Projects/open_flow/docs/architecture/ARCHITECTURE.md)**: **STALE (High Drift)** — Still describes the initial single-process prototype architecture (v0.1–v0.7 roadmap) with in-process async execution and SQLite. Does not mention BullMQ, Redis, worker processes, scheduler, Postgres translation, or monorepo packages.
-- **[docs/CURRENT_STRUCTURE.md](file:///c:/Projects/open_flow/docs/CURRENT_STRUCTURE.md)**: **STALE** — Outdated file from before the monorepo split showing single root `package.json` and monolithic `src/` tree.
+- **[docs/architecture/CURRENT_STRUCTURE.md](file:///c:/Projects/open_flow/docs/architecture/CURRENT_STRUCTURE.md)**: **STALE** — Outdated file from before the monorepo split showing single root `package.json` and monolithic `src/` tree.
 
 ### 4.3 `README.md` Quick Start Verification
 
@@ -263,4 +263,4 @@ Ranked strictly by probability and severity of causing a production incident (hi
    `umzug`, `jsonwebtoken`, `ws` (in `apps/web`), `pino` / `pino-pretty` (in `api`, `worker`, `scheduler`), `sqlite3` (in `packages/nodes`), and `@open-flow/shared-types` (in 5 manifests) are declared but never imported or used.
 
 9. **Documentation Staleness and Broken Markdown Links** *(Severity: Low)*  
-   [docs/architecture/ARCHITECTURE.md](file:///c:/Projects/open_flow/docs/architecture/ARCHITECTURE.md) and [docs/CURRENT_STRUCTURE.md](file:///c:/Projects/open_flow/docs/CURRENT_STRUCTURE.md) describe the pre-restructure architecture; [README.md](file:///c:/Projects/open_flow/README.md) contains 6 broken links and omits Redis from its local setup instructions.
+   [docs/architecture/ARCHITECTURE.md](file:///c:/Projects/open_flow/docs/architecture/ARCHITECTURE.md) and [docs/architecture/CURRENT_STRUCTURE.md](file:///c:/Projects/open_flow/docs/architecture/CURRENT_STRUCTURE.md) describe the pre-restructure architecture; [README.md](file:///c:/Projects/open_flow/README.md) contains 6 broken links and omits Redis from its local setup instructions.

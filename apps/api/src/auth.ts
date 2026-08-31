@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
 
+// Note: JWT_SECRET and getJwtSecret() use native crypto HMAC tokens for session signing.
+// The name JWT_SECRET is intentionally preserved for backward compatibility across environment configs.
 const getJwtSecret = (): string => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {

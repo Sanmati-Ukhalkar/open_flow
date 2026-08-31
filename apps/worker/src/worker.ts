@@ -1,34 +1,19 @@
-import { Worker, Job, Queue } from 'bullmq';
-import Redis from 'ioredis';
+import { Worker, Job } from 'bullmq';
 import dotenv from 'dotenv';
 import { db, runMigrations, logger, log } from '@open-flow/db';
 import { executeRunBackend } from '@open-flow/engine';
 import { WorkflowRunJob } from '@open-flow/shared-types';
+import {
+  WORKFLOW_QUEUE_NAME,
+  workflowQueue,
+  redisConnection,
+  getRedisConnectionOptions
+} from '../../api/src/queue';
 
 dotenv.config();
+export { WORKFLOW_QUEUE_NAME, workflowQueue, redisConnection, getRedisConnectionOptions };
 
-const getRedisConnectionOptions = () => {
-  const urlStr = process.env.REDIS_URL || 'redis://127.0.0.1:6380';
-  try {
-    const u = new URL(urlStr);
-    return {
-      host: u.hostname || '127.0.0.1',
-      port: parseInt(u.port || '6380', 10)
-    };
-  } catch {
-    return { host: '127.0.0.1', port: 6380 };
-  }
-};
-
-const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6380';
-export const redisConnection = new Redis(redisUrl, { maxRetriesPerRequest: null });
-
-logger.info({ service: 'worker', redisUrl }, 'Connecting to Redis...');
-
-export const WORKFLOW_QUEUE_NAME = 'workflow-runs';
-export const workflowQueue = new Queue(WORKFLOW_QUEUE_NAME, {
-  connection: getRedisConnectionOptions()
-});
+logger.info({ service: 'worker' }, 'Connecting to Redis...');
 
 export async function processWorkflowRunJob(job: Job<WorkflowRunJob>) {
   console.log(`[Worker Entry] Received job ${job.id} with data:`, JSON.stringify(job.data));
