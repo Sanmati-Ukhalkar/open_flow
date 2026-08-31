@@ -24,7 +24,7 @@ import { checkSlidingWindowRateLimit } from './rateLimiter';
 
 dotenv.config();
 
-const app = express();
+export const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -1412,15 +1412,18 @@ app.post('/api/run-node', async (req, res) => {
   }
 });
 
-const server = app.listen(PORT, async () => {
-  logger.info({ service: 'api', port: PORT }, `Server running on http://localhost:${PORT}`);
-  try {
-    await runMigrations();
-    await seedTemplates();
-  } catch (e: any) {
-    logger.error({ service: 'api', error: e.message || e }, 'Startup migration or template seeding error');
-  }
-});
+let server: any = null;
+if (process.env.NODE_ENV !== 'test') {
+  server = app.listen(PORT, async () => {
+    logger.info({ service: 'api', port: PORT }, `Server running on http://localhost:${PORT}`);
+    try {
+      await runMigrations();
+      await seedTemplates();
+    } catch (e: any) {
+      logger.error({ service: 'api', error: e.message || e }, 'Startup migration or template seeding error');
+    }
+  });
+}
 
 // -------------------------------------------------------------
 // YJS WEBSOCKET COLLABORATION SYNC
@@ -1513,7 +1516,8 @@ workflowEvents.on(WORKFLOW_RUN_UPDATE, (data) => {
   }
 });
 
-server.on('upgrade', (request: any, socket, head) => {
+if (server) {
+  server.on('upgrade', (request: any, socket: any, head: any) => {
   try {
     const parsedUrl = url.parse(request.url, true);
     const pathname = parsedUrl.pathname || '';
@@ -1599,6 +1603,7 @@ server.on('upgrade', (request: any, socket, head) => {
     socket.destroy();
   }
 });
+}
 
 wss.on('connection', (ws, request) => {
   setupWSConnection(ws, request);
