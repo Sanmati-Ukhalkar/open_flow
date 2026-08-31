@@ -128,20 +128,27 @@ describe('End-to-End Workflow Templates Integration Tests', () => {
   const orgId = 'org-test-1';
 
   beforeAll(async () => {
-    // Await database creations sequentially
-    await dbRun(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT, password_hash TEXT)`);
-    await dbRun(`CREATE TABLE IF NOT EXISTS credentials (id TEXT PRIMARY KEY, user_id TEXT, org_id TEXT, provider TEXT, encrypted_key TEXT)`);
-    await dbRun(`CREATE TABLE IF NOT EXISTS workflows (id TEXT PRIMARY KEY, name TEXT, description TEXT, category TEXT, required_credentials TEXT, is_template BOOLEAN DEFAULT FALSE, thumbnail_url TEXT, graph_json TEXT, owner_id TEXT, org_id TEXT)`);
-    await dbRun(`CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, workflow_id TEXT, status TEXT, duration_ms INTEGER DEFAULT 0, started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, finished_at TIMESTAMP)`);
-    await dbRun(`CREATE TABLE IF NOT EXISTS run_node_results (id TEXT PRIMARY KEY, run_id TEXT, node_id TEXT, status TEXT, output_json TEXT, error_json TEXT, cost_cents REAL DEFAULT 0, duration_ms INTEGER DEFAULT 0, metadata_json TEXT)`);
-    await dbRun(`CREATE TABLE IF NOT EXISTS workflow_versions (id TEXT PRIMARY KEY, workflow_id TEXT, graph_json TEXT)`);
-    await dbRun(`CREATE TABLE IF NOT EXISTS deployments (id TEXT PRIMARY KEY, workflow_id TEXT, workflow_version_id TEXT, bearer_token TEXT, status TEXT, org_id TEXT)`);
-    await dbRun(`CREATE TABLE IF NOT EXISTS triggers (id TEXT PRIMARY KEY, workflow_id TEXT, trigger_type TEXT, status TEXT, config_json TEXT, org_id TEXT)`);
-    await dbRun(`CREATE TABLE IF NOT EXISTS organizations (id TEXT PRIMARY KEY, name TEXT)`);
-    await dbRun(`CREATE TABLE IF NOT EXISTS organization_members (org_id TEXT, user_id TEXT, role TEXT, PRIMARY KEY(org_id, user_id))`);
-    await dbRun(`CREATE TABLE IF NOT EXISTS mcp_servers (id TEXT PRIMARY KEY, name TEXT, type TEXT, command TEXT, args TEXT, env TEXT, url TEXT)`);
-    
-    // Seed standard user and credentials
+    // Create all tables sequentially first, before any async operations
+    const tables = [
+      `CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT, password_hash TEXT)`,
+      `CREATE TABLE IF NOT EXISTS credentials (id TEXT PRIMARY KEY, user_id TEXT, org_id TEXT, provider TEXT, encrypted_key TEXT)`,
+      `CREATE TABLE IF NOT EXISTS workflows (id TEXT PRIMARY KEY, name TEXT, description TEXT, category TEXT, required_credentials TEXT, is_template BOOLEAN DEFAULT FALSE, thumbnail_url TEXT, graph_json TEXT, owner_id TEXT, org_id TEXT)`,
+      `CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, workflow_id TEXT, status TEXT, duration_ms INTEGER DEFAULT 0, started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, finished_at TIMESTAMP)`,
+      `CREATE TABLE IF NOT EXISTS run_node_results (id TEXT PRIMARY KEY, run_id TEXT, node_id TEXT, status TEXT, output_json TEXT, error_json TEXT, cost_cents REAL DEFAULT 0, duration_ms INTEGER DEFAULT 0, metadata_json TEXT)`,
+      `CREATE TABLE IF NOT EXISTS workflow_versions (id TEXT PRIMARY KEY, workflow_id TEXT, graph_json TEXT)`,
+      `CREATE TABLE IF NOT EXISTS deployments (id TEXT PRIMARY KEY, workflow_id TEXT, workflow_version_id TEXT, bearer_token TEXT, status TEXT, org_id TEXT)`,
+      `CREATE TABLE IF NOT EXISTS triggers (id TEXT PRIMARY KEY, workflow_id TEXT, trigger_type TEXT, status TEXT, config_json TEXT, org_id TEXT)`,
+      `CREATE TABLE IF NOT EXISTS organizations (id TEXT PRIMARY KEY, name TEXT)`,
+      `CREATE TABLE IF NOT EXISTS organization_members (org_id TEXT, user_id TEXT, role TEXT, PRIMARY KEY(org_id, user_id))`,
+      `CREATE TABLE IF NOT EXISTS mcp_servers (id TEXT PRIMARY KEY, name TEXT, type TEXT, command TEXT, args TEXT, env TEXT, url TEXT)`
+    ];
+
+    // Execute all table creations sequentially
+    for (const sql of tables) {
+      await dbRun(sql);
+    }
+
+    // Now seed data
     await dbRun(`INSERT OR IGNORE INTO users (id, email, password_hash) VALUES (?, ?, ?)`, [userId, 'test@example.com', 'hash']);
     await dbRun(`INSERT OR IGNORE INTO organizations (id, name) VALUES (?, ?)`, [orgId, 'Test Org']);
     await dbRun(`INSERT OR IGNORE INTO organization_members (org_id, user_id, role) VALUES (?, ?, ?)`, [orgId, userId, 'owner']);
@@ -150,7 +157,7 @@ describe('End-to-End Workflow Templates Integration Tests', () => {
     await dbRun(`INSERT OR IGNORE INTO credentials (id, user_id, org_id, provider, encrypted_key) VALUES (?, ?, ?, ?, ?)`, ['c3', userId, orgId, 'smtp_user', 'user']);
     await dbRun(`INSERT OR IGNORE INTO credentials (id, user_id, org_id, provider, encrypted_key) VALUES (?, ?, ?, ?, ?)`, ['c4', userId, orgId, 'smtp_pass', 'pass']);
 
-    // Populate all seeded templates
+    // Finally seed templates (after all tables and data exist)
     await seedTemplates();
   });
 
