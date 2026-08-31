@@ -1,3 +1,4 @@
+import './env';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -6,7 +7,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { db, DatabaseWrapper, encrypt, seedTemplates, runMigrations } from '@open-flow/db';
+import { db, DatabaseWrapper, encrypt, seedTemplates, runMigrations, logger, log } from '@open-flow/db';
 import { hashPassword, verifyPassword, generateSessionToken, verifySessionToken, authenticateToken, AuthenticatedRequest } from './auth';
 import { analyticsRouter } from './analytics';
 import { executeRunBackend } from '@open-flow/engine';
@@ -584,21 +585,30 @@ app.post('/api/workflows/:id/run', authenticateToken, requireOrgAccess, (req: Au
           return res.status(500).json({ success: false, error: { message: runErr.message } });
         }
 
-        const jobId = await enqueueWorkflowRun({
-          type: 'workflow_run',
-          runId,
-          workflowId: id,
-          orgId,
-          userId,
-          timestamp: Date.now()
-        });
+        try {
+          const jobId = await enqueueWorkflowRun({
+            type: 'workflow_run',
+            runId,
+            workflowId: id,
+            orgId,
+            userId,
+            timestamp: Date.now()
+          });
 
-        if (!jobId) {
-          // Fallback to inline background execution if queue is unavailable
-          executeRunBackend(runId, id, userId);
+          return res.status(202).json({ success: true, runId, status: 'queued', jobId });
+        } catch (enqueueErr: any) {
+          console.error(`[Queue] Failed to enqueue workflow run ${runId}:`, enqueueErr);
+          db.run(
+            'UPDATE runs SET status = ?, error = ?, finished_at = CURRENT_TIMESTAMP, completed_at = CURRENT_TIMESTAMP WHERE id = ?',
+            ['failed', `Failed to queue workflow run: ${enqueueErr.message || 'Queue unavailable'}`, runId]
+          );
+          return res.status(503).json({
+            success: false,
+            error: {
+              message: `Failed to queue workflow run: ${enqueueErr.message || 'Queue service unavailable'}. Please ensure Redis and worker services are running.`
+            }
+          });
         }
-
-        return res.status(202).json({ success: true, runId, status: 'queued', jobId });
       }
     );
   });
@@ -630,19 +640,40 @@ app.post('/api/runs/:runId/retry', authenticateToken, requireOrgAccess, (req: Au
         return res.status(404).json({ success: false, error: { message: 'Run not found.' } });
       }
 
-      // Reset run status to running
+      // Reset run status to queued
       db.run(
-        'UPDATE runs SET status = ?, finished_at = NULL WHERE id = ?',
-        ['running', runId],
-        function (updateErr) {
+        'UPDATE runs SET status = ?, finished_at = NULL, completed_at = NULL WHERE id = ?',
+        ['queued', runId],
+        async function (updateErr) {
           if (updateErr) {
             return res.status(500).json({ success: false, error: { message: updateErr.message } });
           }
 
-          // Trigger retry execution asynchronously in the background
-          executeRunBackend(runId, run.workflow_id, userId, nodeId);
+          try {
+            const jobId = await enqueueWorkflowRun({
+              type: 'workflow_run',
+              runId,
+              workflowId: run.workflow_id,
+              orgId,
+              targetNodeId: nodeId,
+              userId,
+              timestamp: Date.now()
+            });
 
-          return res.json({ success: true, runId });
+            return res.status(202).json({ success: true, runId, status: 'queued', jobId });
+          } catch (enqueueErr: any) {
+            console.error(`[Queue] Failed to enqueue retry for run ${runId}:`, enqueueErr);
+            db.run(
+              'UPDATE runs SET status = ?, error = ?, finished_at = CURRENT_TIMESTAMP, completed_at = CURRENT_TIMESTAMP WHERE id = ?',
+              ['failed', `Failed to queue retry: ${enqueueErr.message || 'Queue unavailable'}`, runId]
+            );
+            return res.status(503).json({
+              success: false,
+              error: {
+                message: `Failed to queue retry: ${enqueueErr.message || 'Queue service unavailable'}. Please ensure Redis and worker services are running.`
+              }
+            });
+          }
         }
       );
     }
@@ -689,7 +720,7 @@ app.get('/api/runs/:runId', authenticateToken, requireOrgAccess, (req: Authentic
               workflow_id: run.workflow_id,
               status: run.status,
               started_at: run.started_at,
-              finished_at: run.finished_at,
+              finished_at: run.finished_at || run.completed_at || null,
               nodes: nodesStatus
             }
           });
@@ -782,12 +813,13 @@ app.post('/api/deployments/:id/execute', async (req, res) => {
         return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to retrieve deployed version.' });
       }
 
-      // Fetch the owner of the workflow to resolve credentials correctly
-      db.get('SELECT owner_id FROM workflows WHERE id = ?', [deployment.workflow_id], async (wfErr, workflow: any) => {
+      // Fetch the owner and org of the workflow to resolve credentials correctly
+      db.get('SELECT owner_id, org_id FROM workflows WHERE id = ?', [deployment.workflow_id], async (wfErr, workflow: any) => {
         if (wfErr || !workflow) {
-          return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to retrieve owner details.' });
+          return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to retrieve workflow details.' });
         }
 
+        const orgId = deployment.org_id || workflow.org_id;
         const runId = `run-${Math.random().toString(36).substr(2, 9)}`;
         
         // Log the start of this run in the DB
@@ -806,7 +838,7 @@ app.post('/api/deployments/:id/execute', async (req, res) => {
             );
 
             // Execute the run synchronously (await it)
-            await executeRunBackend(runId, deployment.workflow_id, workflow.owner_id, undefined, version.id, req.body);
+            await executeRunBackend(runId, deployment.workflow_id, orgId, undefined, version.id, req.body);
 
             // Fetch results
             db.all('SELECT * FROM run_node_results WHERE run_id = ?', [runId], (resErr, results: any[]) => {
@@ -1132,31 +1164,35 @@ app.post('/api/triggers/:id/toggle', authenticateToken, (req: AuthenticatedReque
 app.get('/api/node-definitions', (_req, res) => {
   try {
     const definitions: any[] = [];
-    const corePath = path.resolve(process.cwd(), 'src/nodes');
+    const corePath = path.resolve(__dirname, '../../nodes/src');
+    const fallbackCorePath = path.resolve(process.cwd(), 'packages/nodes/src');
+    const actualCorePath = fs.existsSync(corePath) ? corePath : fallbackCorePath;
     
     // 1. Scan core nodes
-    const coreDirs = fs.readdirSync(corePath);
-    for (const dir of coreDirs) {
-      if (dir === 'community' || dir === 'registry.json') continue;
-      const dirPath = path.join(corePath, dir);
-      if (!fs.statSync(dirPath).isDirectory()) continue;
-      
-      const defPath = path.join(dirPath, 'definition.json');
-      const manifestPath = path.join(dirPath, 'manifest.json');
-      
-      if (fs.existsSync(defPath)) {
-        const def = JSON.parse(fs.readFileSync(defPath, 'utf8'));
-        const manifest = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : {};
-        definitions.push({
-          ...def,
-          manifest,
-          isCommunity: false
-        });
+    if (fs.existsSync(actualCorePath)) {
+      const coreDirs = fs.readdirSync(actualCorePath);
+      for (const dir of coreDirs) {
+        if (dir === 'community' || dir === 'registry.json') continue;
+        const dirPath = path.join(actualCorePath, dir);
+        if (!fs.statSync(dirPath).isDirectory()) continue;
+        
+        const defPath = path.join(dirPath, 'definition.json');
+        const manifestPath = path.join(dirPath, 'manifest.json');
+        
+        if (fs.existsSync(defPath)) {
+          const def = JSON.parse(fs.readFileSync(defPath, 'utf8'));
+          const manifest = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : {};
+          definitions.push({
+            ...def,
+            manifest,
+            isCommunity: false
+          });
+        }
       }
     }
     
     // 2. Scan community nodes
-    const commPath = path.resolve(process.cwd(), 'src/nodes/community');
+    const commPath = path.join(actualCorePath, 'community');
     if (fs.existsSync(commPath)) {
       const commDirs = fs.readdirSync(commPath);
       for (const dir of commDirs) {
@@ -1194,6 +1230,22 @@ app.get('/api/node-definitions', (_req, res) => {
   }
 });
 
+// Serve marketplace node registry
+app.get(['/api/nodes/registry', '/src/nodes/registry.json'], (_req, res) => {
+  try {
+    const regPath = path.resolve(__dirname, '../../nodes/src/registry.json');
+    const fallbackRegPath = path.resolve(process.cwd(), 'packages/nodes/src/registry.json');
+    const actualRegPath = fs.existsSync(regPath) ? regPath : fallbackRegPath;
+    if (fs.existsSync(actualRegPath)) {
+      const registry = JSON.parse(fs.readFileSync(actualRegPath, 'utf8'));
+      return res.json(registry);
+    }
+    return res.json([]);
+  } catch (e: any) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 // -------------------------------------------------------------
 // DYNAMIC MCP ROUTE & REGISTRY (v0.5)
 // -------------------------------------------------------------
@@ -1207,10 +1259,12 @@ app.get('/api/mcp/tools', async (_req, res) => {
 
     // Always fetch legacy local server tools
     try {
-      const serverPath = path.resolve(process.cwd(), 'src/server/mcp-server.ts');
+      const serverPath = path.resolve(__dirname, '../../engine/src/mcp-server.ts');
+      const fallbackServerPath = path.resolve(process.cwd(), 'packages/engine/src/mcp-server.ts');
+      const actualServerPath = fs.existsSync(serverPath) ? serverPath : fallbackServerPath;
       const localTransport = new StdioClientTransport({
         command: process.platform === 'win32' ? 'npx.cmd' : 'npx',
-        args: ["tsx", serverPath]
+        args: ["tsx", actualServerPath]
       });
       const localClient = new Client({
         name: "open-flow-express-client",
@@ -1352,15 +1406,13 @@ app.post('/api/run-node', async (req, res) => {
 });
 
 const server = app.listen(PORT, async () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  // Wait a moment for db migrations in db.ts to finish (sqlite async startup)
-  setTimeout(async () => {
-    try {
-      await seedTemplates();
-    } catch (e) {
-      console.error('Template seeding error:', e);
-    }
-  }, 500);
+  logger.info({ service: 'api', port: PORT }, `Server running on http://localhost:${PORT}`);
+  try {
+    await runMigrations();
+    await seedTemplates();
+  } catch (e: any) {
+    logger.error({ service: 'api', error: e.message || e }, 'Startup migration or template seeding error');
+  }
 });
 
 // -------------------------------------------------------------

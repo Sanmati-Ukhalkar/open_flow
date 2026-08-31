@@ -1,7 +1,13 @@
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
 
-const AUTH_SECRET = process.env.AUTH_SECRET || 'open_flow_auth_secret_signing_key_token_validation';
+const getJwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is missing. A secret signing key is required for session authentication.');
+  }
+  return secret;
+};
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -93,7 +99,7 @@ export function verifyPassword(password: string, storedHash: string): { isValid:
 export function generateSessionToken(userId: string, email: string): string {
   const expiresAt = Date.now() + 1000 * 60 * 60 * 24 * 7; // 7 days duration
   const payload = `${userId}:${email}:${expiresAt}`;
-  const signature = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('hex');
+  const signature = crypto.createHmac('sha256', getJwtSecret()).update(payload).digest('hex');
   return Buffer.from(`${payload}:${signature}`).toString('base64');
 }
 
@@ -112,7 +118,7 @@ export function verifySessionToken(token: string): { id: string; email: string }
     }
     
     const payload = `${id}:${email}:${expiresAtStr}`;
-    const expectedSignature = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('hex');
+    const expectedSignature = crypto.createHmac('sha256', getJwtSecret()).update(payload).digest('hex');
     
     if (signature !== expectedSignature) {
       return null; // Signature mismatch

@@ -12,11 +12,8 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@open-flow/db": "*",
-    "@open-flow/shared-types": "*",
-    "dotenv": "^16.4.5",
     "nodemailer": "^9.0.3",
     "openai": "^4.55.7",
-    "sqlite3": "^6.0.1",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {

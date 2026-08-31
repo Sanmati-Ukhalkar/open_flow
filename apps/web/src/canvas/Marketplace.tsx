@@ -18,7 +18,7 @@ export const Marketplace = () => {
       }
       
       // Load registry curated list
-      const regRes = await fetch('/src/nodes/registry.json');
+      const regRes = await fetch('/api/nodes/registry');
       const regData = await regRes.json();
       setRegistry(regData);
     } catch (e) {
@@ -40,15 +40,15 @@ export const Marketplace = () => {
         <div className="space-y-1">
           <h4 className="font-bold text-zinc-200">Community Node Trust Boundary Notice</h4>
           <p>
-            Community extensions run arbitrary code (`run.ts`) on your host machine without sandboxing boundaries. 
-            Only install and load nodes from repositories and authors you fully trust.
+            Community extensions run code (`run.ts`) in an isolated sandbox worker thread. 
+            Only install and load nodes from repositories and authors you trust.
           </p>
         </div>
       </div>
 
       <div>
         <h3 className="text-xs font-bold text-zinc-200 uppercase tracking-wider mb-1">Curated Community Library</h3>
-        <p className="text-[10px] text-zinc-550 mb-4">Manual copy contribution path. Place packages in `src/nodes/community/` and restart dev servers.</p>
+        <p className="text-[10px] text-zinc-550 mb-4">Manual copy contribution path. Place packages in `packages/nodes/src/community/` and restart dev servers.</p>
       </div>
 
       {loading ? (
@@ -87,7 +87,7 @@ export const Marketplace = () => {
                     </a>
                   </div>
 
-                  <p className="text-[10px] text-zinc-500 leading-normal line-clamp-3">
+                  <p className="text-[10px] text-zinc-550 leading-normal line-clamp-3">
                     {node.description}
                   </p>
                 </div>
@@ -101,7 +101,7 @@ export const Marketplace = () => {
                     </span>
                   ) : (
                     <button
-                      onClick={() => alert(`Installation Guide:\n\n1. Clone the package from ${node.repo}\n2. Place files into: src/nodes/community/${node.id}/\n3. Restart your dev server to load.`)}
+                      onClick={() => alert(`Installation Guide:\n\n1. Clone the package from ${node.repo}\n2. Place files into: packages/nodes/src/community/${node.id}/\n3. Restart your dev server to load.`)}
                       className="flex items-center gap-1.5 py-1 px-3 rounded-lg border border-zinc-800 bg-zinc-900/50 text-[10px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 transition-all font-semibold"
                     >
                       <Download className="w-3.5 h-3.5" />

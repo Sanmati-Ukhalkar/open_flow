@@ -9,6 +9,7 @@
  *  - Subprocess spawning (`child_process`) is disabled inside the worker thread.
  */
 import { parentPort, workerData } from 'worker_threads';
+import { pathToFileURL } from 'url';
 
 const { runPath, input, config, allowedEnv, capabilities = [] } = workerData as {
   runPath: string;
@@ -42,7 +43,7 @@ if (!hasNetworkCap) {
 async function main() {
   try {
     // Dynamically import the community node's run.ts
-    const mod = await import(runPath);
+    const mod = await import(pathToFileURL(runPath).href);
     if (typeof mod.run !== 'function') {
       throw { code: 'SANDBOX_INVALID_MODULE', message: `Node at ${runPath} does not export a run() function.` };
     }

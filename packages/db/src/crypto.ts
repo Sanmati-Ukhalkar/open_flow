@@ -4,7 +4,10 @@ const ALGORITHM = 'aes-256-cbc';
 
 // Generate a 32-byte key from process.env.ENCRYPTION_KEY using SHA-256
 const getSecretKey = () => {
-  const rawKey = process.env.ENCRYPTION_KEY || 'default_super_secret_encryption_key_open_flow_v0.5';
+  const rawKey = process.env.ENCRYPTION_KEY;
+  if (!rawKey) {
+    throw new Error('ENCRYPTION_KEY environment variable is missing. A secure encryption key is required to encrypt/decrypt credentials.');
+  }
   return crypto.createHash('sha256').update(rawKey).digest();
 };
 

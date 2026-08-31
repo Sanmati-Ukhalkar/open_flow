@@ -1,13 +1,22 @@
-import { Node, Edge } from 'reactflow';
+export interface DAGNode {
+  id: string;
+  [key: string]: any;
+}
+
+export interface DAGEdge {
+  source: string;
+  target: string;
+  [key: string]: any;
+}
 
 /**
- * Topologically sorts React Flow nodes based on connections.
+ * Topologically sorts workflow nodes based on connections.
  * Throws an error if a cycle is detected.
  */
-export function topoSort(nodes: Node[], edges: Edge[]): Node[] {
+export function topoSort<T extends DAGNode = DAGNode>(nodes: T[], edges: DAGEdge[]): T[] {
   const adjList: Map<string, string[]> = new Map();
   const inDegree: Map<string, number> = new Map();
-  const nodeMap: Map<string, Node> = new Map();
+  const nodeMap: Map<string, T> = new Map();
 
   // Initialize
   for (const node of nodes) {

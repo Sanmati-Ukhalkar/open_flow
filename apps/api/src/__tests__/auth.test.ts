@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { hashPassword, verifyPassword, computeLegacyHash } from '../auth';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { hashPassword, verifyPassword, computeLegacyHash, generateSessionToken, verifySessionToken } from '../auth';
 
 describe('Auth Password Hashing & Security (Issue #10)', () => {
   it('should generate a structured hash with dynamic salt and 210,000 iterations', () => {
@@ -59,5 +59,34 @@ describe('Auth Password Hashing & Security (Issue #10)', () => {
     expect(verifyPassword('password', '').isValid).toBe(false);
     expect(verifyPassword('password', 'invalid_hash_string').isValid).toBe(false);
     expect(verifyPassword('password', 'pbkdf2$sha512$invalid$salt$hash').isValid).toBe(false);
+  });
+
+  describe('JWT_SECRET Session Token Signing', () => {
+    const originalSecret = process.env.JWT_SECRET;
+
+    beforeEach(() => {
+      process.env.JWT_SECRET = 'test-suite-secure-jwt-secret-key-123';
+    });
+
+    afterEach(() => {
+      process.env.JWT_SECRET = originalSecret;
+    });
+
+    it('should generate and verify session tokens using JWT_SECRET', () => {
+      const token = generateSessionToken('usr-1', 'user@example.com');
+      expect(typeof token).toBe('string');
+
+      const verified = verifySessionToken(token);
+      expect(verified).not.toBeNull();
+      expect(verified?.id).toBe('usr-1');
+      expect(verified?.email).toBe('user@example.com');
+    });
+
+    it('should throw an error when JWT_SECRET is missing', () => {
+      delete process.env.JWT_SECRET;
+      expect(() => generateSessionToken('usr-1', 'user@example.com')).toThrow(
+        /JWT_SECRET environment variable is missing/
+      );
+    });
   });
 });

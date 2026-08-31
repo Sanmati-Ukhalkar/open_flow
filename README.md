@@ -7,7 +7,7 @@
 [![Build Status](https://github.com/Sanmati-Ukhalkar/open_flow/workflows/OpenFlow%20CI/badge.svg)](https://github.com/Sanmati-Ukhalkar/open_flow/actions)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 ![version](https://img.shields.io/badge/version-v1.0-orange)
-[![Video Walkthrough](https://img.shields.io/badge/Video-Walkthrough-red?style=flat&logo=youtube)](docs/VIDEO_WALKTHROUGH.md)
+[![Video Walkthrough](https://img.shields.io/badge/Video-Walkthrough-red?style=flat&logo=youtube)](docs/guides/VIDEO_WALKTHROUGH.md)
 
 ---
 
@@ -103,7 +103,7 @@ Open Flow was built version by version, with each version shipping something ful
 | v0.7 | ✅ Shipped | Cron/webhook triggers, community node marketplace |
 | v0.8+ | ✅ Shipped | Teams, RBAC, real-time collaboration (Yjs), observability & token usage analytics, templates |
 
-See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the full architecture history.
+See [`docs/architecture/ARCHITECTURE.md`](./docs/architecture/ARCHITECTURE.md) for the full architecture history.
 
 ---
 
@@ -119,36 +119,45 @@ See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the full architecture history.
 | **Cron Trigger** | Automatically executes workflows on a scheduled interval |
 | **Webhook Trigger** | Instantly executes workflows upon receiving HTTP POST requests |
 
-More node types are planned — see [`CONTRIBUTING.md`](./CONTRIBUTING.md) for how to build and submit your own.
+More node types are planned — see [`docs/guides/CONTRIBUTING.md`](./docs/guides/CONTRIBUTING.md) for how to build and submit your own.
 
 ---
 
 ## 💻 Tech Stack
 - **Frontend:** React, Vite, TailwindCSS, React Flow, Yjs
-- **Backend:** Node.js, Express, WebSocket, SQLite
-- **Execution:** In-process async node runners
-- **AI Integrations:** LLMs (OpenAI SDK), Model Context Protocol (MCP)
+- **Backend Services:** Node.js, Express, WebSocket, SQLite (`apps/api`, `apps/worker`, `apps/scheduler`)
+- **Queue & Async Execution:** BullMQ, Redis, Worker Threads sandboxing
+- **AI Integrations:** LLMs (OpenAI SDK), Model Context Protocol (MCP SDK)
 
 ---
 
 ## 📦 Quick Start
 
 ### Option A: Local Node Development
+
+#### Prerequisites
+- **Node.js**: v20 or higher
+- **Redis**: v6+ running on port `6380` (or `6379`) — required for BullMQ background job queue processing.
+  - Using Docker: `docker run -d --name openflow_redis -p 6380:6379 redis:7-alpine`
+  - Or local service: `redis-server`
+
+#### Setup & Launch
 ```bash
 git clone https://github.com/Sanmati-Ukhalkar/open_flow.git
 cd open_flow
 npm install
-cp .env.example .env   # add your OpenAI API key
-npm run dev
+cp .env.example .env   # add your JWT_SECRET, ENCRYPTION_KEY, and API keys
+npm run migrate        # initialize metadata.sqlite schema
+npm run dev            # starts API (3001), Worker, Scheduler, and Web (5173)
 ```
 Visit `http://localhost:5173`, create a Team, drag a node onto the canvas (or clone a starter template!), and hit **Run Workflow**.
 
 ### Option B: Self-Hosting with Docker Compose
-If you have Docker installed, you can launch a local OpenFlow instance in the background with a single command:
+If you have Docker installed, you can launch the complete OpenFlow stack (including Redis, API, Worker, and Web):
 ```bash
 docker compose up --build
 ```
-This builds and starts both the frontend and backend containers, persisting your local SQLite database data.
+This builds and starts all containers, persisting your local SQLite database data.
 
 ---
 
@@ -156,11 +165,11 @@ This builds and starts both the frontend and backend containers, persisting your
 
 Open Flow is actively evolving — contributions, bug reports, and node ideas are welcome. Start here:
 
-1. Read [`ARCHITECTURE.md`](./docs/ARCHITECTURE.md) to understand the project architecture.
-2. Read the [Node-Authoring Guide](./docs/NODE_AUTHORING_GUIDE.md) to learn how to implement custom nodes.
-3. Check the [API Reference Docs](./docs/API_REFERENCE.md) to integrate deployed workflows with your external applications.
-4. Read [`AGENTS.md`](./AGENTS.md) if you're using an AI coding assistant (Claude Code, Cursor, etc.) to contribute.
-5. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for local dev guidelines and PR checklists.
+1. Read [`docs/architecture/ARCHITECTURE.md`](./docs/architecture/ARCHITECTURE.md) to understand the project architecture.
+2. Read the [Node-Authoring Guide](./docs/guides/NODE_AUTHORING_GUIDE.md) to learn how to implement custom nodes.
+3. Check the [API Reference Docs](./docs/guides/API_REFERENCE.md) to integrate deployed workflows with your external applications.
+4. Read [`docs/guides/AGENTS.md`](./docs/guides/AGENTS.md) if you're using an AI coding assistant (Claude Code, Cursor, etc.) to contribute.
+5. See [`docs/guides/CONTRIBUTING.md`](./docs/guides/CONTRIBUTING.md) for local dev guidelines and PR checklists.
 
 ## 📄 License
 

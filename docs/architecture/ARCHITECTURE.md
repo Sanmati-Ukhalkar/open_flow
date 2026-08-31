@@ -37,25 +37,28 @@ into, and so we don't paint ourselves into a corner.
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                   VISUAL CANVAS (Frontend)                   │
-│   React + React Flow — drag, connect, configure, run, watch  │
+│   React + React Flow + Yjs — drag, connect, configure, run   │
 ├─────────────────────────────────────────────────────────────┤
 │                      API LAYER (Backend)                     │
-│   REST + WebSocket — save/load workflows, trigger runs,      │
-│   stream node status back to canvas in real time              │
+│   REST + WebSocket (Express + ws) — save/load workflows,     │
+│   auth/RBAC, trigger runs, stream status in real time        │
+├─────────────────────────────────────────────────────────────┤
+│               DISTRIBUTED QUEUE & SCHEDULER LAYER            │
+│   BullMQ + Redis (`workflow-runs` queue), node-cron          │
+│   Dedicated asynchronous Worker & Scheduler services         │
 ├─────────────────────────────────────────────────────────────┤
 │                     WORKFLOW ENGINE (Core)                   │
 │   DAG validation, topological execution, parallel branches,  │
-│   per-node retry using cached upstream output, run state      │
+│   per-node retry with cached upstream output, sandbox worker │
 ├───────────────┬───────────────────────┬─────────────────────┤
 │  NODE RUNTIME  │  TRIGGER SYSTEM       │  STORAGE            │
-│  Each node =   │  Manual run first;    │  Workflow defs,     │
-│  isolated      │  later: webhook, cron │  run logs, node     │
-│  async func    │                       │  outputs (SQLite    │
-│  w/ schema in/ │                       │  → Postgres later)  │
-│  out           │                       │                     │
+│  Standardized  │  Manual run, webhook, │  Workflows, runs,   │
+│  nodes +       │  cron scheduler, file │  creds, templates   │
+│  sandboxed     │  trigger              │  (SQLite metadata   │
+│  community     │                       │  + vector DB)       │
 ├───────────────┴───────────────────────┴─────────────────────┤
-│              NODE MARKETPLACE (future, not now)              │
-│   Community-contributed nodes, shareable, versioned            │
+│                     NODE MARKETPLACE                        │
+│   Community-contributed nodes, sandboxed execution           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -135,17 +138,14 @@ Reddit, etc.).
 ---
 
 ## 4. Tech Stack
-
-- **Frontend:** React + TypeScript + React Flow (canvas), Tailwind (styling)
-- **Backend:** Node.js + TypeScript (fast prototyping, matches frontend
-  language, good AI SDK support)
-- **Node execution:** in-process async functions for now; sandboxing
-  (Docker/WASM) is a later concern, not v0.1
-- **Storage:** SQLite for v0.1–v0.4 (embedded, zero setup); Postgres when
-  multi-user/auth lands
-- **AI:** OpenAI SDK first; MCP SDK integration starts at v0.2
-- **Realtime:** WebSocket for node status streaming (from v0.2 onward, once
-  there's more than one node's worth of status to stream)
+ 
+- **Frontend:** React + TypeScript + React Flow (canvas), TailwindCSS (styling), Yjs (real-time collaboration)
+- **Backend Services:** Node.js + TypeScript monorepo (`apps/api`, `apps/worker`, `apps/scheduler`)
+- **Queue & Async Processing:** BullMQ + Redis for distributed background job queuing and reliable retries
+- **Workflow Engine:** Modular `@open-flow/engine` package with DAG topological sorting and Worker Thread sandboxing for community nodes
+- **Storage:** SQLite metadata database (`metadata.sqlite`), user credential encryption (AES-256-GCM), vector store (`.openflow_vectors.json`)
+- **AI & Tools:** OpenAI SDK, Anthropic, Groq, Model Context Protocol (MCP SDK stdio clients)
+- **Realtime:** WebSocket for real-time node execution status streaming and collaborative canvas sync
 
 ---
 

@@ -43,7 +43,7 @@ export async function run(
     dataToStore = typeof actualData === 'object' ? JSON.stringify(actualData) : String(actualData);
   }
 
-  const dbPath = path.resolve(process.cwd(), 'database.sqlite');
+  const dbPath = process.env.STORAGE_DB_PATH || path.resolve(process.cwd(), 'database.sqlite');
   
   return new Promise((resolve, reject) => {
     const db = new DatabaseWrapper(process.env.DATABASE_URL, dbPath);

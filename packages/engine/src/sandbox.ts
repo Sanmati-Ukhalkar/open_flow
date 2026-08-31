@@ -8,9 +8,10 @@
 import { Worker } from 'worker_threads';
 import path from 'path';
 import fs from 'fs';
+import { resolveNodeFile } from './paths';
 
 // Load per-node-type resource limits from config file
-const limitsPath = path.resolve(process.cwd(), 'src/nodes/node-limits.json');
+const limitsPath = resolveNodeFile('node-limits.json');
 let nodeLimits: Record<string, { timeoutMs: number }> = { default: { timeoutMs: 30000 } };
 if (fs.existsSync(limitsPath)) {
   try {
@@ -122,8 +123,8 @@ export function runInSandbox(
 export function getNodeCapabilities(nodeType: string, isCommunity: boolean): string[] {
   try {
     const defPath = isCommunity
-      ? path.resolve(process.cwd(), `src/nodes/community/${nodeType}/definition.json`)
-      : path.resolve(process.cwd(), `src/nodes/${nodeType}/definition.json`);
+      ? resolveNodeFile('community', nodeType, 'definition.json')
+      : resolveNodeFile(nodeType, 'definition.json');
     if (!fs.existsSync(defPath)) return [];
     const def = JSON.parse(fs.readFileSync(defPath, 'utf8'));
     return Array.isArray(def.capabilities) ? def.capabilities : [];

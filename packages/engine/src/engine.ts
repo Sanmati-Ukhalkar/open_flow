@@ -75,15 +75,62 @@ function calculateNodeCost(nodeType: string, output: any, config?: any): { costC
   return { costCents: 0, metadata: {} };
 }
 
+import { resolveNodeFile } from './paths';
+
+function validateObjectAgainstSchema(data: any, schema: any, pathPrefix = ''): { isValid: boolean; warning?: string } {
+  if (!schema) return { isValid: true };
+
+  if (schema.type === 'object') {
+    if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+      return { isValid: false, warning: `Value at '${pathPrefix || 'root'}' is of type '${typeof data}'. Expected: 'object'.` };
+    }
+
+    if (schema.properties) {
+      for (const key of Object.keys(schema.properties)) {
+        const propSchema = schema.properties[key];
+        const val = data[key];
+        if (val === undefined) {
+          if (Array.isArray(schema.required) && schema.required.includes(key)) {
+            return { isValid: false, warning: `Required property '${pathPrefix ? pathPrefix + '.' + key : key}' is missing.` };
+          }
+          continue;
+        }
+
+        const currentPath = pathPrefix ? `${pathPrefix}.${key}` : key;
+        const valType = typeof val;
+
+        if (propSchema.type === 'string' && valType !== 'string') {
+          return { isValid: false, warning: `Property '${currentPath}' is of type '${valType}'. Expected: 'string'.` };
+        }
+        if (propSchema.type === 'number' && valType !== 'number') {
+          return { isValid: false, warning: `Property '${currentPath}' is of type '${valType}'. Expected: 'number'.` };
+        }
+        if (propSchema.type === 'boolean' && valType !== 'boolean') {
+          return { isValid: false, warning: `Property '${currentPath}' is of type '${valType}'. Expected: 'boolean'.` };
+        }
+        if (propSchema.type === 'array' && !Array.isArray(val)) {
+          return { isValid: false, warning: `Property '${currentPath}' is of type '${valType}'. Expected: 'array'.` };
+        }
+        if (propSchema.type === 'object') {
+          const nestedCheck = validateObjectAgainstSchema(val, propSchema, currentPath);
+          if (!nestedCheck.isValid) return nestedCheck;
+        }
+      }
+    }
+  }
+
+  return { isValid: true };
+}
+
 // Helper to validate output schema against definition
-function checkOutputSchema(nodeType: string, output: any): { isValid: boolean; warning?: string } {
+export function checkOutputSchema(nodeType: string, output: any): { isValid: boolean; warning?: string } {
   try {
-    let definitionPath = path.resolve(process.cwd(), `src/nodes/${nodeType}/definition.json`);
+    let definitionPath = resolveNodeFile(nodeType, 'definition.json');
     if (!fs.existsSync(definitionPath)) {
-      definitionPath = path.resolve(process.cwd(), `src/nodes/community/${nodeType}/definition.json`);
+      definitionPath = resolveNodeFile('community', nodeType, 'definition.json');
     }
     if (!fs.existsSync(definitionPath)) {
-      return { isValid: true };
+      return { isValid: false, warning: `Node definition file missing for type '${nodeType}'. Schema validation failed.` };
     }
     const definition = JSON.parse(fs.readFileSync(definitionPath, 'utf8'));
     const schema = definition.outputSchema;
@@ -91,37 +138,9 @@ function checkOutputSchema(nodeType: string, output: any): { isValid: boolean; w
       return { isValid: true };
     }
 
-    if (schema.type === 'object') {
-      const dataToValidate = output.data !== undefined ? output.data : output;
-      if (typeof dataToValidate !== 'object' || dataToValidate === null) {
-        return { isValid: false, warning: `Output is not an object. Expected: ${schema.type}.` };
-      }
-
-      if (schema.properties) {
-        for (const key of Object.keys(schema.properties)) {
-          const propSchema = schema.properties[key];
-          const val = dataToValidate[key];
-          if (val === undefined) continue;
-          
-          const valType = typeof val;
-          if (propSchema.type === 'string' && valType !== 'string') {
-            return { isValid: false, warning: `Property '${key}' is of type '${valType}'. Expected: 'string'.` };
-          }
-          if (propSchema.type === 'number' && valType !== 'number') {
-            return { isValid: false, warning: `Property '${key}' is of type '${valType}'. Expected: 'number'.` };
-          }
-          if (propSchema.type === 'boolean' && valType !== 'boolean') {
-            return { isValid: false, warning: `Property '${key}' is of type '${valType}'. Expected: 'boolean'.` };
-          }
-          if (propSchema.type === 'object' && valType !== 'object') {
-            return { isValid: false, warning: `Property '${key}' is of type '${valType}'. Expected: 'object'.` };
-          }
-        }
-      }
-    }
-    return { isValid: true };
-  } catch {
-    return { isValid: true };
+    return validateObjectAgainstSchema(output, schema);
+  } catch (err: any) {
+    return { isValid: false, warning: `Schema validation exception: ${err.message}` };
   }
 }
 
@@ -216,21 +235,21 @@ if (node.type === 'llm-prompt') {
                 output = await runVectorRetrieve(nodeInput, node.data.config, { openai: apiKey });
               }
             } else if (node.type === 'code-execution') {
-              const runPath = path.resolve(process.cwd(), 'src/nodes/code-execution/run.ts');
+              const runPath = resolveNodeFile('code-execution', 'run.ts');
               output = await runInSandbox(node.type, runPath, nodeInput, node.data.config, []);
             } else if (node.type === 'branch') {
               output = await runBranch(nodeInput, node.data.config);
             } else {
               // Community node: execute in sandboxed Worker thread
               // Only capabilities declared in definition.json are injected
-              const runPath = path.resolve(process.cwd(), 'src/nodes/community', node.type, 'run.ts');
+              const runPath = resolveNodeFile('community', node.type, 'run.ts');
               if (fs.existsSync(runPath)) {
                 const capabilities = getNodeCapabilities(node.type, true);
                 output = await runInSandbox(node.type, runPath, nodeInput, node.data.config, capabilities);
               } else {
                 throw {
                   code: 'UNKNOWN_NODE_TYPE',
-                  message: `Unsupported node type: "${node.type}". No run.ts found in src/nodes/community/${node.type}/`
+                  message: `Unsupported node type: "${node.type}". No run.ts found in packages/nodes/src/community/${node.type}/`
                 };
               }
             }
@@ -365,7 +384,7 @@ export async function executeRunBackend(
     // Populate node states map
     nodes.forEach((node: any) => {
       const existing = existingResults.find(r => r.node_id === node.id);
-      if (existing && !resetNodeIds.includes(node.id)) {
+      if (existing && startNodeId && !resetNodeIds.includes(node.id)) {
         nodeStatuses.set(node.id, existing.status);
         if (existing.output_json) {
           nodeOutputs.set(node.id, JSON.parse(existing.output_json));
@@ -382,7 +401,7 @@ export async function executeRunBackend(
     for (const node of nodes) {
       const existing = existingResults.find(r => r.node_id === node.id);
       if (existing) {
-        if (resetNodeIds.includes(node.id) || !startNodeId) {
+        if (!startNodeId || resetNodeIds.includes(node.id)) {
           await dbRun(
             'UPDATE run_node_results SET status = ?, output_json = NULL, error_json = NULL WHERE id = ?',
             ['idle', existing.id]
@@ -433,7 +452,7 @@ export async function executeRunBackend(
           const runDurationMs = Date.now() - runStartTime;
           log.info({ workflowId, runId }, `Workflow run completed with status "${finalStatus}" in ${runDurationMs}ms`);
           await dbRun(
-            'UPDATE runs SET status = ?, finished_at = CURRENT_TIMESTAMP, duration_ms = ? WHERE id = ?',
+            'UPDATE runs SET status = ?, finished_at = CURRENT_TIMESTAMP, completed_at = CURRENT_TIMESTAMP, duration_ms = ? WHERE id = ?',
             [finalStatus, runDurationMs, runId]
           );
           workflowEvents.emit(WORKFLOW_RUN_UPDATE, {

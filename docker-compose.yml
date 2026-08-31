@@ -5,7 +5,7 @@ services:
     image: redis:7-alpine
     container_name: openflow_redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     restart: always
 
   api:
@@ -21,8 +21,12 @@ services:
       - NODE_ENV=production
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=production-secret-change-me
+      - SQLITE_DB_PATH=/app/data/metadata.sqlite
+      - STORAGE_DB_PATH=/app/data/database.sqlite
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GROQ_API_KEY=${GROQ_API_KEY}
+    volumes:
+      - sqlite_data:/app/data
     depends_on:
       - redis
     restart: always
@@ -36,8 +40,12 @@ services:
     environment:
       - NODE_ENV=production
       - REDIS_URL=redis://redis:6379
+      - SQLITE_DB_PATH=/app/data/metadata.sqlite
+      - STORAGE_DB_PATH=/app/data/database.sqlite
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GROQ_API_KEY=${GROQ_API_KEY}
+    volumes:
+      - sqlite_data:/app/data
     depends_on:
       - redis
       - api
@@ -52,6 +60,10 @@ services:
     environment:
       - NODE_ENV=production
       - REDIS_URL=redis://redis:6379
+      - SQLITE_DB_PATH=/app/data/metadata.sqlite
+      - STORAGE_DB_PATH=/app/data/database.sqlite
+    volumes:
+      - sqlite_data:/app/data
     depends_on:
       - redis
       - api
@@ -70,3 +82,6 @@ services:
     depends_on:
       - api
     restart: always
+
+volumes:
+  sqlite_data:

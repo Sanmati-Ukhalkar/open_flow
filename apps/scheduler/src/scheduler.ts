@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import cron from 'node-cron';
 import Redis from 'ioredis';
 import { Queue } from 'bullmq';
-import { db, runMigrations } from '@open-flow/db';
+import { db, runMigrations, logger } from '@open-flow/db';
 import { ScheduledRunJob } from '@open-flow/shared-types';
 
 dotenv.config();
@@ -17,20 +17,26 @@ const workflowQueue = new Queue('workflow-runs', {
   connection: redisConnection
 });
 
-console.log('[Scheduler] Scheduler service starting up...');
+logger.info({ service: 'scheduler' }, 'Scheduler service starting up...');
 
 // Run ticker every minute to check active deployments with cron triggers
 cron.schedule('* * * * *', async () => {
-  console.log('[Scheduler] Checking scheduled workflow deployments...');
+  logger.debug({ service: 'scheduler' }, 'Checking scheduled workflow deployments...');
   
   db.all(
-    `SELECT d.id as deployment_id, d.workflow_id, d.org_id, d.version_id, t.config
+    `SELECT d.id as deployment_id, d.workflow_id, d.org_id, d.workflow_version_id as version_id, t.config_json as config
      FROM deployments d
-     JOIN triggers t ON d.id = t.deployment_id
-     WHERE d.status = 'active' AND t.type = 'cron-trigger'`,
+     JOIN triggers t ON d.workflow_id = t.workflow_id
+     WHERE d.status = 'active' 
+       AND (t.trigger_type = 'cron' OR t.trigger_type = 'cron-trigger') 
+       AND t.status = 'active'`,
     [],
     async (err, rows: any[]) => {
-      if (err || !rows || rows.length === 0) {
+      if (err) {
+        logger.error({ service: 'scheduler', error: err.message }, 'Error querying active scheduled deployments');
+        return;
+      }
+      if (!rows || rows.length === 0) {
         return;
       }
 
@@ -61,13 +67,13 @@ cron.schedule('* * * * *', async () => {
             attempts: 3
           });
 
-          console.log(`[Scheduler] Enqueued scheduled run ${runId} for deployment ${row.deployment_id}`);
+          logger.info({ service: 'scheduler', runId, deploymentId: row.deployment_id, workflowId: row.workflow_id }, 'Enqueued scheduled run');
         } catch (e: any) {
-          console.error(`[Scheduler] Failed to trigger deployment ${row.deployment_id}:`, e);
+          logger.error({ service: 'scheduler', deploymentId: row.deployment_id, error: e.message || e }, 'Failed to trigger deployment');
         }
       }
     }
   );
 });
 
-runMigrations().catch(err => console.error('[Scheduler] DB migration failed:', err));
+runMigrations().catch(err => logger.error({ service: 'scheduler', error: err.message || err }, 'DB migration failed'));

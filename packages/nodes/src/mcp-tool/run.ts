@@ -1,7 +1,12 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
 import { db } from "@open-flow/db";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 interface MCPToolConfig {
   toolName: string;
@@ -84,10 +89,12 @@ export async function run(
       );
     }
   } else {
-    const serverPath = path.resolve(process.cwd(), 'src/server/mcp-server.ts');
+    const serverPath = path.resolve(__dirname, '../../../engine/src/mcp-server.ts');
+    const fallbackServerPath = path.resolve(process.cwd(), 'packages/engine/src/mcp-server.ts');
+    const actualServerPath = fs.existsSync(serverPath) ? serverPath : fallbackServerPath;
     transport = new StdioClientTransport({
       command: process.platform === 'win32' ? 'npx.cmd' : 'npx',
-      args: ["tsx", serverPath]
+      args: ["tsx", actualServerPath]
     });
   }
 

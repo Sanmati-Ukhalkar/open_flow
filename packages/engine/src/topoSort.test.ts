@@ -1,15 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { topoSort } from './topoSort';
-import { Node, Edge } from 'reactflow';
+import { topoSort, DAGNode, DAGEdge } from './topoSort';
 
 describe('topoSort (DAG Execution Engine)', () => {
   it('should correctly sort a valid DAG', () => {
-    const nodes: Node[] = [
+    const nodes: DAGNode[] = [
       { id: '1', position: { x: 0, y: 0 }, data: {} },
       { id: '2', position: { x: 0, y: 0 }, data: {} },
       { id: '3', position: { x: 0, y: 0 }, data: {} },
     ];
-    const edges: Edge[] = [
+    const edges: DAGEdge[] = [
       { id: 'e1-2', source: '1', target: '2' },
       { id: 'e2-3', source: '2', target: '3' },
     ];
@@ -19,13 +18,13 @@ describe('topoSort (DAG Execution Engine)', () => {
   });
 
   it('should correctly sort a branching DAG', () => {
-    const nodes: Node[] = [
+    const nodes: DAGNode[] = [
       { id: 'A', position: { x: 0, y: 0 }, data: {} },
       { id: 'B1', position: { x: 0, y: 0 }, data: {} },
       { id: 'B2', position: { x: 0, y: 0 }, data: {} },
       { id: 'C', position: { x: 0, y: 0 }, data: {} },
     ];
-    const edges: Edge[] = [
+    const edges: DAGEdge[] = [
       { id: 'eA-B1', source: 'A', target: 'B1' },
       { id: 'eA-B2', source: 'A', target: 'B2' },
       { id: 'eB1-C', source: 'B1', target: 'C' },
@@ -41,11 +40,11 @@ describe('topoSort (DAG Execution Engine)', () => {
   });
 
   it('should throw an error if a cycle is detected', () => {
-    const nodes: Node[] = [
+    const nodes: DAGNode[] = [
       { id: '1', position: { x: 0, y: 0 }, data: {} },
       { id: '2', position: { x: 0, y: 0 }, data: {} },
     ];
-    const edges: Edge[] = [
+    const edges: DAGEdge[] = [
       { id: 'e1-2', source: '1', target: '2' },
       { id: 'e2-1', source: '2', target: '1' },
     ];
